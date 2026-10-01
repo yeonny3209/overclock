@@ -323,10 +323,10 @@ function tagHTML(t) { return `<span class="tag" style="background:${TAG_COLOR[t]
 
 // ---------- 캐릭터 ----------
 const CHARS = {
-  rain: { name: '레인', role: '돌격', color: '#ff5a5a', hp: 100, weapon: 'smg', skill: '과충전', skillDesc: '5초간 연사 속도 2배, 재장전 불필요', cd: 14, passive: '체력 30% 이하일 때 피해 +25%', unlock: null },
-  momo: { name: '모모', role: '기술자', color: '#ffd23d', hp: 90, weapon: 'pistol', skill: '포탑 설치', skillDesc: '20초간 자동 사격 포탑 설치 (최대 2개)', cd: 9, passive: '상점 가격 -15%', unlock: { cond: '구역 2 클리어', chips: 40, check: () => SAVE.stats.zone2 } },
-  kai: { name: '카이', role: '기동', color: '#3dffb0', hp: 95, weapon: 'shotgun', skill: '반사 베기', skillDesc: '앞쪽 부채꼴을 베고 적 탄환을 되돌려 보냄', cd: 4.5, passive: '구르기 2회 충전', unlock: { cond: '구르기로 탄환 500발 회피', chips: 60, check: () => SAVE.stats.dodged >= 500 } },
-  sera: { name: '세라', role: '저격', color: '#b48cff', hp: 85, weapon: 'sniper', skill: '시간 감속', skillDesc: '3초간 주변 시간 70% 감속', cd: 13, passive: '재장전 직후 첫 발 피해 +100%', unlock: { cond: '저격총으로 보스 처치', chips: 80, check: () => SAVE.stats.sniperBoss } }
+  rain: { name: '레인', role: '돌격', color: '#ff5a5a', hp: 150, weapon: 'smg', skill: '과충전', skillDesc: '5초간 연사 속도 2배, 재장전 불필요', cd: 14, passive: '체력 30% 이하일 때 피해 +25%', unlock: null },
+  momo: { name: '모모', role: '기술자', color: '#ffd23d', hp: 150, weapon: 'pistol', skill: '포탑 설치', skillDesc: '20초간 자동 사격 포탑 설치 (최대 2개)', cd: 9, passive: '상점 가격 -15%', unlock: { cond: '구역 2 클리어', chips: 40, check: () => SAVE.stats.zone2 } },
+  kai: { name: '카이', role: '기동', color: '#3dffb0', hp: 150, weapon: 'shotgun', skill: '반사 베기', skillDesc: '앞쪽 부채꼴을 베고 적 탄환을 되돌려 보냄', cd: 4.5, passive: '구르기 2회 충전', unlock: { cond: '구르기로 탄환 500발 회피', chips: 60, check: () => SAVE.stats.dodged >= 500 } },
+  sera: { name: '세라', role: '저격', color: '#b48cff', hp: 150, weapon: 'sniper', skill: '시간 감속', skillDesc: '3초간 주변 시간 70% 감속', cd: 13, passive: '재장전 직후 첫 발 피해 +100%', unlock: { cond: '저격총으로 보스 처치', chips: 80, check: () => SAVE.stats.sniperBoss } }
 };
 const CHAR_IDS = ['rain', 'momo', 'kai', 'sera'];
 function charUnlocked(id) { const c = CHARS[id]; return !c.unlock || !!SAVE.unlocks['char_' + id] || c.unlock.check(); }
@@ -2062,7 +2062,7 @@ function setupBoss(id) {
     spawnEnemy('boss_crusher', cx, cy - 150, { instant: true });
   } else if (id === 'frost') {
     const hx = Math.min(room.w * 0.36, 520), hy = Math.min(room.h * 0.36, 330);
-    for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) room.props.push({ type: 'heater', x: cx + sx * hx, y: cy + sy * hy, r: 22, hp: 45, maxHp: 45, shootable: true, on: false });
+    for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) room.props.push({ type: 'heater', x: cx + sx * hx, y: cy + sy * hy, r: 22, hp: 20, maxHp: 20, shootable: true, on: false });
     spawnEnemy('boss_frost', cx, cy, { instant: true });
   } else if (id === 'twins') {
     room.twins = [spawnEnemy('boss_twins', cx - 250, cy, { instant: true, idx: 0 }), spawnEnemy('boss_twins', cx + 250, cy, { instant: true, idx: 1 })];
@@ -2178,30 +2178,30 @@ EN.boss_crusher = {
 
 EN.boss_frost = {
   boss: true, hp: 1, r: 52, spd: 0, color: '#7fdcff', contact: 15, heavy: true,
-  init(e) { e.hp = e.maxHp = 1700 * G.bossHp; e.invuln = true; e.shieldT = 0; e.pat = 0; e.t = 2; e.spin = 0; e.frostT = 2; e.bossId = 'frost'; e.name = '프로스트 코어'; },
+  init(e) { e.hp = e.maxHp = 1300 * G.bossHp; e.invuln = true; e.shieldT = 0; e.pat = 0; e.t = 2; e.spin = 0; e.frostT = 2; e.bossId = 'frost'; e.name = '프로스트 코어'; },
   update(e, dt) {
-    const ph2 = e.hp < e.maxHp * 0.45, sp = ph2 ? 1.35 : 1;
+    const ph2 = e.hp < e.maxHp * 0.45, sp = ph2 ? 1.15 : 0.8;
     const heaters = room.props.filter(p => p.type === 'heater');
     const on = heaters.filter(h => h.on).length;
     if (e.shieldT > 0) {
       e.shieldT -= dt;
       if (e.shieldT <= 0) { e.invuln = true; for (const h of heaters) { h.on = false; h.hp = h.maxHp; } SFX.play('shield'); floatText(e.x, e.y - 70, '보호막 재가동', '#7fdcff', 20); }
     } else if (on >= heaters.length && heaters.length) {
-      e.invuln = false; e.shieldT = 7; SFX.play('explode'); shake(12);
+      e.invuln = false; e.shieldT = 14; SFX.play('explode'); shake(12);
       burst(e.x, e.y, '#bff4ff', 40, 400, 0.7, 4);
-      G.banner = { text: '보호막 해제!', sub: '7초간 공격 가능', t: 1.4, color: '#7fdcff' };
+      G.banner = { text: '보호막 해제!', sub: '14초간 공격 가능', t: 1.4, color: '#7fdcff' };
     }
     // 바닥 얼리기
     e.frostT -= dt;
     if (e.frostT <= 0) {
-      e.frostT = ph2 ? 2.4 : 3.4;
+      e.frostT = ph2 ? 5 : 7;
       const cnt = room.hazards.filter(h => h.boss).length;
-      if (cnt < 18) {
+      if (cnt < 6) {
         for (let k = 0; k < 10; k++) {
           const x = rand(80, room.w - 80), y = rand(80, room.h - 80);
           if (d2(x, y, e.x, e.y) < 150 * 150) continue;
           if (heaters.some(h => h.on && d2(h.x, h.y, x, y) < 230 * 230)) continue;
-          addHazard({ type: 'frost', x, y, r: rand(50, 80), life: Infinity, dmg: 4, boss: true, grow: 5 });
+          addHazard({ type: 'frost', x, y, r: rand(50, 80), life: Infinity, dmg: 2, boss: true, grow: 2 });
           break;
         }
       }
@@ -2209,7 +2209,7 @@ EN.boss_frost = {
     e.spin += dt;
     if (e.st === 'spiral') {
       e.st2 -= dt; e.fireT -= dt;
-      if (e.fireT <= 0) { e.fireT = 0.1; for (let k = 0; k < 3; k++) eShoot(e, e.spin * 2.2 + k * TAU / 3, 190, 9, { chill: true, color: '#9fe8ff' }); }
+      if (e.fireT <= 0) { e.fireT = 0.2; for (let k = 0; k < 2; k++) eShoot(e, e.spin * 2.2 + k * Math.PI, 150, 7, { chill: true, color: '#9fe8ff' }); }
       if (e.st2 <= 0) e.st = '';
       return;
     }
@@ -2219,12 +2219,12 @@ EN.boss_frost = {
       const pats = run.oc >= 5 ? 4 : 3;
       e.pat = (e.pat + 1) % pats;
       switch (e.pat) {
-        case 0: eRing(e, 22, 190, 10, rand(0, TAU), { chill: true, color: '#9fe8ff' }); if (ph2) e.ring2 = 0.45; break;
+        case 0: eRing(e, 16, 140, 7, rand(0, TAU), { chill: true, color: '#9fe8ff' }); if (ph2) e.ring2 = 0.6; break;
         case 1: e.st = 'spiral'; e.st2 = 2.6; e.fireT = 0; break;
-        case 2: eFan(e, angTo(e.x, e.y, P.x, P.y), 7, 0.7, 300, 10, { chill: true, color: '#bff4ff' }); break;
+        case 2: eFan(e, angTo(e.x, e.y, P.x, P.y), 5, 0.7, 220, 7, { chill: true, color: '#bff4ff' }); break;
         case 3: for (let i = 0; i < 16; i++) spawnBullet({ x: rand(0, room.w), y: 5, vx: rand(-30, 30), vy: rand(150, 230), team: 'e', dmg: 9, r: 7, life: 7, color: '#bff4ff', chill: true, noWall: true, owner: e }); floatText(room.w / 2, 60, '눈보라!', '#bff4ff', 22); break;
       }
-      e.t = 2.3;
+      e.t = 3.2;
     }
   },
   draw(e, c, f) {
@@ -2823,12 +2823,13 @@ function updateRoom(dt) {
     case 'exterminate': {
       ob.waveT -= dt;
       if (ob.wave < ob.waves && (ob.wave === 0 || alive <= 2 || ob.waveT <= 0)) {
+        if (ob.wave > 0) healRun(15);
         ob.wave++; ob.waveT = 14;
         const n = ob.per + (ob.wave - 1);
         for (let i = 0; i < n; i++) spawnOne(null, { elite: room.kind === 'elite' && i < (ob.wave === 1 ? 2 : 1) });
         if (ob.wave > 1) G.banner = { text: `웨이브 ${ob.wave}/${ob.waves}`, t: 1, color: '#29f0ff' };
       }
-      if (ob.wave >= ob.waves && alive === 0) completeRoom(true);
+      if (ob.wave >= ob.waves && alive === 0) { healRun(15); completeRoom(true); }
       break;
     }
     case 'survive':
@@ -4410,8 +4411,8 @@ function arenaWaveCleared() {
   G.banner = { text: `웨이브 ${ob.wave} 클리어`, t: 1.4, color: '#6dff8a' };
   for (const b of BULLETS) if (b.team === 'e') b.dead = true;
   if (BS.regen) healRun(BS.regen, true);
+  healRun(15);
   if (ob.wave % 5 === 0) {
-    healRun(20, true);
     const s = freeSpot(18, 0, 60, (x, y) => d2(x, y, P.x, P.y) < 300 * 300) || { x: P.x + 60, y: P.y };
     room.props.push({ type: 'chest', x: s.x, y: s.y, r: 18, interact: '[E] 무기 상자 열기' });
     arenaBarrels();

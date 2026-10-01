@@ -6,10 +6,10 @@ function tagHTML(t) { return `<span class="tag" style="background:${TAG_COLOR[t]
 
 // ---------- 캐릭터 ----------
 const CHARS = {
-  rain: { name: '레인', role: '돌격', color: '#ff5a5a', hp: 100, weapon: 'smg', skill: '과충전', skillDesc: '5초간 연사 속도 2배, 재장전 불필요', cd: 14, passive: '체력 30% 이하일 때 피해 +25%', unlock: null },
-  momo: { name: '모모', role: '기술자', color: '#ffd23d', hp: 90, weapon: 'pistol', skill: '포탑 설치', skillDesc: '20초간 자동 사격 포탑 설치 (최대 2개)', cd: 9, passive: '상점 가격 -15%', unlock: { cond: '구역 2 클리어', chips: 40, check: () => SAVE.stats.zone2 } },
-  kai: { name: '카이', role: '기동', color: '#3dffb0', hp: 95, weapon: 'shotgun', skill: '반사 베기', skillDesc: '앞쪽 부채꼴을 베고 적 탄환을 되돌려 보냄', cd: 4.5, passive: '구르기 2회 충전', unlock: { cond: '구르기로 탄환 500발 회피', chips: 60, check: () => SAVE.stats.dodged >= 500 } },
-  sera: { name: '세라', role: '저격', color: '#b48cff', hp: 85, weapon: 'sniper', skill: '시간 감속', skillDesc: '3초간 주변 시간 70% 감속', cd: 13, passive: '재장전 직후 첫 발 피해 +100%', unlock: { cond: '저격총으로 보스 처치', chips: 80, check: () => SAVE.stats.sniperBoss } }
+  rain: { name: '레인', role: '돌격', color: '#ff5a5a', hp: 150, weapon: 'smg', skill: '과충전', skillDesc: '5초간 연사 속도 2배, 재장전 불필요', cd: 14, passive: '체력 30% 이하일 때 피해 +25%', unlock: null },
+  momo: { name: '모모', role: '기술자', color: '#ffd23d', hp: 150, weapon: 'pistol', skill: '포탑 설치', skillDesc: '20초간 자동 사격 포탑 설치 (최대 2개)', cd: 9, passive: '상점 가격 -15%', unlock: { cond: '구역 2 클리어', chips: 40, check: () => SAVE.stats.zone2 } },
+  kai: { name: '카이', role: '기동', color: '#3dffb0', hp: 150, weapon: 'shotgun', skill: '반사 베기', skillDesc: '앞쪽 부채꼴을 베고 적 탄환을 되돌려 보냄', cd: 4.5, passive: '구르기 2회 충전', unlock: { cond: '구르기로 탄환 500발 회피', chips: 60, check: () => SAVE.stats.dodged >= 500 } },
+  sera: { name: '세라', role: '저격', color: '#b48cff', hp: 150, weapon: 'sniper', skill: '시간 감속', skillDesc: '3초간 주변 시간 70% 감속', cd: 13, passive: '재장전 직후 첫 발 피해 +100%', unlock: { cond: '저격총으로 보스 처치', chips: 80, check: () => SAVE.stats.sniperBoss } }
 };
 const CHAR_IDS = ['rain', 'momo', 'kai', 'sera'];
 function charUnlocked(id) { const c = CHARS[id]; return !c.unlock || !!SAVE.unlocks['char_' + id] || c.unlock.check(); }

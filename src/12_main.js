@@ -208,8 +208,8 @@ function arenaWaveCleared() {
   G.banner = { text: `웨이브 ${ob.wave} 클리어`, t: 1.4, color: '#6dff8a' };
   for (const b of BULLETS) if (b.team === 'e') b.dead = true;
   if (BS.regen) healRun(BS.regen, true);
+  healRun(15);
   if (ob.wave % 5 === 0) {
-    healRun(20, true);
     const s = freeSpot(18, 0, 60, (x, y) => d2(x, y, P.x, P.y) < 300 * 300) || { x: P.x + 60, y: P.y };
     room.props.push({ type: 'chest', x: s.x, y: s.y, r: 18, interact: '[E] 무기 상자 열기' });
     arenaBarrels();
