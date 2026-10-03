@@ -42,18 +42,21 @@ function showCharSelect(mode) {
   let oc = Math.min(SAVE.ocMax, SAVE.lastOc || 0);
   let hard = !!SAVE.lastHard;
   const render = () => {
-    const cards = CHAR_IDS.map(id => {
+    // 작은 타일 목록 + 선택한 요원의 상세 정보 (요원이 10명이라 화면이 좁아도 한눈에 보이게)
+    const cards = `<div class="chargrid">${CHAR_IDS.map(id => {
       const c = CHARS[id], ok = charUnlocked(id);
-      return `<div class="card charcard ${ok ? '' : 'locked'} ${sel === id ? 'sel' : ''}" onclick="${ok ? cb(() => { sel = id; render(); }) : ''}">
-        <div class="av" style="color:${c.color};background:${c.color}22"></div>
-        <h3 style="color:${c.color}">${c.name} <span class="muted small">${c.role}</span></h3>
-        <p><b>스킬 · ${c.skill}</b><br>${c.skillDesc}<br><span class="muted small">대기 ${c.cd}초</span></p>
-        <p style="margin-top:6px"><b>패시브</b><br>${c.passive}</p>
-        <p style="margin-top:6px" class="muted">시작 무기: ${GRADES[c.startGrade || 0].name} ${WEAPONS[c.weapon].name}${c.startMods ? ' (' + c.startMods.map(m => MODS[m].name.replace('속성 변환기: ', '') + ' 변환').join(', ') + ')' : ''} · 체력 ${c.hp}</p>
-        ${ok ? '' : `<p style="margin-top:8px;color:#ff4d6d"><b>잠김</b> — ${c.unlock.cond}<br>또는 코어 칩 ◈${c.unlock.chips}로 해금</p>`}
-      </div>`;
-    }).join('');
-    const hardHtml = `<div class="ocsel"><button class="btn sm ${hard ? 'rd on' : 'rd'}" style="${hard ? 'background:#ff2d55;color:#fff' : ''}" onclick="${cb(() => { hard = !hard; render(); })}">하드 모드: ${hard ? '켜짐' : '꺼짐'}</button><span class="small muted">적 체력 +60% · 적 피해 +40% · 엘리트 증가 · 회복 감소 · 보스 추가 패턴 · 코어 칩 2배</span></div>`;
+      return `<div class="ctile ${ok ? '' : 'locked'} ${sel === id ? 'sel' : ''}" style="--cc:${c.color}" onclick="${cb(() => { sel = id; render(); })}">
+        <div class="cdot"></div><b>${c.name}</b><span>${ok ? c.role : '잠김'}</span></div>`;
+    }).join('')}</div>`;
+    const c = CHARS[sel], okSel = charUnlocked(sel);
+    const detail = `<div class="panel cdetail" style="border-color:${c.color}">
+      <h3 style="color:${c.color}">${c.name} <span class="muted small">${c.role} · 체력 ${c.hp}</span></h3>
+      <p><b>스킬 · ${c.skill}</b> <span class="muted small">대기 ${c.cd}초</span><br>${c.skillDesc}</p>
+      <p><b>패시브</b> ${c.passive}</p>
+      <p class="muted">시작 무기: ${GRADES[c.startGrade || 0].name} ${WEAPONS[c.weapon].name}${c.startMods ? ' (' + c.startMods.map(m => MODS[m].name.replace('속성 변환기: ', '') + ' 변환').join(', ') + ')' : ''}</p>
+      ${okSel ? '' : `<p style="color:#ff4d6d"><b>잠김</b> — ${c.unlock.cond} · 또는 해금 메뉴에서 코어 칩 ◈${c.unlock.chips}</p>`}
+    </div>`;
+    const hardHtml = `<div class="ocsel"><button class="btn sm ${hard ? 'rd on' : 'rd'}" style="white-space:nowrap;flex-shrink:0;${hard ? 'background:#ff2d55;color:#fff' : ''}" onclick="${cb(() => { hard = !hard; render(); })}">하드 모드: ${hard ? '켜짐' : '꺼짐'}</button><span class="small muted">적 체력 +60% · 적 피해 +40% · 엘리트 증가 · 회복 감소 · 보스 추가 패턴 · 코어 칩 2배</span></div>`;
     const ocHtml = mode === 'campaign' ? `
       <div class="ocsel">
         <span>오버클럭 레벨</span>
@@ -64,12 +67,12 @@ function showCharSelect(mode) {
       </div>
       <div class="small muted" style="max-width:640px;text-align:center;min-height:36px">${oc ? OC_LEVELS.slice(1, oc + 1).map((t, i) => `<span style="color:#ff3df0">${i + 1}</span> ${t}`).join(' · ') : '기본 난이도. 클리어하면 다음 오버클럭 레벨이 열린다.'}</div>` : `<div class="sub">한 경기장에서 끝없이 몰려오는 웨이브. 3웨이브마다 강화, 5웨이브마다 무기 상자, 10웨이브마다 보스.</div>`;
     scr(`<h2>${mode === 'campaign' ? '요원 선택' : '무한 아레나'}</h2>
-      <div class="row">${cards}</div>
+      ${cards}${detail}
       ${ocHtml}
       ${hardHtml}
       <div class="row" style="margin-top:10px">
         <button class="btn" onclick="${cb(showTitle)}">뒤로</button>
-        <button class="btn ye" onclick="${cb(() => { SAVE.lastOc = oc; SAVE.lastHard = hard; saveGame(); mode === 'campaign' ? startCampaign(sel, oc, 'campaign', 0, hard) : startArena(sel, hard); })}">출격 ▶</button>
+        <button class="btn ye" onclick="${cb(() => { if (!charUnlocked(sel)) { toast('잠긴 요원입니다'); return; } SAVE.lastOc = oc; SAVE.lastHard = hard; saveGame(); mode === 'campaign' ? startCampaign(sel, oc, 'campaign', 0, hard) : startArena(sel, hard); })}">출격 ▶</button>
       </div>`, 'top');
   };
   render();

@@ -100,7 +100,7 @@ function initInput() {
     onGlobalKey(e);
   });
   addEventListener('keyup', e => { Input.keys[e.code] = 0; });
-  addEventListener('mousemove', e => { Input.mx = e.clientX; Input.my = e.clientY; Input.usingPad = false; });
+  addEventListener('mousemove', e => { Input.mx = e.clientX; Input.my = e.clientY; Input.usingPad = false; if (!(e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents)) Input.touch = false; });
   addEventListener('mousedown', e => { Input.mb[e.button] = 1; Input.mp[e.button] = 1; SFX.init(); });
   addEventListener('mouseup', e => { Input.mb[e.button] = 0; });
   addEventListener('contextmenu', e => e.preventDefault());
@@ -229,7 +229,7 @@ const SFX = {
 const RUN_KEY = 'overclock_run_v1';
 function runKey(mode) { return RUN_KEY + '_' + (mode || 'campaign'); }
 function saveRun() {
-  try { if (run && run.mode !== 'arena' && run.map) localStorage.setItem(runKey(run.mode), JSON.stringify(run)); } catch (e) { }
+  try { if (run && run.mode !== 'arena' && run.map && !run.ended) localStorage.setItem(runKey(run.mode), JSON.stringify(run)); } catch (e) { }
 }
 function clearRun(mode) { try { localStorage.removeItem(runKey(mode)); if ((mode || 'campaign') === 'campaign') localStorage.removeItem(RUN_KEY); } catch (e) { } }
 function clearAllRuns() { for (const m of ['campaign', 'daily']) clearRun(m); }

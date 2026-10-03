@@ -124,7 +124,7 @@ function afterCombat(success, kind) {
   else showMap();
 }
 function nextZone() {
-  if (run.zone >= 3) { UI(''); radio(RADIO_END, () => endRun(true)); return; }
+  if (run.zone >= 3) { run.ended = true; clearRun(run.mode); UI(''); radio(RADIO_END, () => endRun(true)); return; }
   run.zone++; run.map = genMap(run.zone); run.row = -1; run.col = -1;
   showMap();
   radio(RADIO[run.zone], () => { });
@@ -133,6 +133,7 @@ function nextZone() {
 // ================= 런 종료 =================
 function endRun(victory) {
   if (!run) return;
+  run.ended = true;
   if (run.mode !== 'arena') clearRun(run.mode);
   if (radioState) { clearInterval(radioState.timer); radioState = null; }
   let chips, extra = '';

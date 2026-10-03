@@ -80,6 +80,13 @@ input[type=range]{width:200px;accent-color:var(--cy)}
 .slot{display:inline-block;width:14px;height:14px;border:1px solid #888;margin-left:3px;vertical-align:middle;border-radius:2px}
 .slot.f{background:var(--cy);border-color:var(--cy)}
 .charcard{width:210px;min-height:280px}
+.chargrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;width:min(760px,94vw)}
+.ctile{background:var(--pn);border:1.5px solid var(--bd);padding:8px 6px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+.ctile .cdot{width:26px;height:26px;border-radius:50%;border:3px solid var(--cc);box-shadow:0 0 10px var(--cc);margin-bottom:2px}
+.ctile b{color:var(--cc);font-size:14px}.ctile span{font-size:11px;color:var(--mu)}
+.ctile.sel{border-color:var(--cc);box-shadow:0 0 14px var(--cc)}.ctile.locked{opacity:.45}
+.cdetail{width:min(760px,94vw);line-height:1.6;font-size:14px;margin-top:8px}.cdetail p{margin-top:4px}
+@media(max-width:520px){.chargrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .charcard .av{width:64px;height:64px;border-radius:50%;margin-bottom:10px;box-shadow:0 0 18px currentColor;border:3px solid currentColor}
 .ocsel{display:flex;align-items:center;gap:10px;margin:14px 0}
 .ocsel b{font-family:'Orbitron';font-size:22px;color:var(--mg);min-width:40px;text-align:center}
@@ -200,7 +207,7 @@ function initInput() {
     onGlobalKey(e);
   });
   addEventListener('keyup', e => { Input.keys[e.code] = 0; });
-  addEventListener('mousemove', e => { Input.mx = e.clientX; Input.my = e.clientY; Input.usingPad = false; });
+  addEventListener('mousemove', e => { Input.mx = e.clientX; Input.my = e.clientY; Input.usingPad = false; if (!(e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents)) Input.touch = false; });
   addEventListener('mousedown', e => { Input.mb[e.button] = 1; Input.mp[e.button] = 1; SFX.init(); });
   addEventListener('mouseup', e => { Input.mb[e.button] = 0; });
   addEventListener('contextmenu', e => e.preventDefault());
@@ -329,7 +336,7 @@ const SFX = {
 const RUN_KEY = 'overclock_run_v1';
 function runKey(mode) { return RUN_KEY + '_' + (mode || 'campaign'); }
 function saveRun() {
-  try { if (run && run.mode !== 'arena' && run.map) localStorage.setItem(runKey(run.mode), JSON.stringify(run)); } catch (e) { }
+  try { if (run && run.mode !== 'arena' && run.map && !run.ended) localStorage.setItem(runKey(run.mode), JSON.stringify(run)); } catch (e) { }
 }
 function clearRun(mode) { try { localStorage.removeItem(runKey(mode)); if ((mode || 'campaign') === 'campaign') localStorage.removeItem(RUN_KEY); } catch (e) { } }
 function clearAllRuns() { for (const m of ['campaign', 'daily']) clearRun(m); }
@@ -379,7 +386,7 @@ Object.assign(CHARS, {
   volt: { name: '볼트', role: '전격술사', color: '#ffe14d', hp: 145, weapon: 'tesla', startGrade: 1, skill: '천둥 폭풍', skillDesc: '4초간 주변 적에게 낙뢰가 쏟아짐', cd: 12, passive: '감전 연쇄 대상 +1', unlock: { cond: '속성 반응 100회 발동', chips: 50, check: () => SAVE.stats.reactions >= 100 } },
   nova: { name: '노바', role: '성기사', color: '#fff4b0', hp: 175, weapon: 'lightbeam', startGrade: 1, skill: '빛의 장막', skillDesc: '3초간 무적, 주변 적 실명, 체력 15 회복', cd: 13, passive: '받는 피해 -10%, 실명된 적에게 주는 피해 +20%', unlock: { cond: '보스 5회 처치', chips: 60, check: () => (SAVE.stats.bossKills || 0) >= 5 } },
   grim: { name: '그림', role: '처형자', color: '#9b6bff', hp: 140, weapon: 'pistol', startGrade: 1, startMods: ['conv_dark'], skill: '그림자 걸음', skillDesc: '조준 방향으로 순간이동하며 지나친 적에게 피해와 침식 3중첩', cd: 6, passive: '피해 +20%, 처형 기준 +5%, 처형할 때 체력 2 회복', unlock: { cond: '처형 50회', chips: 70, check: () => (SAVE.stats.execs || 0) >= 50 } },
-  marin: { name: '마린', role: '조류술사', color: '#3d8bff', hp: 160, weapon: 'hydro', startGrade: 1, skill: '해일', skillDesc: '앞쪽으로 파도를 일으켜 피해와 젖음, 지나간 자리에 물웅덩이', cd: 10, passive: '피해 +10%, 젖은 적 상태 이상 증폭 +25%, 물웅덩이 위에서 이동 속도 +25%', unlock: { cond: '구역 3 도달', chips: 50, check: () => SAVE.stats.bestZone >= 3 } },
+  marin: { name: '마린', role: '조류술사', color: '#3d8bff', hp: 160, weapon: 'hydro', startGrade: 1, skill: '해일', skillDesc: '앞쪽으로 파도를 일으켜 피해와 젖음, 지나간 자리에 물웅덩이', cd: 10, passive: '피해 +10%, 젖은 적 상태 이상 증폭 +25%, 물웅덩이 위에서 이동 속도 +25%', unlock: { cond: '구역 3 도달', chips: 50, check: () => SAVE.stats.bestZone >= 2 } },
   iron: { name: '아이언', role: '중장갑', color: '#a9b8cc', hp: 220, weapon: 'smg', startGrade: 1, startMods: ['conv_metal'], skill: '강철 요새', skillDesc: '4초간 받는 피해 -80%, 때린 적에게 파쇄 3중첩', cd: 12, passive: '체력이 높고 연사 +20%, 이동 속도 -10%, 보스·엘리트 피해 +15%', unlock: { cond: '누적 처치 1500', chips: 70, check: () => SAVE.stats.kills >= 1500 } }
 });
 const CHAR_IDS = ['rain', 'momo', 'kai', 'sera', 'blaze', 'volt', 'nova', 'grim', 'marin', 'iron'];
@@ -4704,18 +4711,21 @@ function showCharSelect(mode) {
   let oc = Math.min(SAVE.ocMax, SAVE.lastOc || 0);
   let hard = !!SAVE.lastHard;
   const render = () => {
-    const cards = CHAR_IDS.map(id => {
+    // 작은 타일 목록 + 선택한 요원의 상세 정보 (요원이 10명이라 화면이 좁아도 한눈에 보이게)
+    const cards = `<div class="chargrid">${CHAR_IDS.map(id => {
       const c = CHARS[id], ok = charUnlocked(id);
-      return `<div class="card charcard ${ok ? '' : 'locked'} ${sel === id ? 'sel' : ''}" onclick="${ok ? cb(() => { sel = id; render(); }) : ''}">
-        <div class="av" style="color:${c.color};background:${c.color}22"></div>
-        <h3 style="color:${c.color}">${c.name} <span class="muted small">${c.role}</span></h3>
-        <p><b>스킬 · ${c.skill}</b><br>${c.skillDesc}<br><span class="muted small">대기 ${c.cd}초</span></p>
-        <p style="margin-top:6px"><b>패시브</b><br>${c.passive}</p>
-        <p style="margin-top:6px" class="muted">시작 무기: ${GRADES[c.startGrade || 0].name} ${WEAPONS[c.weapon].name}${c.startMods ? ' (' + c.startMods.map(m => MODS[m].name.replace('속성 변환기: ', '') + ' 변환').join(', ') + ')' : ''} · 체력 ${c.hp}</p>
-        ${ok ? '' : `<p style="margin-top:8px;color:#ff4d6d"><b>잠김</b> — ${c.unlock.cond}<br>또는 코어 칩 ◈${c.unlock.chips}로 해금</p>`}
-      </div>`;
-    }).join('');
-    const hardHtml = `<div class="ocsel"><button class="btn sm ${hard ? 'rd on' : 'rd'}" style="${hard ? 'background:#ff2d55;color:#fff' : ''}" onclick="${cb(() => { hard = !hard; render(); })}">하드 모드: ${hard ? '켜짐' : '꺼짐'}</button><span class="small muted">적 체력 +60% · 적 피해 +40% · 엘리트 증가 · 회복 감소 · 보스 추가 패턴 · 코어 칩 2배</span></div>`;
+      return `<div class="ctile ${ok ? '' : 'locked'} ${sel === id ? 'sel' : ''}" style="--cc:${c.color}" onclick="${cb(() => { sel = id; render(); })}">
+        <div class="cdot"></div><b>${c.name}</b><span>${ok ? c.role : '잠김'}</span></div>`;
+    }).join('')}</div>`;
+    const c = CHARS[sel], okSel = charUnlocked(sel);
+    const detail = `<div class="panel cdetail" style="border-color:${c.color}">
+      <h3 style="color:${c.color}">${c.name} <span class="muted small">${c.role} · 체력 ${c.hp}</span></h3>
+      <p><b>스킬 · ${c.skill}</b> <span class="muted small">대기 ${c.cd}초</span><br>${c.skillDesc}</p>
+      <p><b>패시브</b> ${c.passive}</p>
+      <p class="muted">시작 무기: ${GRADES[c.startGrade || 0].name} ${WEAPONS[c.weapon].name}${c.startMods ? ' (' + c.startMods.map(m => MODS[m].name.replace('속성 변환기: ', '') + ' 변환').join(', ') + ')' : ''}</p>
+      ${okSel ? '' : `<p style="color:#ff4d6d"><b>잠김</b> — ${c.unlock.cond} · 또는 해금 메뉴에서 코어 칩 ◈${c.unlock.chips}</p>`}
+    </div>`;
+    const hardHtml = `<div class="ocsel"><button class="btn sm ${hard ? 'rd on' : 'rd'}" style="white-space:nowrap;flex-shrink:0;${hard ? 'background:#ff2d55;color:#fff' : ''}" onclick="${cb(() => { hard = !hard; render(); })}">하드 모드: ${hard ? '켜짐' : '꺼짐'}</button><span class="small muted">적 체력 +60% · 적 피해 +40% · 엘리트 증가 · 회복 감소 · 보스 추가 패턴 · 코어 칩 2배</span></div>`;
     const ocHtml = mode === 'campaign' ? `
       <div class="ocsel">
         <span>오버클럭 레벨</span>
@@ -4726,12 +4736,12 @@ function showCharSelect(mode) {
       </div>
       <div class="small muted" style="max-width:640px;text-align:center;min-height:36px">${oc ? OC_LEVELS.slice(1, oc + 1).map((t, i) => `<span style="color:#ff3df0">${i + 1}</span> ${t}`).join(' · ') : '기본 난이도. 클리어하면 다음 오버클럭 레벨이 열린다.'}</div>` : `<div class="sub">한 경기장에서 끝없이 몰려오는 웨이브. 3웨이브마다 강화, 5웨이브마다 무기 상자, 10웨이브마다 보스.</div>`;
     scr(`<h2>${mode === 'campaign' ? '요원 선택' : '무한 아레나'}</h2>
-      <div class="row">${cards}</div>
+      ${cards}${detail}
       ${ocHtml}
       ${hardHtml}
       <div class="row" style="margin-top:10px">
         <button class="btn" onclick="${cb(showTitle)}">뒤로</button>
-        <button class="btn ye" onclick="${cb(() => { SAVE.lastOc = oc; SAVE.lastHard = hard; saveGame(); mode === 'campaign' ? startCampaign(sel, oc, 'campaign', 0, hard) : startArena(sel, hard); })}">출격 ▶</button>
+        <button class="btn ye" onclick="${cb(() => { if (!charUnlocked(sel)) { toast('잠긴 요원입니다'); return; } SAVE.lastOc = oc; SAVE.lastHard = hard; saveGame(); mode === 'campaign' ? startCampaign(sel, oc, 'campaign', 0, hard) : startArena(sel, hard); })}">출격 ▶</button>
       </div>`, 'top');
   };
   render();
@@ -5487,7 +5497,7 @@ function afterCombat(success, kind) {
   else showMap();
 }
 function nextZone() {
-  if (run.zone >= 3) { UI(''); radio(RADIO_END, () => endRun(true)); return; }
+  if (run.zone >= 3) { run.ended = true; clearRun(run.mode); UI(''); radio(RADIO_END, () => endRun(true)); return; }
   run.zone++; run.map = genMap(run.zone); run.row = -1; run.col = -1;
   showMap();
   radio(RADIO[run.zone], () => { });
@@ -5496,6 +5506,7 @@ function nextZone() {
 // ================= 런 종료 =================
 function endRun(victory) {
   if (!run) return;
+  run.ended = true;
   if (run.mode !== 'arena') clearRun(run.mode);
   if (radioState) { clearInterval(radioState.timer); radioState = null; }
   let chips, extra = '';

@@ -80,6 +80,13 @@ input[type=range]{width:200px;accent-color:var(--cy)}
 .slot{display:inline-block;width:14px;height:14px;border:1px solid #888;margin-left:3px;vertical-align:middle;border-radius:2px}
 .slot.f{background:var(--cy);border-color:var(--cy)}
 .charcard{width:210px;min-height:280px}
+.chargrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;width:min(760px,94vw)}
+.ctile{background:var(--pn);border:1.5px solid var(--bd);padding:8px 6px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+.ctile .cdot{width:26px;height:26px;border-radius:50%;border:3px solid var(--cc);box-shadow:0 0 10px var(--cc);margin-bottom:2px}
+.ctile b{color:var(--cc);font-size:14px}.ctile span{font-size:11px;color:var(--mu)}
+.ctile.sel{border-color:var(--cc);box-shadow:0 0 14px var(--cc)}.ctile.locked{opacity:.45}
+.cdetail{width:min(760px,94vw);line-height:1.6;font-size:14px;margin-top:8px}.cdetail p{margin-top:4px}
+@media(max-width:520px){.chargrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .charcard .av{width:64px;height:64px;border-radius:50%;margin-bottom:10px;box-shadow:0 0 18px currentColor;border:3px solid currentColor}
 .ocsel{display:flex;align-items:center;gap:10px;margin:14px 0}
 .ocsel b{font-family:'Orbitron';font-size:22px;color:var(--mg);min-width:40px;text-align:center}

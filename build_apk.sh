@@ -30,5 +30,5 @@ if [ ! -f "$KS" ]; then
   keytool -genkeypair -keystore "$KS" -alias overclock -keyalg RSA -keysize 2048 -validity 10000 \
     -storepass "$(cat "$PASSFILE")" -keypass "$(cat "$PASSFILE")" -dname "CN=Overclock, O=Overclock" >/dev/null 2>&1
 fi
-"$BT/apksigner.bat" sign --ks "$KS" --ks-pass "file:$PASSFILE" --out overclock.apk "$OUT/aligned.apk"
+"$BT/apksigner.bat" sign --v4-signing-enabled false --ks "$KS" --ks-pass "file:$PASSFILE" --out overclock.apk "$OUT/aligned.apk"
 "$BT/apksigner.bat" verify overclock.apk && echo "built overclock.apk ($(wc -c < overclock.apk) bytes)"
