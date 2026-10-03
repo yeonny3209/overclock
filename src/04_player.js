@@ -90,6 +90,7 @@ function updatePlayer(dt) {
       for (const t of ts) { strike(t.x, t.y); damageEnemy(t, 30 * dynDmg(), { tag: 'elec' }); }
     }
   }
+  if (BS.prism) updatePrism(dt);
   if (BS.surv7) { run.regenAcc = (run.regenAcc || 0) + dt; if (run.regenAcc >= 2) { run.regenAcc = 0; if (run.hp < run.maxHp) healRun(3, true); } }
   // 상호작용
   P.prompt = null;
@@ -298,4 +299,55 @@ function updateCamera(dt, snap) {
   if (room.h + m * 2 <= VH) ty = room.h / 2 - VH / 2; else ty = clamp(ty, -m, room.h + m - VH);
   if (snap) { cam.x = tx; cam.y = ty; }
   else { cam.x = lerp(cam.x, tx, Math.min(1, 8 * dt)); cam.y = lerp(cam.y, ty, Math.min(1, 8 * dt)); }
+}
+
+// ================= 프리즘 세트 =================
+const PRISM_TAGS = ['fire', 'elec', 'ice'];
+function prismOrbs() {
+  const out = [];
+  for (let i = 0; i < 3; i++) { const a = P.prismA + i * TAU / 3; out.push({ x: P.x + Math.cos(a) * 72, y: P.y + Math.sin(a) * 72, hue: (G.time * 120 + i * 120) % 360 }); }
+  return out;
+}
+function updatePrism(dt) {
+  P.prismA = (P.prismA || 0) + dt * 3.2;
+  if (run.prismT === undefined || run.prismT === null) run.prismT = 3;
+  // 회전 조각: 적 베기 + 적 탄 지우기
+  const orbs = prismOrbs();
+  for (const o of orbs) {
+    for (const e of room.enemies) {
+      if (e.dead || e.spawning || e.invuln) continue;
+      if (d2(o.x, o.y, e.x, e.y) < (e.r + 12) ** 2 && (e.prismCd || 0) <= G.time) {
+        e.prismCd = G.time + 0.3;
+        damageEnemy(e, 22 * dynDmg() * BS.dmgMult, { tag: pick(PRISM_TAGS), knock: 120, ang: angTo(P.x, P.y, e.x, e.y), quiet: true });
+        burst(e.x, e.y, `hsl(${o.hue},100%,65%)`, 5, 160, 0.3, 3);
+      }
+    }
+    for (const b of BULLETS) {
+      if (b.team !== 'e' || b.type === 'lob' || b.dead) continue;
+      if (d2(o.x, o.y, b.x, b.y) < (b.r + 14) ** 2) { b.dead = true; burst(b.x, b.y, `hsl(${o.hue},100%,65%)`, 4, 120, 0.25, 2); }
+    }
+  }
+  // 프리즘 폭발
+  run.prismT -= dt;
+  if (run.prismT <= 0 && room.enemies.some(e => !e.dead && !e.spawning)) {
+    run.prismT = 6;
+    prismNova();
+  }
+}
+function prismNova() {
+  const R = 380 * BS.expRadius / 1.3;
+  SFX.play('reaction'); SFX.play('explode', 0.6);
+  floatText(P.x, P.y - 50, '프리즘 폭발!', `hsl(${(G.time * 300) % 360},100%,70%)`, 24);
+  for (let i = 0; i < 4; i++) part({ x: P.x, y: P.y, life: 0.5 + i * 0.1, size: R * (0.6 + i * 0.13), color: `hsl(${i * 90 + (G.time * 200) % 360},100%,65%)`, kind: 'ring' });
+  burst(P.x, P.y, '#ffffff', 30, 520, 0.6, 4);
+  shake(10); G.flash = 0.25; G.flashColor = '255,255,255';
+  for (const e of room.enemies.slice()) {
+    if (e.dead || e.spawning || e.invuln) continue;
+    if (dist(P.x, P.y, e.x, e.y) < R + e.r) {
+      const tg = pick(PRISM_TAGS);
+      damageEnemy(e, 80 * BS.dmgMult / 1.8 * 1.8 * dynDmg(), { tag: tg, knock: 260, ang: angTo(P.x, P.y, e.x, e.y), statusDmg: 40 });
+      if (!e.dead) applyStatus(e, pick(PRISM_TAGS), { dmg: 40 });
+    }
+  }
+  for (const b of BULLETS) if (b.team === 'e' && b.type !== 'lob' && d2(P.x, P.y, b.x, b.y) < R * R) b.dead = true;
 }

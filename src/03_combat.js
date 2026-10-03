@@ -23,10 +23,10 @@ function recomputeBuild() {
   BS = {
     prism,
     tags,
-    dmgMult: (1 + 0.15 * u('sharp')) * (u('bigcal') ? 1.1 : 1) * (c.glass ? 1.5 : 1) * (set('bullet', 3) ? 1.1 : 1) * (set('bullet', 7) ? 1.25 : 1) * (prism ? 1.3 : 1),
+    dmgMult: (1 + 0.15 * u('sharp')) * (u('bigcal') ? 1.1 : 1) * (c.glass ? 1.5 : 1) * (set('bullet', 3) ? 1.1 : 1) * (set('bullet', 7) ? 1.25 : 1) * (prism ? 1.8 : 1),
     rateMult: (1 + 0.15 * u('rapid')) * (c.frenzy ? 1.4 : 1),
     reloadMult: 1 / (1 + 0.3 * u('quickhand')),
-    crit: 0.1 * u('critup'), pierce: u('pierce') + (set('bullet', 7) ? 2 : 0),
+    crit: 0.1 * u('critup') + (prism ? 0.15 : 0), pierce: u('pierce') + (set('bullet', 7) ? 2 : 0),
     bulletSpd: set('bullet', 3) ? 1.6 : 1, bulletSize: u('bigcal') ? 1.4 : 1,
     spreadMult: c.frenzy ? 2.5 : 1, spreadAdd: c.frenzy ? 0.08 : 0, twin: u('twin') > 0,
     burnChance: 0.2 * u('ignite'), shockChance: 0.15 * u('conductor'), chillChance: 0.2 * u('frosttip'), burstChance: 0.1 * u('burst'),
@@ -35,10 +35,10 @@ function recomputeBuild() {
     static: u('static') > 0, transfer: 0.5 + 0.3 * u('highvolt'), chargecoil: u('chargecoil'), overcurrent: 0.15 * u('overcurrent'),
     thunder: u('thunder') > 0, discharge: u('discharge') > 0,
     chillDur: 1 + 0.5 * u('frostbite'), chillSlow: 0.3 + 0.15 * u('chill'), shards: u('shards') > 0, permafrost: u('permafrost'), frostarmor: u('frostarmor') > 0,
-    chaindet: u('chaindet'), expDmg: (1 + 0.3 * u('hiexp')) * (set('exp', 7) ? 1.5 : 1), expRadius: (1 + 0.15 * u('shockwave')) * (set('exp', 3) ? 1.45 : 1) * (prism ? 1.2 : 1),
+    chaindet: u('chaindet'), expDmg: (1 + 0.3 * u('hiexp')) * (set('exp', 7) ? 1.5 : 1), expRadius: (1 + 0.15 * u('shockwave')) * (set('exp', 3) ? 1.45 : 1) * (prism ? 1.3 : 1),
     expKnock: 1 + 0.5 * u('shockwave'), blastroll: u('blastroll') > 0, safety: u('safety') > 0,
     vamp: u('vamp'), regen: 8 * u('regen'), evasion: u('evasion') ? 1.5 : 1, medkit: u('medkit') > 0, plating: 0.1 * u('plating'),
-    magnet: u('magnet') ? 2 : 1, afterimage: u('afterimage') > 0, cdMult: Math.pow(0.8, u('cooldown')), moveMult: (1 + 0.1 * u('swift')) * (prism ? 1.1 : 1),
+    magnet: u('magnet') ? 2 : 1, afterimage: u('afterimage') > 0, cdMult: Math.pow(0.8, u('cooldown')), moveMult: (1 + 0.1 * u('swift')) * (prism ? 1.15 : 1),
     comboTime: 3 + 2 * u('combokeep'), invest: 8 * u('invest'), lucky: 0.2 * u('lucky'),
     coinMult: c.avarice ? 2 : 1, enemyMult: c.avarice ? 1.25 : 1, berserk: !!c.berserk, noHeal: !!c.berserk,
     fire3: set('fire', 3), fire5: set('fire', 5), elec3: set('elec', 3), elec5: set('elec', 5), ice3: set('ice', 3), ice5: set('ice', 5),
@@ -289,7 +289,7 @@ function bulletHitEnemy(b, e) {
   if (BS.chillChance && b.tag !== 'ice' && Math.random() < BS.chillChance) applyStatus(e, 'ice', { dmg });
   if (BS.burstChance && Math.random() < BS.burstChance) explode(b.x, b.y, 55, 12, { small: true });
   if (BS.elec7 && Math.random() < 0.25 && !e.dead) { strike(e.x, e.y); damageEnemy(e, 25 * dynDmg(), { tag: 'elec', noChain: true, quiet: true }); }
-  if (BS.prism && Math.random() < 0.3 && !e.dead) applyStatus(e, pick(['fire', 'elec', 'ice']), { dmg });
+  if (BS.prism && Math.random() < 0.5 && !e.dead) applyStatus(e, pick(['fire', 'elec', 'ice']), { dmg });
   if (b.explosive) explode(b.x, b.y, 65, 22, { small: true, wid: b.wid });
   if (b.split && !b.small) for (const s of [-0.55, 0.55]) {
     const a = ang + s, sp = Math.hypot(b.vx, b.vy) * 0.8;
@@ -332,7 +332,7 @@ function shoot(w) {
   if (P.staticShots > 0) { P.staticShots--; status = 'elec'; }
   const offs = BS.twin ? [-0.07, 0.07] : [0];
   const dm = BS.twin ? 0.65 : 1;
-  const common = { team: 'p', tag: s.tag, crit, color: s.color, knock: s.knock, ric: s.ric, split: s.split, homing: s.homing, wid: w.id, legend: s.legend, status };
+  const common = { team: 'p', tag: s.tag, crit, color: BS.prism ? `hsl(${(G.time * 360) % 360},100%,70%)` : s.color, knock: s.knock, ric: s.ric, split: s.split, homing: s.homing, wid: w.id, legend: s.legend, status };
   const mw = mouseWorld();
   const aimD = dist(P.x, P.y, mw.x, mw.y);
   switch (s.type) {

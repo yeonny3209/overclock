@@ -128,7 +128,7 @@ function drawHUD() {
     hudText(lbl, tx + 8, ty - 2, 12, n >= 3 ? TAG_COLOR[t] : '#c5cae6');
     tx += w + 6;
   }
-  if (run.prism) hudText('◆ 프리즘', pad, VH - pad - 52, 13, `hsl(${(G.time * 120) % 360},100%,70%)`);
+  if (run.prism) hudText(`◆ 프리즘 폭발 ${Math.ceil(Math.max(0, run.prismT || 0))}초`, pad, VH - pad - 52, 13, `hsl(${(G.time * 120) % 360},100%,70%)`);
   hudText('ESC 일시정지', pad, VH - pad - 32, 11, '#5a6080');
 
   drawBossBar();

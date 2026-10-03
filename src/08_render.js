@@ -405,6 +405,15 @@ function drawPlayer() {
   ctx.shadowBlur = 0;
   circlePath(P.x + Math.cos(P.ang) * 5, P.y + Math.sin(P.ang) * 5, 4); ctx.fillStyle = c; ctx.fill();
   ctx.globalAlpha = 1;
+  if (BS.prism) {
+    ctx.globalCompositeOperation = 'lighter';
+    for (const o of prismOrbs()) {
+      circlePath(o.x, o.y, 16); ctx.fillStyle = `hsla(${o.hue},100%,60%,0.25)`; ctx.fill();
+      polyPath(o.x, o.y, 9, 4, G.time * 6); ctx.fillStyle = `hsl(${o.hue},100%,70%)`; ctx.fill();
+    }
+    circlePath(P.x, P.y, P.r + 12 + Math.sin(G.time * 6) * 2); ctx.strokeStyle = `hsla(${(G.time * 200) % 360},100%,65%,0.6)`; ctx.lineWidth = 2; ctx.stroke();
+    ctx.globalCompositeOperation = 'source-over';
+  }
   if (P.shield > 0) { circlePath(P.x, P.y, P.r + 8); ctx.strokeStyle = 'rgba(109,255,138,0.7)'; ctx.lineWidth = 2; ctx.stroke(); }
   if (w.reloadT > 0) { hpBar(P.x, P.y + P.r + 8, 34, 1 - w.reloadT / (w.reloadMax || 1), '#29f0ff', 3); }
   if (P.prompt) {
