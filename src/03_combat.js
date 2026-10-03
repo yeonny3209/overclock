@@ -107,7 +107,7 @@ function gradeUp(w) {
   w.ammo = wStats(w).mag;
   return true;
 }
-function weaponName(w) { return w.grade === 2 ? `${LEGEND[w.id].name}(${WEAPONS[w.id].name})` : `${GRADES[w.grade].name} ${WEAPONS[w.id].name}`; }
+function weaponName(w) { const n = w.grade === 2 ? `${LEGEND[w.id].name}(${WEAPONS[w.id].name})` : `${GRADES[w.grade].name} ${WEAPONS[w.id].name}`; return w.fuse ? `${n}+${TAG_NAME[w.fuse]}` : n; }
 function randomWeaponId(exclude) { const pool = weaponPool().filter(id => id !== exclude); return rp(pool); }
 function rollGrade(w = [60, 32, 8]) { const r = RNG() * (w[0] + w[1] + w[2]); return r < w[0] ? 0 : r < w[0] + w[1] ? 1 : 2; }
 function curW() { return run.weapons[run.cur] || run.weapons[0]; }
@@ -139,6 +139,7 @@ function wStats(w) {
     if (w.id === 'hydro') s.pierce += 3;
   }
   if (run && run.char === 'sera') s.crit += 0.2;
+  if (w.fuse) { s.tag2 = w.fuse; s.dmg *= 1.15; }
   return s;
 }
 function dynDmg() {
@@ -147,6 +148,7 @@ function dynDmg() {
   if (run.char === 'kai' && P && P.momT > 0) m *= 1.4;
   if (run.char === 'sera' && P && P.slowT > 0) m *= 1.3;
   if (run.char === 'rain' && P && P.overT > 0) m *= 1.2;
+  if (P && P.odT > 0) m *= 1.5;
   if (BS.berserk) m *= 1 + Math.min(0.9, 0.03 * run.berserk);
   return m;
 }
@@ -165,7 +167,7 @@ function spawnBullet(o) {
   b.crit = !!o.crit; b.color = o.color || '#fff'; b.knock = o.knock || 0; b.type = o.type || 'n'; b.ric = o.ric || 0;
   b.split = !!o.split; b.homing = !!o.homing; b.owner = o.owner || null; b.wid = o.wid || null;
   b.t = 0; b.dodged = false; b.dead = false; b.returning = false; b.aoe = o.aoe || 0; b.legend = !!o.legend;
-  b.chill = !!o.chill; b.status = o.status || null; b.pierced = 0; b.small = !!o.small; b.big = !!o.big; b.stacks = o.stacks || 1;
+  b.chill = !!o.chill; b.status = o.status || null; b.tag2 = o.tag2 || null; b.pierced = 0; b.small = !!o.small; b.big = !!o.big; b.stacks = o.stacks || 1;
   b.tx = o.tx || 0; b.ty = o.ty || 0; b.sx = o.x; b.sy = o.y; b.debris = !!o.debris; b.noWall = !!o.noWall; b.accel = o.accel || 0;
   BULLETS.push(b);
   return b;
@@ -173,6 +175,7 @@ function spawnBullet(o) {
 function clearBullets() { while (BULLETS.length) BPOOL.push(BULLETS.pop()); }
 function eShoot(e, a, spd, dmg, o = {}) {
   SFX.play('eshoot', 0.8);
+  if (e.ally) return spawnBullet(Object.assign({ x: e.x + Math.cos(a) * (e.r + 4), y: e.y + Math.sin(a) * (e.r + 4), vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, r: 5, dmg: dmg * 1.5 * BS.dmgMult, team: 'p', life: 3, color: '#29f0ff', small: true }, o, { team: 'p', color: '#29f0ff', chill: false, owner: null, type: o.type === 'boomerang' ? 'n' : (o.type || 'n') }));
   return spawnBullet(Object.assign({ x: e.x + Math.cos(a) * (e.r + 4), y: e.y + Math.sin(a) * (e.r + 4), vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, r: 6, dmg: dmg, team: 'e', life: 4, color: '#ff3b3b', owner: e }, o));
 }
 function eRing(e, n, spd, dmg, off = 0, o = {}) { for (let i = 0; i < n; i++) eShoot(e, off + i / n * TAU, spd, dmg, o); }
@@ -186,13 +189,15 @@ function updateBullets(dt) {
     const b = BULLETS[i];
     let bdt = dt;
     if (b.team === 'e' && inSlowField(b.x, b.y)) bdt *= 0.3;
+    if (b.team === 'e' && P && P.odT > 0) bdt *= 0.6;
     b.t += bdt; b.life -= bdt; b.px = b.x; b.py = b.y;
 
     if (b.type === 'lob') { // 포물선 투척 (보스 잔해, 적 유탄)
       const k = clamp(b.t / b.maxLife, 0, 1);
       b.x = lerp(b.sx, b.tx, k); b.y = lerp(b.sy, b.ty, k);
       if (k >= 1) {
-        explode(b.x, b.y, b.aoe || 60, b.dmg, { team: 'e', owner: b.owner, pdmg: b.dmg });
+        if (b.team === 'p') explode(b.x, b.y, b.aoe || 60, b.dmg, { noSelf: true });
+        else explode(b.x, b.y, b.aoe || 60, b.dmg, { team: 'e', owner: b.owner, pdmg: b.dmg });
         if (b.debris) for (let j = 0; j < 6; j++) { const a = j / 6 * TAU + rand(0, 0.5); spawnBullet({ x: b.x, y: b.y, vx: Math.cos(a) * 240, vy: Math.sin(a) * 240, r: 6, dmg: 8, team: 'e', life: 2, color: '#ff7a3b', owner: b.owner }); }
         b.dead = true;
       }
@@ -320,7 +325,7 @@ function bulletHitEnemy(b, e) {
   const ang = Math.atan2(b.vy, b.vx);
   damageEnemy(e, dmg, { tag: b.tag, crit: b.crit, knock: b.knock, ang, wid: b.wid, statusDmg: dmg, stacks: b.stacks, long: b.legend && b.wid === 'hydro' });
   if (b.status) applyStatus(e, b.status, { dmg, ang });
-  onHitProcs(e, dmg, b.tag, { crit: b.crit, ang, x: b.x, y: b.y, small: b.small, wid: b.wid });
+  onHitProcs(e, dmg, b.tag, { crit: b.crit, ang, x: b.x, y: b.y, small: b.small, wid: b.wid, tag2: b.tag2 });
   if (b.split && !b.small) for (const s of [-0.55, 0.55]) {
     const a = ang + s, sp = Math.hypot(b.vx, b.vy) * 0.8;
     const nb = spawnBullet({ x: b.x, y: b.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: b.r * 0.7, dmg: b.dmg * 0.4, team: 'p', life: 0.35, tag: b.tag, color: b.color, small: true, wid: b.wid });
@@ -332,6 +337,10 @@ function bulletHitEnemy(b, e) {
 }
 // 명중 시 공통 추가 효과 (확률 상태 이상, 각성, 치명타 효과 등)
 function onHitProcs(e, dmg, srcTag, o) {
+  if (o.tag2 && !e.dead) {
+    if (ELEM_TAGS.includes(o.tag2) && o.tag2 !== srcTag) applyStatus(e, o.tag2, { dmg, ang: o.ang });
+    else if (o.tag2 === 'exp' && G.time - (G.fuseExpT || 0) > 0.08) { G.fuseExpT = G.time; explode(o.x, o.y, 45, dmg * 0.4 + 5, { small: true, noSelf: true }); }
+  }
   for (const t of ELEM_TAGS) {
     const c = BS.onHit[t];
     if (c && t !== srcTag && !e.dead && Math.random() < c) applyStatus(e, t, { dmg, ang: o.ang });
@@ -378,14 +387,14 @@ function shoot(w) {
   let offs = BS.twin ? [-0.07, 0.07] : [0];
   if (BS.extraShots) offs = offs.concat([-0.2, 0.2]);
   const dm = BS.twin ? 0.65 : 1;
-  const common = { team: 'p', tag: s.tag, crit, color: s.tag !== WEAPONS[w.id].tag ? TAG_COLOR[s.tag] : s.color, knock: s.knock, ric: s.ric, split: s.split, homing: s.homing, wid: w.id, legend: s.legend, status, stacks: s.stacks };
+  const common = { team: 'p', tag: s.tag, tag2: s.tag2, crit, color: s.tag !== WEAPONS[w.id].tag ? TAG_COLOR[s.tag] : s.color, knock: s.knock, ric: s.ric, split: s.split, homing: s.homing, wid: w.id, legend: s.legend, status, stacks: s.stacks };
   const mw = mouseWorld();
   const aimD = dist(P.x, P.y, mw.x, mw.y);
   switch (s.type) {
     case 'tesla': for (const o of offs) teslaFire(s, dmg * dm, crit, a + o, status); break;
     case 'beam': {
       const n = s.legend ? 3 : 1;
-      for (const o of offs) for (let i = 0; i < n; i++) fireBeam(a + o + (n > 1 ? (i - 1) * 0.12 : 0), dmg * dm, crit, s.tag, { wid: w.id, range: s.range });
+      for (const o of offs) for (let i = 0; i < n; i++) fireBeam(a + o + (n > 1 ? (i - 1) * 0.12 : 0), dmg * dm, crit, s.tag, { wid: w.id, range: s.range, tag2: s.tag2 });
       break;
     }
     case 'grenade': case 'blackhole': {
@@ -441,7 +450,7 @@ function fireBeam(a, dmg, crit, tag, o = {}) {
     if (e.dead || e.spawning) continue;
     if (segDist(e.x, e.y, sx, sy, ex, ey) < e.r + 6) {
       damageEnemy(e, dmg, { tag, crit, wid: o.wid, ang: a, statusDmg: dmg });
-      if (!o.noProc) onHitProcs(e, dmg, tag, { crit, ang: a, x: e.x, y: e.y, wid: o.wid });
+      if (!o.noProc) onHitProcs(e, dmg, tag, { crit, ang: a, x: e.x, y: e.y, wid: o.wid, tag2: o.tag2 });
     }
   }
   for (const p of room.props) if (p.shootable && !p.dead && segDist(p.x, p.y, sx, sy, ex, ey) < p.r + 6) hitProp(p, dmg, null);
@@ -476,7 +485,7 @@ function teslaFire(s, dmg, crit, a, status) {
   const zap = t => {
     damageEnemy(t, dmg, { tag: s.tag, crit, wid: 'tesla', statusDmg: dmg, ang: angTo(P.x, P.y, t.x, t.y) });
     if (status) applyStatus(t, status, { dmg });
-    onHitProcs(t, dmg, s.tag, { crit, ang: angTo(P.x, P.y, t.x, t.y), x: t.x, y: t.y, wid: 'tesla' });
+    onHitProcs(t, dmg, s.tag, { crit, ang: angTo(P.x, P.y, t.x, t.y), x: t.x, y: t.y, wid: 'tesla', tag2: s.tag2 });
     if (s.tag === 'elec') { const h = hazardAt(t.x, t.y, 'water'); if (h) electrify(h, true); }
   };
   zap(best);
@@ -598,6 +607,7 @@ function damageEnemy(e, dmg, o = {}) {
     if (dmg <= 0) { e.flash = 0.05; return 0; }
   }
   e.hp -= dmg; e.flash = 0.07; e.lastHit = G.time;
+  if (!o.dot) addOd(Math.min(1.5, dmg / 90));
   if (SAVE.settings.dmgNum && !(o.quiet && Math.random() < 0.6)) {
     const big = crit || dmg >= 50;
     floatText(e.x + rand(-8, 8), e.y - e.r - 6, Math.max(1, Math.round(dmg)) + (crit ? '!' : ''), crit ? '#ffe14d' : big ? '#ffd0a0' : '#ffffff', crit ? 22 : big ? 18 : 13);
@@ -816,6 +826,7 @@ function reaction(id, x, y) {
   if (codex('reaction', id)) toast(`새 속성 반응 발견: <b style="color:${R.color}">${R.name}</b>`);
   if (run) run.reactions++;
   SAVE.stats.reactions++;
+  addOd(2);
 }
 
 // ================= 처치 =================
@@ -832,6 +843,8 @@ function killEnemy(e, o = {}) {
   if (e.noReward) return;
   run.kills++; room.kills++; SAVE.stats.kills++;
   addCombo();
+  addOd(e.muts ? 10 : 2.5);
+  if (o.exec) SAVE.stats.execs = (SAVE.stats.execs || 0) + 1;
   // 코인
   let coins = (def.coin || 1) * (e.muts ? 4 : 1) * comboMult() * BS.coinMult;
   coins = Math.floor(coins) + (Math.random() < coins % 1 ? 1 : 0);
@@ -920,4 +933,40 @@ function addCombo() {
 function breakCombo() {
   if (run.combo >= 10) floatText(P.x, P.y - 40, '콤보 끊김', '#9aa0c0', 14);
   run.combo = 0; run.comboT = 0;
+}
+
+// ================= 오버클럭 모드 (게이지가 가득 차면 F로 발동) =================
+function addOd(n) {
+  if (!run || !P || P.odT > 0) return;
+  const before = run.od || 0;
+  run.od = Math.min(100, before + n);
+  if (before < 100 && run.od >= 100) { SFX.play('objective'); floatText(P.x, P.y - 50, '오버클럭 준비! [F]', '#ff3df0', 18); }
+}
+function activateOverdrive() {
+  if (!run || (run.od || 0) < 100 || P.odT > 0 || P.dead) return;
+  run.od = 0; P.odT = 8;
+  G.banner = { text: 'OVERCLOCK!', sub: '8초간 연사 +60% · 피해 +50% · 적 감속', t: 1.4, color: '#ff3df0' };
+  G.flash = 0.35; G.flashColor = '255,61,240'; shake(14); hitstop(0.06, true);
+  SFX.play('skill'); SFX.play('reaction');
+  for (const b of BULLETS) if (b.team === 'e' && d2(b.x, b.y, P.x, P.y) < 260 * 260) b.dead = true;
+  for (const e of room.enemies) if (!e.dead && !e.spawning && !e.heavy && !e.boss && d2(e.x, e.y, P.x, P.y) < 220 * 220) { const a = angTo(P.x, P.y, e.x, e.y); e.kx += Math.cos(a) * 380; e.ky += Math.sin(a) * 380; }
+  for (let i = 0; i < 3; i++) part({ x: P.x, y: P.y, life: 0.5 + i * 0.12, size: 120 + i * 90, color: '#ff3df0', kind: 'ring' });
+  SAVE.stats.overdrives = (SAVE.stats.overdrives || 0) + 1;
+}
+
+// ================= 해킹: 약해진 적을 아군으로 =================
+const HACKABLE = ['grunt', 'gunner', 'bomber', 'tank', 'splitter', 'mini', 'frostdrone', 'shield', 'snake', 'mimic'];
+function canHack(e) { return !e.dead && !e.spawning && !e.boss && !e.bounty && !e.ally && HACKABLE.includes(e.type) && e.hp <= e.maxHp * 0.3; }
+function hackEnemy(e, dur = 15) {
+  const i = room.enemies.indexOf(e); if (i < 0) return;
+  room.enemies.splice(i, 1);
+  e.ally = true; e.allyT = dur; e.allyMax = dur; e.noReward = true; e.objTarget = false;
+  e.hp = Math.max(e.hp, e.maxHp * 0.6); e.origColor = e.origColor || e.color; e.color = '#29f0ff';
+  e.burnT = e.shockT = e.chillT = e.frozenT = e.blindT = e.soakT = e.corrodeT = e.shredT = 0; e.shred = e.corrode = e.chill = 0;
+  e.contactCd = 0;
+  room.hacked.push(e);
+  SFX.play('hack'); burst(e.x, e.y, '#29f0ff', 24, 260, 0.5, 3);
+  floatText(e.x, e.y - e.r - 16, '해킹 성공', '#29f0ff', 18);
+  addCombo(); addOd(5);
+  SAVE.stats.hacks = (SAVE.stats.hacks || 0) + 1;
 }

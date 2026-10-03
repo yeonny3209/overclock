@@ -121,7 +121,7 @@ function pollGamepad() {
   const pr = i => cur[i] && !Input.gpPrev[i];
   const g = {
     lx: dz(p.axes[0] || 0), ly: dz(p.axes[1] || 0), rx: dz(p.axes[2] || 0), ry: dz(p.axes[3] || 0),
-    fire: cur[7], skill: pr(6), roll: pr(0), reload: pr(2), swap: pr(3), interact: pr(1), pause: pr(9)
+    fire: cur[7], skill: pr(6), roll: pr(0), reload: pr(2), swap: pr(3), interact: pr(1), pause: pr(9), od: pr(4)
   };
   Input.gpPrev = cur;
   if (g.lx || g.ly || g.rx || g.ry || cur.some(Boolean)) Input.usingPad = true;

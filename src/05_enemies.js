@@ -35,12 +35,14 @@ function moveToward(e, tx, ty, spd, dt) {
   e.mang = a;
 }
 function eTarget(e) {
+  if (e.ally) return e.allyTarget || P;
   for (const a of room.allies) if (a.type === 'decoy' && d2(a.x, a.y, e.x, e.y) < 520 * 520) return a;
+  for (const h of room.hacked) if (!h.dead && d2(h.x, h.y, e.x, e.y) < 220 * 220 && d2(h.x, h.y, e.x, e.y) < d2(P.x, P.y, e.x, e.y)) return h;
   if (e.objTarget && room.objProp && !room.objProp.dead) return room.objProp;
   return P;
 }
 function lob(e, tx, ty, time, aoe, dmg, debris) {
-  spawnBullet({ x: e.x, y: e.y, team: 'e', type: 'lob', tx, ty, life: time, aoe, dmg, r: 9, color: '#ff7a3b', owner: e, noWall: true, debris });
+  spawnBullet({ x: e.x, y: e.y, team: e.ally ? 'p' : 'e', type: 'lob', tx, ty, life: time, aoe, dmg, r: 9, color: '#ff7a3b', owner: e, noWall: true, debris });
 }
 function rollMuts(n) { return rshuffleM(ELITE_IDS.slice()).slice(0, n); }
 function rshuffleM(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
@@ -84,7 +86,8 @@ const EN = {
       if (d2(e.x, e.y, t.x, t.y) < 62 * 62) { e.st = 'fuse'; e.t = 0.55; SFX.play('warn'); }
     },
     death(e, o) {
-      if (o.self) explode(e.x, e.y, 85, 22, { team: 'e', friendly: 0.6, owner: e });
+      if (e.ally) explode(e.x, e.y, 95, 40, { noSelf: true });
+      else if (o.self) explode(e.x, e.y, 85, 22, { team: 'e', friendly: 0.6, owner: e });
       else explode(e.x, e.y, 75, 20, {});
     },
     draw(e, c, f) {
@@ -135,7 +138,7 @@ const EN = {
       const t = eTarget(e);
       moveToward(e, t.x + Math.cos(e.orb) * 170, t.y + Math.sin(e.orb) * 170, e.spd * e.sm, dt);
       e.dropT -= dt;
-      if (e.dropT <= 0) { e.dropT = 0.55; if (room.hazards.length < 110) addHazard({ type: 'frost', x: e.x, y: e.y, r: 32, life: 5 }); }
+      if (e.dropT <= 0 && !e.ally) { e.dropT = 0.55; if (room.hazards.length < 110) addHazard({ type: 'frost', x: e.x, y: e.y, r: 32, life: 5 }); }
     },
     draw(e, c, f) {
       polyPath(e.x, e.y, e.r * 1.2, 4, 0); neonShape(c, 2, f);
@@ -198,7 +201,7 @@ const EN = {
       for (let i = 0; i < e.segs.length; i++) {
         const p = e.trail[Math.min(e.trail.length - 1, (i + 1) * 3)] || e;
         const s = e.segs[i]; s.x = p.x; s.y = p.y;
-        if (!P.dead && d2(s.x, s.y, P.x, P.y) < (s.r + P.r) ** 2) damagePlayer(10, e);
+        if (!e.ally && !P.dead && d2(s.x, s.y, P.x, P.y) < (s.r + P.r) ** 2) damagePlayer(10, e);
       }
     },
     death(e) { for (const s of e.segs) burst(s.x, s.y, '#ffe14d', 6, 150, 0.4, 2); },
@@ -277,7 +280,7 @@ const EN = {
       const a = d > pref + 40 ? e.ang : d < pref - 40 ? e.ang + Math.PI : e.ang + Math.PI / 2;
       moveToward(e, e.x + Math.cos(a) * 40, e.y + Math.sin(a) * 40, e.spd * e.sm, dt);
       if (e.burst > 0) { e.burstT -= dt; if (e.burstT <= 0) { e.burst--; e.burstT = 0.08; eShoot(e, e.ang + rand(-0.12, 0.12), 380, 6); } }
-      if (e.pullT > 0) {
+      if (e.pullT > 0 && !e.ally) {
         e.pullT -= dt; const dd = Math.max(1, d);
         if (dd < 520) { P.kx += (e.x - P.x) / dd * 1100 * dt; P.ky += (e.y - P.y) / dd * 1100 * dt; }
         if (Math.random() < 0.5) { const pa = rand(0, TAU); part({ x: e.x + Math.cos(pa) * 150, y: e.y + Math.sin(pa) * 150, vx: -Math.cos(pa) * 300, vy: -Math.sin(pa) * 300, life: 0.45, size: 2.5, color: '#c77dff', kind: 'dot' }); }
@@ -463,4 +466,38 @@ function enemyHazards(e, dt) {
   }
   if (tick) e.hzT = 0.5;
   return slow;
+}
+
+// ================= 해킹된 아군 갱신 =================
+function updateHacked(dt) {
+  for (let i = room.hacked.length - 1; i >= 0; i--) {
+    const h = room.hacked[i];
+    if (h.dead) { room.hacked.splice(i, 1); continue; }
+    h.allyT -= dt; h.flash -= dt;
+    if (h.allyT <= 0 || room.done) {
+      room.hacked.splice(i, 1); h.dead = true;
+      if (!room.done) explode(h.x, h.y, 90, 30, { noSelf: true });
+      else burst(h.x, h.y, '#29f0ff', 16, 200, 0.4, 3);
+      continue;
+    }
+    let best = null, bd = 900 * 900;
+    for (const e of room.enemies) { if (e.dead || e.spawning) continue; const dd = d2(e.x, e.y, h.x, h.y); if (dd < bd) { bd = dd; best = e; } }
+    h.allyTarget = best;
+    h.sm = 1.2; h.atkMult = 1.3;
+    if (best) EN[h.type].update(h, dt);
+    else moveToward(h, P.x + 40, P.y + 40, h.spd, dt);
+    if (h.dead) continue;
+    h.x += h.kx * dt; h.y += h.ky * dt;
+    h.kx -= h.kx * Math.min(1, 9 * dt); h.ky -= h.ky * Math.min(1, 9 * dt);
+    if (!h.flying) pushOutWalls(h);
+    h.x = clamp(h.x, h.r, room.w - h.r); h.y = clamp(h.y, h.r, room.h - h.r);
+    if (EN[h.type].post) EN[h.type].post(h, dt);
+    h.contactCd -= dt;
+    if (h.contactCd <= 0) for (const e of room.enemies) {
+      if (e.dead || e.spawning || d2(e.x, e.y, h.x, h.y) > (e.r + h.r + 2) ** 2) continue;
+      h.contactCd = 0.45;
+      damageEnemy(e, Math.max(8, h.contact * 1.6) * BS.dmgMult, { knock: 120, ang: angTo(h.x, h.y, e.x, e.y) });
+      break;
+    }
+  }
 }

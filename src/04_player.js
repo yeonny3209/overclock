@@ -4,14 +4,14 @@ function createPlayer(x, y) {
   P = {
     x, y, vx: 0, vy: 0, kx: 0, ky: 0, r: 13, ang: -Math.PI / 2, rollT: 0, rollDx: 1, rollDy: 0, rollCharges: rollMax(), rollRe: 0,
     iframe: 1, hurtT: 0, skillCd: 0, skillMax: 1, overT: 0, slowT: 0, shield: BS.surv5 ? 2 : 0, dead: false, staticShots: 0,
-    chillT: 0, trailT: 0, stepT: 0, prompt: null, swapT: 0, pullT: 0, momT: 0, reaperShots: 0, bladeA: 0
+    chillT: 0, trailT: 0, stepT: 0, prompt: null, swapT: 0, pullT: 0, momT: 0, reaperShots: 0, bladeA: 0, odT: 0, hackCd: 0
   };
   for (const w of run.weapons) w.first = true;
 }
 
 function updatePlayer(dt) {
   if (P.dead) return;
-  P.iframe -= dt; P.hurtT -= dt; P.overT -= dt; P.slowT -= dt; P.chillT -= dt; P.skillCd -= dt; P.swapT -= dt; P.momT -= dt;
+  P.iframe -= dt; P.hurtT -= dt; P.overT -= dt; P.slowT -= dt; P.chillT -= dt; P.skillCd -= dt; P.swapT -= dt; P.momT -= dt; P.odT -= dt; P.hackCd -= dt;
   const rm = rollMax();
   if (P.rollCharges < rm) { P.rollRe -= dt; if (P.rollRe <= 0) { P.rollCharges++; P.rollRe = 0.75 * BS.rollCdMult; } }
   const gp = Input.gp;
@@ -53,7 +53,7 @@ function updatePlayer(dt) {
       if (run.char === 'kai') P.momT = 1.5;
     }
   } else {
-    const spd = 235 * BS.moveMult * (P.chillT > 0 ? 0.7 : 1) * hz.slow;
+    const spd = 235 * BS.moveMult * (P.chillT > 0 ? 0.7 : 1) * hz.slow * (P.odT > 0 ? 1.25 : 1);
     const acc = hz.slick ? 2.5 : 14;
     P.vx = lerp(P.vx, mx * spd, Math.min(1, acc * dt));
     P.vy = lerp(P.vy, my * spd, Math.min(1, acc * dt));
@@ -68,16 +68,17 @@ function updatePlayer(dt) {
   // 무기
   const w = curW(), s = wStats(w);
   if (w.reloadT > 0) { w.reloadT -= dt; if (w.reloadT <= 0) { w.reloadT = 0; w.ammo = s.mag; w.first = true; SFX.play('reloaded'); } }
-  if ((P.overT > 0 || BS.infAmmo) && w.reloadT > 0) { w.reloadT = 0; w.ammo = s.mag; }
+  const freeAmmo = BS.infAmmo || P.odT > 0;
+  if ((P.overT > 0 || freeAmmo) && w.reloadT > 0) { w.reloadT = 0; w.ammo = s.mag; }
   if (w.cd > 0) w.cd -= dt;
   const firing = !G.bossIntro && (Input.mb[0] || (gp && gp.fire) || Input.touchFire) && P.swapT <= 0;
   if (!firing && w.spin > 0) w.spin = Math.max(0, w.spin - dt * 0.8);
   if (firing && w.cd <= 0 && w.reloadT <= 0) {
-    if (s.mag !== Infinity && w.ammo <= 0 && P.overT <= 0 && !BS.infAmmo) { startReload(w); }
+    if (s.mag !== Infinity && w.ammo <= 0 && P.overT <= 0 && !freeAmmo) { startReload(w); }
     else {
       shoot(w);
-      w.cd = (w.cd < -0.05 ? 0 : w.cd) + 1 / (s.rate * (P.overT > 0 ? 2 : 1));
-      if (P.overT <= 0 && !BS.infAmmo && s.mag !== Infinity) { w.ammo--; if (w.ammo <= 0) startReload(w); }
+      w.cd = (w.cd < -0.05 ? 0 : w.cd) + 1 / (s.rate * (P.overT > 0 ? 2 : 1) * (P.odT > 0 ? 1.6 : 1));
+      if (P.overT <= 0 && !freeAmmo && s.mag !== Infinity) { w.ammo--; if (w.ammo <= 0) startReload(w); }
     }
   }
   if (Input.pressed.KeyR || (gp && gp.reload)) startReload(w);
@@ -87,6 +88,7 @@ function updatePlayer(dt) {
   }
   // 스킬
   if ((Input.mp[2] || (gp && gp.skill)) && !G.bossIntro) useSkill();
+  if ((Input.pressed.KeyF || (gp && gp.od)) && !G.bossIntro) activateOverdrive();
   // 전기 5세트: 2.5초마다 낙뢰
   if (BS.elec5) {
     run.boltT = (run.boltT || 0) - dt;
@@ -333,6 +335,11 @@ function updatePickups(dt) {
 
 function findInteract() {
   let best = null, bd = 64 * 64;
+  if (P.hackCd <= 0) {
+    let hb = null, hd = 90 * 90;
+    for (const e of room.enemies) { if (!canHack(e)) continue; const dd = d2(e.x, e.y, P.x, P.y); if (dd < hd) { hd = dd; hb = e; } }
+    if (hb) return { label: `[E] 해킹: ${(ENEMY_INFO[hb.type] || { name: '분열 조각' }).name}`, act: () => { hackEnemy(hb); P.hackCd = 8; } };
+  }
   for (const p of room.pickups) {
     if (p.type !== 'weapon') continue;
     const dd = d2(p.x, p.y, P.x, P.y);

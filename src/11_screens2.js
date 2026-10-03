@@ -49,7 +49,8 @@ function showWorkshop() {
     <div class="row">${run.weapons.map(w => weaponCard(w)).join('')}</div>
     <div class="panel evbox"><h3>무기 강화</h3><p class="small muted">한 단계 등급 상승. 희귀: 개조 슬롯 1 + 무작위 보너스 · 전설: 슬롯 2 + 고유 효과</p><div class="row" style="margin-top:8px">${ups}</div></div>
     <div class="panel evbox"><h3>부품 교체</h3><p class="small muted">무작위 부품 1개를 받고, 모든 부품을 자유롭게 장착/교체한다.</p>
-      <button class="btn mg" onclick="${cb(() => { run.bag.push(rp(MOD_IDS)); showModManager(showMap); })}">부품 교체 시작</button></div>`, 'top');
+      <button class="btn mg" onclick="${cb(() => { run.bag.push(rp(MOD_IDS)); showModManager(showMap); })}">부품 교체 시작</button></div>
+    ${fusionPanel()}`, 'top');
 }
 
 // ================= 이벤트 =================
@@ -201,3 +202,26 @@ function pauseGame() {
   void s;
 }
 function resumeGame() { if (!G.paused) return; G.paused = false; UI(''); Input.mb = [0, 0, 0]; }
+
+// ================= 무기 융합 (정비소 세 번째 선택지) =================
+function fuseTagOf(w) { const t = wStats(w).tag; return ELEM_TAGS.includes(t) || t === 'exp' ? t : null; }
+function fusionPanel() {
+  if (run.weapons.length < 2) return `<div class="panel evbox"><h3>무기 융합</h3><p class="small muted">무기 2개가 있어야 융합할 수 있다.</p></div>`;
+  const opts = [0, 1].map(i => {
+    const base = run.weapons[i], mat = run.weapons[1 - i], t = fuseTagOf(mat);
+    const ok = t && t !== wStats(base).tag && !base.fuse;
+    return `<button class="btn ye" ${ok ? '' : 'disabled'} onclick="${cb(() => fuseWeapons(i))}">${esc(weaponName(base))} ← ${esc(weaponName(mat))}${t ? ` (${TAG_NAME[t]})` : ''}</button>`;
+  }).join('');
+  return `<div class="panel evbox"><h3>무기 융합</h3><p class="small muted">한 무기를 재료로 녹여, 남는 무기에 재료의 속성을 두 번째 속성으로 새긴다. 피해 +15%, 등급은 둘 중 높은 쪽. (재료의 속성이 원소나 폭발이어야 함)</p><div class="row" style="margin-top:8px">${opts}</div></div>`;
+}
+function fuseWeapons(i) {
+  const base = run.weapons[i], mat = run.weapons[1 - i], t = fuseTagOf(mat);
+  if (!t || base.fuse) return;
+  while (base.grade < mat.grade) gradeUp(base);
+  for (const m of mat.mods) if (m) run.bag.push(m);
+  base.fuse = t;
+  run.weapons = [base]; run.cur = 0; fixAmmo(base);
+  SFX.play('win'); toast(`융합 완료: <span style="color:${TAG_COLOR[t]}">${esc(weaponName(base))}</span>`);
+  SAVE.stats.fusions = (SAVE.stats.fusions || 0) + 1;
+  showMap();
+}

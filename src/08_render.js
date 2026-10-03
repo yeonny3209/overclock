@@ -85,6 +85,9 @@ function render() {
   drawProps();
   for (const v of room.vortices) drawVortex(v);
   for (const a of room.allies) drawAlly(a);
+  for (const h of room.hacked) { drawEnemy(h); ctx.beginPath(); ctx.arc(h.x, h.y, h.r + 8, -Math.PI / 2, -Math.PI / 2 + TAU * (h.allyT / h.allyMax)); ctx.strokeStyle = '#29f0ff'; ctx.lineWidth = 2; ctx.stroke(); }
+  // 해킹 가능한 적 표시
+  if (P && !P.dead && P.hackCd <= 0) for (const e of room.enemies) if (canHack(e) && onScreen(e.x, e.y, 0)) { ctx.setLineDash([3, 4]); circlePath(e.x, e.y, e.r + 12); ctx.strokeStyle = 'rgba(41,240,255,0.7)'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]); }
   for (const e of room.enemies) if (!e.boss) drawEnemy(e);
   for (const e of room.enemies) if (e.boss) drawEnemy(e);
   drawPlayer();

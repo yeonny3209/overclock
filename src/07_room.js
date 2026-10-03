@@ -193,7 +193,7 @@ function freeSpot(r, minFromSpawn = 260, tries = 60, extraCheck) {
 }
 function newRoom(kind, zone, w, h) {
   room = {
-    kind, zone, w, h, walls: [], hazards: [], props: [], enemies: [], pickups: [], allies: [], vortices: [], decals: [], timers: [],
+    kind, zone, w, h, walls: [], hazards: [], props: [], enemies: [], pickups: [], allies: [], hacked: [], vortices: [], decals: [], timers: [],
     obj: null, objProp: null, kills: 0, over: false, done: false, success: false, t: 0, dark: false, darkOn: false, darkT: 7,
     eliteChance: 0, muts2: false, extra: 1, medkitUsed: false, powerOff: false, sx: w / 2, sy: h - 130, bossDead: false
   };

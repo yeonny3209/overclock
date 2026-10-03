@@ -35,6 +35,11 @@ function drawScreenFx() {
     ctx.strokeStyle = `hsla(${hue},100%,60%,0.25)`; ctx.lineWidth = 24; ctx.strokeRect(12, 12, VW - 24, VH - 24);
   }
   if (P.slowT > 0) { ctx.fillStyle = 'rgba(120,80,200,0.08)'; ctx.fillRect(0, 0, VW, VH); }
+  if (P.odT > 0) {
+    const k = 0.5 + Math.sin(G.time * 12) * 0.25;
+    ctx.strokeStyle = `rgba(255,61,240,${k})`; ctx.lineWidth = 10; ctx.strokeRect(5, 5, VW - 10, VH - 10);
+    ctx.fillStyle = 'rgba(255,61,240,0.05)'; ctx.fillRect(0, 0, VW, VH);
+  }
   if (G.slowmo > 0 && !G.bossIntro) { ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fillRect(0, 0, VW, VH); }
 }
 
@@ -50,6 +55,16 @@ function panel(x, y, w, h, border = 'rgba(41,240,255,0.35)') {
 }
 function drawHUD() {
   const pad = 16;
+  // 오버클럭 게이지 + 해킹 대기
+  {
+    const gy = pad + 78, od = run.od || 0, full = od >= 100;
+    panel(pad, gy, 290, 22, P.odT > 0 || full ? '#ff3df0' : 'rgba(255,61,240,0.35)');
+    ctx.fillStyle = '#2a0f2e'; ctx.fillRect(pad + 6, gy + 6, 180, 10);
+    ctx.fillStyle = P.odT > 0 ? `hsl(${(G.time * 300) % 360},100%,65%)` : full ? (Math.sin(G.time * 10) > 0 ? '#ff3df0' : '#ffffff') : '#c02ab8';
+    ctx.fillRect(pad + 6, gy + 6, 180 * (P.odT > 0 ? P.odT / 8 : od / 100), 10);
+    hudText(P.odT > 0 ? `OVERCLOCK ${P.odT.toFixed(1)}` : full ? '오버클럭 [F]' : 'OVERCLOCK', pad + 192, gy + 16, 11, full || P.odT > 0 ? '#ff3df0' : '#8a90b0');
+    hudText(P.hackCd > 0 ? `해킹 ${Math.ceil(P.hackCd)}` : '해킹 OK', pad + 284, gy + 16, 10, P.hackCd > 0 ? '#5a6080' : '#29f0ff', 'right');
+  }
   // 체력
   panel(pad, pad, 290, 74);
   const hpF = run.hp / run.maxHp;
@@ -208,9 +223,10 @@ function drawObjectiveHUD() {
     case 'arena': t = ob.state === 'break' ? `다음 웨이브 ${Math.ceil(ob.bt)}초` : `무한 아레나 — 웨이브 ${ob.wave} · 남은 적 ${aliveEnemies() + (ob.left || 0)}`; break;
   }
   ctx.font = `15px ${FONT}`; const w = Math.max(260, ctx.measureText(t).width + 40);
-  panel(VW / 2 - w / 2, 16, w, bar ? 44 : 34, col);
-  hudText(t, VW / 2, 39, 15, col, 'center');
-  if (bar) { ctx.fillStyle = '#1a1830'; ctx.fillRect(VW / 2 - w / 2 + 10, 50, w - 20, 5); ctx.fillStyle = bar[1]; ctx.fillRect(VW / 2 - w / 2 + 10, 50, (w - 20) * clamp(bar[0], 0, 1), 5); }
+  const oy = hudTopY();
+  panel(VW / 2 - w / 2, oy, w, bar ? 44 : 34, col);
+  hudText(t, VW / 2, oy + 23, 15, col, 'center');
+  if (bar) { ctx.fillStyle = '#1a1830'; ctx.fillRect(VW / 2 - w / 2 + 10, oy + 34, w - 20, 5); ctx.fillStyle = bar[1]; ctx.fillRect(VW / 2 - w / 2 + 10, oy + 34, (w - 20) * clamp(bar[0], 0, 1), 5); }
 }
 
 function drawBossBar() {
@@ -218,7 +234,7 @@ function drawBossBar() {
   if (!bosses.length || G.bossIntro) return;
   const n = bosses.length, bw = Math.min(560, VW - 80) / n - (n > 1 ? 10 : 0);
   bosses.forEach((b, i) => {
-    const x = VW / 2 - (bw * n + (n - 1) * 10) / 2 + i * (bw + 10), y = 72;
+    const x = VW / 2 - (bw * n + (n - 1) * 10) / 2 + i * (bw + 10), y = hudTopY() + 56;
     ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(x - 2, y - 2, bw + 4, 16);
     ctx.fillStyle = b.invuln ? '#555a70' : b.color; ctx.fillRect(x, y, bw * clamp(b.hp / b.maxHp, 0, 1), 12);
     if (b.bossId === 'mother') for (let k = 1; k < 3; k++) { ctx.fillStyle = '#000'; ctx.fillRect(x + bw * k / 3 - 1, y, 2, 12); }
@@ -298,3 +314,6 @@ function renderMenuBG(dt) {
   for (const s of menuStars) { s.y -= s.v * dt * 0.5; if (s.y < 0) s.y = 0.55; ctx.globalAlpha = 0.5 + Math.sin(menuT * 3 + s.x * 10) * 0.3; ctx.fillRect(s.x * VW, s.y * hz, s.s, s.s); }
   ctx.globalAlpha = 1;
 }
+
+// 화면이 좁으면 중앙 상단 표시를 좌우 패널 아래로 내린다
+function hudTopY() { return VW < 1060 ? 130 : 16; }

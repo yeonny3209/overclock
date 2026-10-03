@@ -244,7 +244,7 @@ function update(dt, rdt) {
   if (G.banner) { G.banner.t -= rdt; if (G.banner.t <= 0) G.banner = null; }
   updatePlayer(dt);
   updateAllies(dt);
-  if (!G.bossIntro) updateEnemies(dt);
+  if (!G.bossIntro) { updateEnemies(dt); updateHacked(dt); }
   updateBullets(dt);
   updateVortices(dt);
   updateHazards(dt);
