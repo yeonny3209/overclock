@@ -121,13 +121,14 @@ function drawHUD() {
   let tx = pad, ty = VH - pad - 6;
   for (const t of SET_TAGS) {
     const n = run.tags[t]; if (!n) continue;
-    const lbl = `${TAG_NAME[t]} ${n}${n >= 5 ? ' ★★' : n >= 3 ? ' ★' : ''}`;
+    const lbl = `${TAG_NAME[t]} ${n}${n >= 7 ? ' ★★★' : n >= 5 ? ' ★★' : n >= 3 ? ' ★' : ''}`;
     ctx.font = `12px ${FONT}`; const w = ctx.measureText(lbl).width + 14;
     ctx.fillStyle = 'rgba(6,5,16,0.8)'; ctx.fillRect(tx, ty - 18, w, 22);
     ctx.fillStyle = TAG_COLOR[t]; ctx.fillRect(tx, ty - 18, 3, 22);
     hudText(lbl, tx + 8, ty - 2, 12, n >= 3 ? TAG_COLOR[t] : '#c5cae6');
     tx += w + 6;
   }
+  if (run.prism) hudText('◆ 프리즘', pad, VH - pad - 52, 13, `hsl(${(G.time * 120) % 360},100%,70%)`);
   hudText('ESC 일시정지', pad, VH - pad - 32, 11, '#5a6080');
 
   drawBossBar();

@@ -450,13 +450,14 @@ const CURSES = [
 const CURSE = {}; CURSES.forEach(c => CURSE[c.id] = c);
 
 const SETS = {
-  fire: ['화상으로 죽은 적이 불씨를 퍼뜨림', '화상 피해가 중첩됨 (최대 3중첩)'],
-  elec: ['감전 전이 대상 +1', '5초마다 가장 가까운 적에게 번개'],
-  ice: ['얼어붙은 적이 받는 피해 +30%', '구르기 경로에 얼음 바닥 생성'],
-  exp: ['폭발 범위 +30%', '적 처치 시 20% 확률로 소형 폭발'],
-  bullet: ['탄 속도 +40%', '5발마다 관통탄'],
-  surv: ['최대 체력 +20', '방에 입장할 때마다 보호막 1회']
+  fire: ['화상으로 죽은 적이 불씨를 퍼뜨림 (범위 150)', '화상 피해 중첩 (최대 5중첩)', '화상 피해 2배, 화상으로 죽은 적이 폭발'],
+  elec: ['감전 전이 대상 +2', '2.5초마다 가까운 적 3명에게 번개', '모든 명중이 25% 확률로 낙뢰 (피해 25)'],
+  ice: ['얼어붙은 적이 받는 피해 +50%', '구르기 경로에 얼음 바닥 생성', '2중첩으로 빙결, 빙결 시 얼음 파편 발사'],
+  exp: ['폭발 범위 +45%', '적 처치 시 35% 확률로 소형 폭발', '폭발 피해 +50%, 폭발마다 연쇄 소폭발 3개'],
+  bullet: ['탄 속도 +60%, 피해 +10%', '3발마다 관통탄', '모든 탄 관통 +2, 피해 +25%'],
+  surv: ['최대 체력 +40', '방에 입장할 때마다 보호막 2회', '받는 피해 -15%, 2초마다 체력 3 회복']
 };
+const PRISM = '프리즘 (태그 합계 9개 + 4종류 이상): 모든 피해 +30%, 명중 시 30% 확률로 무작위 속성(불/전기/얼음) 부여, 이동 속도 +10%, 폭발 범위 +20%';
 
 // ---------- 적 ----------
 const ENEMY_INFO = {
@@ -644,32 +645,37 @@ function recomputeBuild() {
   if (run) for (const id in run.ups) { const up = UPG[id]; if (up && tags[up.tag] !== undefined) tags[up.tag] += run.ups[id]; }
   if (run) run.tags = tags;
   const set = (t, n) => tags[t] >= n;
+  const tot = SET_TAGS.reduce((a, t) => a + tags[t], 0), kinds = SET_TAGS.filter(t => tags[t] > 0).length;
+  const prism = tot >= 9 && kinds >= 4;
+  if (run) run.prism = prism;
   BS = {
+    prism,
     tags,
-    dmgMult: (1 + 0.15 * u('sharp')) * (u('bigcal') ? 1.1 : 1) * (c.glass ? 1.5 : 1),
+    dmgMult: (1 + 0.15 * u('sharp')) * (u('bigcal') ? 1.1 : 1) * (c.glass ? 1.5 : 1) * (set('bullet', 3) ? 1.1 : 1) * (set('bullet', 7) ? 1.25 : 1) * (prism ? 1.3 : 1),
     rateMult: (1 + 0.15 * u('rapid')) * (c.frenzy ? 1.4 : 1),
     reloadMult: 1 / (1 + 0.3 * u('quickhand')),
-    crit: 0.1 * u('critup'), pierce: u('pierce'),
-    bulletSpd: set('bullet', 3) ? 1.4 : 1, bulletSize: u('bigcal') ? 1.4 : 1,
+    crit: 0.1 * u('critup'), pierce: u('pierce') + (set('bullet', 7) ? 2 : 0),
+    bulletSpd: set('bullet', 3) ? 1.6 : 1, bulletSize: u('bigcal') ? 1.4 : 1,
     spreadMult: c.frenzy ? 2.5 : 1, spreadAdd: c.frenzy ? 0.08 : 0, twin: u('twin') > 0,
     burnChance: 0.2 * u('ignite'), shockChance: 0.15 * u('conductor'), chillChance: 0.2 * u('frosttip'), burstChance: 0.1 * u('burst'),
-    burnDmg: 1 + 0.5 * u('kindling'), burnDur: 3 + 2 * u('heat'), incinerate: 0.2 * u('incinerate'),
+    burnDmg: (1 + 0.5 * u('kindling')) * (set('fire', 7) ? 2 : 1), burnDur: 3 + 2 * u('heat'), incinerate: 0.2 * u('incinerate'),
     spreadfire: u('spreadfire') > 0, firetrail: u('firetrail') > 0, flamearmor: u('flamearmor') > 0,
     static: u('static') > 0, transfer: u('highvolt') ? 0.8 : 0.5, chargecoil: u('chargecoil') > 0, overcurrent: 0.15 * u('overcurrent'),
     thunder: u('thunder') > 0, discharge: u('discharge') > 0,
     chillDur: u('frostbite') ? 1.5 : 1, chillSlow: u('chill') ? 0.45 : 0.3, shards: u('shards') > 0, permafrost: u('permafrost'), frostarmor: u('frostarmor') > 0,
-    chaindet: u('chaindet') > 0, expDmg: 1 + 0.3 * u('hiexp'), expRadius: (1 + 0.15 * u('shockwave')) * (set('exp', 3) ? 1.3 : 1),
+    chaindet: u('chaindet') > 0, expDmg: (1 + 0.3 * u('hiexp')) * (set('exp', 7) ? 1.5 : 1), expRadius: (1 + 0.15 * u('shockwave')) * (set('exp', 3) ? 1.45 : 1) * (prism ? 1.2 : 1),
     expKnock: u('shockwave') ? 1.5 : 1, blastroll: u('blastroll') > 0, safety: u('safety') > 0,
     vamp: u('vamp'), regen: 8 * u('regen'), evasion: u('evasion') ? 1.5 : 1, medkit: u('medkit') > 0, plating: 0.1 * u('plating'),
-    magnet: u('magnet') ? 2 : 1, afterimage: u('afterimage') > 0, cdMult: Math.pow(0.8, u('cooldown')), moveMult: 1 + 0.1 * u('swift'),
+    magnet: u('magnet') ? 2 : 1, afterimage: u('afterimage') > 0, cdMult: Math.pow(0.8, u('cooldown')), moveMult: (1 + 0.1 * u('swift')) * (prism ? 1.1 : 1),
     comboTime: 3 + 2 * u('combokeep'), invest: 8 * u('invest'), lucky: 0.2 * u('lucky'),
     coinMult: c.avarice ? 2 : 1, enemyMult: c.avarice ? 1.25 : 1, berserk: !!c.berserk, noHeal: !!c.berserk,
     fire3: set('fire', 3), fire5: set('fire', 5), elec3: set('elec', 3), elec5: set('elec', 5), ice3: set('ice', 3), ice5: set('ice', 5),
-    exp3: set('exp', 3), exp5: set('exp', 5), bullet3: set('bullet', 3), bullet5: set('bullet', 5), surv3: set('surv', 3), surv5: set('surv', 5)
+    exp3: set('exp', 3), exp5: set('exp', 5), bullet3: set('bullet', 3), bullet5: set('bullet', 5), surv3: set('surv', 3), surv5: set('surv', 5),
+    fire7: set('fire', 7), elec7: set('elec', 7), ice7: set('ice', 7), exp7: set('exp', 7), bullet7: set('bullet', 7), surv7: set('surv', 7)
   };
   if (run) {
     const old = run.maxHp || 0;
-    let mh = run.baseMaxHp + 15 * u('armor') + (BS.surv3 ? 20 : 0);
+    let mh = run.baseMaxHp + 15 * u('armor') + (BS.surv3 ? 40 : 0);
     if (c.glass) mh *= 0.7;
     if (run.oc >= 9) mh *= 0.85;
     run.maxHp = Math.max(10, Math.round(mh));
@@ -910,6 +916,8 @@ function bulletHitEnemy(b, e) {
   if (BS.shockChance && b.tag !== 'elec' && Math.random() < BS.shockChance) applyStatus(e, 'elec', { dmg });
   if (BS.chillChance && b.tag !== 'ice' && Math.random() < BS.chillChance) applyStatus(e, 'ice', { dmg });
   if (BS.burstChance && Math.random() < BS.burstChance) explode(b.x, b.y, 55, 12, { small: true });
+  if (BS.elec7 && Math.random() < 0.25 && !e.dead) { strike(e.x, e.y); damageEnemy(e, 25 * dynDmg(), { tag: 'elec', noChain: true, quiet: true }); }
+  if (BS.prism && Math.random() < 0.3 && !e.dead) applyStatus(e, pick(['fire', 'elec', 'ice']), { dmg });
   if (b.explosive) explode(b.x, b.y, 65, 22, { small: true, wid: b.wid });
   if (b.split && !b.small) for (const s of [-0.55, 0.55]) {
     const a = ang + s, sp = Math.hypot(b.vx, b.vy) * 0.8;
@@ -947,7 +955,7 @@ function shoot(w) {
   if (crit) dmg *= s.critMult;
   run.lastWeapon = w.id; w.shots++;
   let pierceBonus = 0;
-  if (BS.bullet5) { run.shotCounter++; if (run.shotCounter % 5 === 0) pierceBonus = 3; }
+  if (BS.bullet5) { run.shotCounter++; if (run.shotCounter % 3 === 0) pierceBonus = 3; }
   let status = null;
   if (P.staticShots > 0) { P.staticShots--; status = 'elec'; }
   const offs = BS.twin ? [-0.07, 0.07] : [0];
@@ -1103,6 +1111,10 @@ function explode(x, y, r, dmg, o = {}) {
   for (const p of room.props) if (p.shootable && !p.dead && dist(x, y, p.x, p.y) < r + p.r) hitProp(p, dmg * 0.8, null, true);
   if (team === 'e') for (const p of room.props) if (p.ally && !p.dead && dist(x, y, p.x, p.y) < r + p.r) hitAllyProp(p, dmg * 0.6);
   for (const w of room.walls) if (w.hp < Infinity && circleRect(x, y, r, w)) damageWall(w, dmg);
+  if (team === 'p' && BS.exp7 && !o.small && !o.noChain) for (let i = 0; i < 3; i++) {
+    const a = rand(0, TAU), d = rand(r * 0.5, r * 1.1);
+    room.timers.push({ t: 0.12 + i * 0.12, fn: () => explode(x + Math.cos(a) * d, y + Math.sin(a) * d, 55, 14, { small: true, noChain: true, noSelf: true }) });
+  }
   // 연출
   const big = r > 70 && !o.small;
   part({ x, y, vx: 0, vy: 0, life: 0.35, size: r, color: team === 'e' ? '#ff5a3a' : '#ffb347', kind: 'ring' });
@@ -1124,7 +1136,7 @@ function damageEnemy(e, dmg, o = {}) {
     return 0;
   }
   e.alert = 0;
-  if (e.frozenT > 0 && BS.ice3) dmg *= 1.3;
+  if (e.frozenT > 0 && BS.ice3) dmg *= 1.5;
   if (e.shockT > 0) dmg *= 1 + BS.overcurrent;
   if (e.burnT > 0) dmg *= 1 + BS.incinerate;
   if (e.dmgTakenMult) dmg *= e.dmgTakenMult;
@@ -1160,13 +1172,13 @@ function applyStatus(e, tag, o = {}) {
   if (tag === 'fire') {
     if (e.frozenT > 0 || e.chill > 0) { thermal(e); return; }
     e.burnT = BS.burnDur;
-    e.burnStacks = BS.fire5 ? Math.min(3, (e.burnStacks || 0) + 1) : 1;
+    e.burnStacks = BS.fire5 ? Math.min(5, (e.burnStacks || 0) + 1) : 1;
     e.burnDps = 5 * BS.burnDmg;
     const h = hazardAt(e.x, e.y, 'oil'); if (h) ignite(h, true);
   } else if (tag === 'elec') {
     e.shockT = 2;
     if (!o.noChain) {
-      const n = 1 + (BS.elec3 ? 1 : 0);
+      const n = 1 + (BS.elec3 ? 2 : 0);
       const tgts = room.enemies.filter(t => t !== e && !t.dead && !t.spawning && d2(t.x, t.y, e.x, e.y) < 170 * 170).sort((a, b) => d2(a.x, a.y, e.x, e.y) - d2(b.x, b.y, e.x, e.y)).slice(0, n);
       for (const t of tgts) { addBolt(e.x, e.y, t.x, t.y, '#fff04d', 0.15); damageEnemy(t, Math.max(3, (o.dmg || 10) * BS.transfer), { tag: 'elec', noChain: true, quiet: true }); }
     }
@@ -1176,9 +1188,9 @@ function applyStatus(e, tag, o = {}) {
     e.chillT = 3 * BS.chillDur;
     if (e.frozenT <= 0) {
       e.chill = (e.chill || 0) + 1;
-      if (e.chill >= 3) {
+      if (e.chill >= (BS.ice7 ? 2 : 3)) {
         e.chill = 0;
-        if (!e.boss) { e.frozenT = 1.5 * BS.chillDur + BS.permafrost; SFX.play('freeze'); burst(e.x, e.y, '#bff4ff', 10, 160, 0.4, 3); }
+        if (!e.boss) { e.frozenT = 1.5 * BS.chillDur + BS.permafrost; SFX.play('freeze'); burst(e.x, e.y, '#bff4ff', 10, 160, 0.4, 3); if (BS.ice7) spawnShards(e.x, e.y, 6, 12, e); }
         else { e.chill = 2; e.chillT = 3; }
       }
     }
@@ -1245,14 +1257,15 @@ function killEnemy(e, o = {}) {
   // 강화/세트 효과
   if (e.burnT > 0) {
     if (BS.spreadfire || BS.fire3) {
-      for (const t of room.enemies) if (!t.dead && t !== e && d2(t.x, t.y, e.x, e.y) < 100 * 100) applyStatus(t, 'fire', {});
+      for (const t of room.enemies) if (!t.dead && t !== e && d2(t.x, t.y, e.x, e.y) < 150 * 150) applyStatus(t, 'fire', {});
       burst(e.x, e.y, '#ff7a2a', 12, 200, 0.5, 3);
     }
+    if (BS.fire7 && !o.isExp) explode(e.x, e.y, 80, 30, { tag: 'fire', small: true, noSelf: true });
     if (o.wid === 'flamer' && curW() && curW().id === 'flamer' && curW().grade === 2) explode(e.x, e.y, 70, 25, { tag: 'fire', small: true, noSelf: true });
   }
   if (e.frozenT > 0 && BS.shards) spawnShards(e.x, e.y, 6, 12, e);
   if (o.isExp && BS.chaindet) explode(e.x, e.y, 65, 18, { small: true, noSelf: true });
-  else if (BS.exp5 && Math.random() < 0.2) explode(e.x, e.y, 55, 14, { small: true, noSelf: true });
+  else if (BS.exp5 && Math.random() < 0.35) explode(e.x, e.y, 55, 14, { small: true, noSelf: true });
   if (o.wid === 'sniper') { const w = run.weapons.find(w => w.id === 'sniper' && w.grade === 2); if (w) w.ammo = Math.min(wStats(w).mag, w.ammo + 1); }
   if (BS.vamp) { run.vampCount++; if (run.vampCount >= 30) { run.vampCount = 0; healRun(5 * BS.vamp, true); } }
   if (BS.berserk) run.berserk++;
@@ -1267,7 +1280,7 @@ function damagePlayer(dmg, src) {
     part({ x: P.x, y: P.y, vx: 0, vy: 0, life: 0.3, size: 40, color: '#6dff8a', kind: 'ring' });
     return;
   }
-  dmg *= G.eDmgMult * (1 - BS.plating);
+  dmg *= G.eDmgMult * (1 - BS.plating) * (BS.surv7 ? 0.85 : 1);
   run.hp -= dmg; P.iframe = 0.75; P.hurtT = 0.25;
   breakCombo();
   if (BS.berserk) run.berserk = 0;
@@ -1309,7 +1322,7 @@ function rollMax() { return run.char === 'kai' ? 2 : 1; }
 function createPlayer(x, y) {
   P = {
     x, y, vx: 0, vy: 0, kx: 0, ky: 0, r: 13, ang: -Math.PI / 2, rollT: 0, rollDx: 1, rollDy: 0, rollCharges: rollMax(), rollRe: 0,
-    iframe: 1, hurtT: 0, skillCd: 0, skillMax: 1, overT: 0, slowT: 0, shield: BS.surv5 ? 1 : 0, dead: false, staticShots: 0,
+    iframe: 1, hurtT: 0, skillCd: 0, skillMax: 1, overT: 0, slowT: 0, shield: BS.surv5 ? 2 : 0, dead: false, staticShots: 0,
     chillT: 0, trailT: 0, stepT: 0, prompt: null, swapT: 0, pullT: 0
   };
 }
@@ -1391,12 +1404,12 @@ function updatePlayer(dt) {
   if (BS.elec5) {
     run.boltT = (run.boltT || 0) - dt;
     if (run.boltT <= 0) {
-      run.boltT = 5;
-      let best = null, bd = 1e12;
-      for (const e of room.enemies) if (!e.dead && !e.spawning && !e.invuln) { const dd = d2(e.x, e.y, P.x, P.y); if (dd < bd) { bd = dd; best = e; } }
-      if (best) { strike(best.x, best.y); damageEnemy(best, 30 * dynDmg(), { tag: 'elec' }); }
+      run.boltT = 2.5;
+      const ts = room.enemies.filter(e => !e.dead && !e.spawning && !e.invuln).sort((a, b) => d2(a.x, a.y, P.x, P.y) - d2(b.x, b.y, P.x, P.y)).slice(0, 3);
+      for (const t of ts) { strike(t.x, t.y); damageEnemy(t, 30 * dynDmg(), { tag: 'elec' }); }
     }
   }
+  if (BS.surv7) { run.regenAcc = (run.regenAcc || 0) + dt; if (run.regenAcc >= 2) { run.regenAcc = 0; if (run.hp < run.maxHp) healRun(3, true); } }
   // 상호작용
   P.prompt = null;
   const it = findInteract();
@@ -3563,13 +3576,14 @@ function drawHUD() {
   let tx = pad, ty = VH - pad - 6;
   for (const t of SET_TAGS) {
     const n = run.tags[t]; if (!n) continue;
-    const lbl = `${TAG_NAME[t]} ${n}${n >= 5 ? ' ★★' : n >= 3 ? ' ★' : ''}`;
+    const lbl = `${TAG_NAME[t]} ${n}${n >= 7 ? ' ★★★' : n >= 5 ? ' ★★' : n >= 3 ? ' ★' : ''}`;
     ctx.font = `12px ${FONT}`; const w = ctx.measureText(lbl).width + 14;
     ctx.fillStyle = 'rgba(6,5,16,0.8)'; ctx.fillRect(tx, ty - 18, w, 22);
     ctx.fillStyle = TAG_COLOR[t]; ctx.fillRect(tx, ty - 18, 3, 22);
     hudText(lbl, tx + 8, ty - 2, 12, n >= 3 ? TAG_COLOR[t] : '#c5cae6');
     tx += w + 6;
   }
+  if (run.prism) hudText('◆ 프리즘', pad, VH - pad - 52, 13, `hsl(${(G.time * 120) % 360},100%,70%)`);
   hudText('ESC 일시정지', pad, VH - pad - 32, 11, '#5a6080');
 
   drawBossBar();
@@ -3900,8 +3914,8 @@ function buildSummaryHTML() {
   const ups = Object.keys(run.ups).map(id => `<span class="tag" style="background:${TAG_COLOR[UPG[id].tag]}">${UPG[id].name}${run.ups[id] > 1 ? ' ×' + run.ups[id] : ''}</span>`).join('') || '<span class="muted">없음</span>';
   const sets = SET_TAGS.map(t => {
     const n = run.tags[t] || 0;
-    return `<tr><td>${tagHTML(t)} ${n}</td><td style="color:${n >= 3 ? TAG_COLOR[t] : '#5a6080'}">3: ${SETS[t][0]}</td><td style="color:${n >= 5 ? TAG_COLOR[t] : '#5a6080'}">5: ${SETS[t][1]}</td></tr>`;
-  }).join('');
+    return `<tr><td>${tagHTML(t)} ${n}</td><td style="color:${n >= 3 ? TAG_COLOR[t] : '#5a6080'}">3: ${SETS[t][0]}</td><td style="color:${n >= 5 ? TAG_COLOR[t] : '#5a6080'}">5: ${SETS[t][1]}</td><td style="color:${n >= 7 ? TAG_COLOR[t] : '#5a6080'}">7: ${SETS[t][2]}</td></tr>`;
+  }).join('') + `<tr><td colspan="4" style="color:${run.prism ? '#ff3df0' : '#5a6080'};padding-top:8px">◆ ${PRISM}</td></tr>`;
   const curses = Object.keys(run.curses).map(c => `<span class="tag" style="background:#ff2d55;color:#fff">${CURSE[c].name}: ${CURSE[c].gain} / ${CURSE[c].cost}</span>`).join('');
   return `<div class="panel" style="width:min(900px,94vw)"><b>강화</b><div style="margin:6px 0">${ups}</div>${curses ? `<b>저주</b><div style="margin:6px 0">${curses}</div>` : ''}
     <b>세트 효과</b><table class="tb" style="margin-top:6px">${sets}</table>
@@ -3944,7 +3958,7 @@ function openUpgradePick(opts, done) {
         <p style="color:#6dff8a">▲ ${c.gain}</p><p style="color:#ff4d6d">▼ ${c.cost}</p></div>`;
     }
     const u = ch.u, have = run.ups[u.id] || 0, n = (run.tags[u.tag] || 0) + 1;
-    const setHint = SETS[u.tag] ? (n === 3 ? `<p style="color:${TAG_COLOR[u.tag]};margin-top:6px">★ 3세트 발동: ${SETS[u.tag][0]}</p>` : n === 5 ? `<p style="color:${TAG_COLOR[u.tag]};margin-top:6px">★★ 5세트 발동: ${SETS[u.tag][1]}</p>` : `<p class="muted small" style="margin-top:6px">${TAG_NAME[u.tag]} 태그 ${n}개째</p>`) : '';
+    const setHint = SETS[u.tag] ? (n === 3 ? `<p style="color:${TAG_COLOR[u.tag]};margin-top:6px">★ 3세트 발동: ${SETS[u.tag][0]}</p>` : n === 5 ? `<p style="color:${TAG_COLOR[u.tag]};margin-top:6px">★★ 5세트 발동: ${SETS[u.tag][1]}</p>` : n === 7 ? `<p style="color:${TAG_COLOR[u.tag]};margin-top:6px">★★★ 7세트 발동: ${SETS[u.tag][2]}</p>` : `<p class="muted small" style="margin-top:6px">${TAG_NAME[u.tag]} 태그 ${n}개째</p>`) : '';
     return `<div class="card ${u.rare ? 'legend' : ''}" onclick="${cb(() => { addUpgrade(u.id); SFX.play('pick'); finish(); })}">
       ${u.rare ? '<span class="rib" style="color:#ffb52e">희귀</span>' : ''}
       <div>${tagHTML(u.tag)}</div><h3 style="margin-top:6px">${u.name}</h3><p>${u.desc}</p>

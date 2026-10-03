@@ -3,7 +3,7 @@ function rollMax() { return run.char === 'kai' ? 2 : 1; }
 function createPlayer(x, y) {
   P = {
     x, y, vx: 0, vy: 0, kx: 0, ky: 0, r: 13, ang: -Math.PI / 2, rollT: 0, rollDx: 1, rollDy: 0, rollCharges: rollMax(), rollRe: 0,
-    iframe: 1, hurtT: 0, skillCd: 0, skillMax: 1, overT: 0, slowT: 0, shield: BS.surv5 ? 1 : 0, dead: false, staticShots: 0,
+    iframe: 1, hurtT: 0, skillCd: 0, skillMax: 1, overT: 0, slowT: 0, shield: BS.surv5 ? 2 : 0, dead: false, staticShots: 0,
     chillT: 0, trailT: 0, stepT: 0, prompt: null, swapT: 0, pullT: 0
   };
 }
@@ -85,12 +85,12 @@ function updatePlayer(dt) {
   if (BS.elec5) {
     run.boltT = (run.boltT || 0) - dt;
     if (run.boltT <= 0) {
-      run.boltT = 5;
-      let best = null, bd = 1e12;
-      for (const e of room.enemies) if (!e.dead && !e.spawning && !e.invuln) { const dd = d2(e.x, e.y, P.x, P.y); if (dd < bd) { bd = dd; best = e; } }
-      if (best) { strike(best.x, best.y); damageEnemy(best, 30 * dynDmg(), { tag: 'elec' }); }
+      run.boltT = 2.5;
+      const ts = room.enemies.filter(e => !e.dead && !e.spawning && !e.invuln).sort((a, b) => d2(a.x, a.y, P.x, P.y) - d2(b.x, b.y, P.x, P.y)).slice(0, 3);
+      for (const t of ts) { strike(t.x, t.y); damageEnemy(t, 30 * dynDmg(), { tag: 'elec' }); }
     }
   }
+  if (BS.surv7) { run.regenAcc = (run.regenAcc || 0) + dt; if (run.regenAcc >= 2) { run.regenAcc = 0; if (run.hp < run.maxHp) healRun(3, true); } }
   // 상호작용
   P.prompt = null;
   const it = findInteract();

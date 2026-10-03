@@ -172,8 +172,8 @@ function buildSummaryHTML() {
   const ups = Object.keys(run.ups).map(id => `<span class="tag" style="background:${TAG_COLOR[UPG[id].tag]}">${UPG[id].name}${run.ups[id] > 1 ? ' ×' + run.ups[id] : ''}</span>`).join('') || '<span class="muted">없음</span>';
   const sets = SET_TAGS.map(t => {
     const n = run.tags[t] || 0;
-    return `<tr><td>${tagHTML(t)} ${n}</td><td style="color:${n >= 3 ? TAG_COLOR[t] : '#5a6080'}">3: ${SETS[t][0]}</td><td style="color:${n >= 5 ? TAG_COLOR[t] : '#5a6080'}">5: ${SETS[t][1]}</td></tr>`;
-  }).join('');
+    return `<tr><td>${tagHTML(t)} ${n}</td><td style="color:${n >= 3 ? TAG_COLOR[t] : '#5a6080'}">3: ${SETS[t][0]}</td><td style="color:${n >= 5 ? TAG_COLOR[t] : '#5a6080'}">5: ${SETS[t][1]}</td><td style="color:${n >= 7 ? TAG_COLOR[t] : '#5a6080'}">7: ${SETS[t][2]}</td></tr>`;
+  }).join('') + `<tr><td colspan="4" style="color:${run.prism ? '#ff3df0' : '#5a6080'};padding-top:8px">◆ ${PRISM}</td></tr>`;
   const curses = Object.keys(run.curses).map(c => `<span class="tag" style="background:#ff2d55;color:#fff">${CURSE[c].name}: ${CURSE[c].gain} / ${CURSE[c].cost}</span>`).join('');
   return `<div class="panel" style="width:min(900px,94vw)"><b>강화</b><div style="margin:6px 0">${ups}</div>${curses ? `<b>저주</b><div style="margin:6px 0">${curses}</div>` : ''}
     <b>세트 효과</b><table class="tb" style="margin-top:6px">${sets}</table>
@@ -216,7 +216,7 @@ function openUpgradePick(opts, done) {
         <p style="color:#6dff8a">▲ ${c.gain}</p><p style="color:#ff4d6d">▼ ${c.cost}</p></div>`;
     }
     const u = ch.u, have = run.ups[u.id] || 0, n = (run.tags[u.tag] || 0) + 1;
-    const setHint = SETS[u.tag] ? (n === 3 ? `<p style="color:${TAG_COLOR[u.tag]};margin-top:6px">★ 3세트 발동: ${SETS[u.tag][0]}</p>` : n === 5 ? `<p style="color:${TAG_COLOR[u.tag]};margin-top:6px">★★ 5세트 발동: ${SETS[u.tag][1]}</p>` : `<p class="muted small" style="margin-top:6px">${TAG_NAME[u.tag]} 태그 ${n}개째</p>`) : '';
+    const setHint = SETS[u.tag] ? (n === 3 ? `<p style="color:${TAG_COLOR[u.tag]};margin-top:6px">★ 3세트 발동: ${SETS[u.tag][0]}</p>` : n === 5 ? `<p style="color:${TAG_COLOR[u.tag]};margin-top:6px">★★ 5세트 발동: ${SETS[u.tag][1]}</p>` : n === 7 ? `<p style="color:${TAG_COLOR[u.tag]};margin-top:6px">★★★ 7세트 발동: ${SETS[u.tag][2]}</p>` : `<p class="muted small" style="margin-top:6px">${TAG_NAME[u.tag]} 태그 ${n}개째</p>`) : '';
     return `<div class="card ${u.rare ? 'legend' : ''}" onclick="${cb(() => { addUpgrade(u.id); SFX.play('pick'); finish(); })}">
       ${u.rare ? '<span class="rib" style="color:#ffb52e">희귀</span>' : ''}
       <div>${tagHTML(u.tag)}</div><h3 style="margin-top:6px">${u.name}</h3><p>${u.desc}</p>
