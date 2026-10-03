@@ -17,8 +17,7 @@ function recomputeBuild() {
   if (run) for (const id in run.ups) { const up = UPG[id]; if (up && tags[up.tag] !== undefined) tags[up.tag] += run.ups[id]; }
   if (run) run.tags = tags;
   const set = (t, n) => tags[t] >= n;
-  const tot = SET_TAGS.reduce((a, t) => a + tags[t], 0), kinds = SET_TAGS.filter(t => tags[t] > 0).length;
-  const prism = tot >= 9 && kinds >= 4;
+  const prism = SET_TAGS.some(t => tags[t] >= 9);
   if (run) run.prism = prism;
   BS = {
     prism,
