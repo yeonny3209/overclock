@@ -106,7 +106,8 @@ function showResults(victory, chips, extra) {
     </div>
     ${buildSummaryHTML()}
     <div class="row">
-      <button class="btn ye" onclick="${cb(() => run.mode === 'arena' ? startArena(run.char) : run.mode === 'daily' ? showDaily() : showCharSelect('campaign'))}">다시 하기</button>
+      <button class="btn ye" onclick="${cb(() => run.mode === 'arena' ? startArena(run.char) : run.mode === 'daily' ? showDaily() : startCampaign(run.char, run.oc, 'campaign'))}">같은 요원으로 다시</button>
+      <button class="btn" onclick="${cb(() => showCharSelect(run.mode === 'arena' ? 'arena' : 'campaign'))}">요원 선택</button>
       <button class="btn" onclick="${cb(showTitle)}">타이틀로</button>
     </div>`, 'top');
 }
@@ -160,6 +161,11 @@ function showSettings(back) {
     scr(`<h2>설정</h2><div class="panel" style="width:min(520px,94vw)"><div class="kv" style="align-items:center">
       <span>화면 흔들림</span><span><button class="btn sm ${s.shake ? 'on' : ''}" onclick="${cb(() => { s.shake = !s.shake; saveGame(); render(); })}">${s.shake ? '켜짐' : '꺼짐'}</button></span>
       <span>파티클 양</span><span>${['낮음', '보통', '높음'].map((n, i) => `<button class="btn sm ${s.particles === i ? 'on' : ''}" onclick="${cb(() => { s.particles = i; saveGame(); render(); })}">${n}</button>`).join('')}</span>
+      <span>조준 보조</span><span><button class="btn sm ${s.aimAssist ? 'on' : ''}" onclick="${cb(() => { s.aimAssist = !s.aimAssist; saveGame(); render(); })}">${s.aimAssist ? '켜짐' : '꺼짐'}</button></span>
+      <span>자동 사격</span><span><button class="btn sm ${s.autoFire ? 'on' : ''}" onclick="${cb(() => { s.autoFire = !s.autoFire; saveGame(); render(); })}">${s.autoFire ? '켜짐' : '꺼짐'}</button></span>
+      <span>코인 자동 회수</span><span><button class="btn sm ${s.autoCoin ? 'on' : ''}" onclick="${cb(() => { s.autoCoin = !s.autoCoin; saveGame(); render(); })}">${s.autoCoin ? '켜짐' : '꺼짐'}</button></span>
+      <span>무전 건너뛰기</span><span><button class="btn sm ${s.skipRadio ? 'on' : ''}" onclick="${cb(() => { s.skipRadio = !s.skipRadio; saveGame(); render(); })}">${s.skipRadio ? '켜짐' : '꺼짐'}</button></span>
+      <span>미니맵</span><span><button class="btn sm ${s.minimap ? 'on' : ''}" onclick="${cb(() => { s.minimap = !s.minimap; saveGame(); render(); })}">${s.minimap ? '켜짐' : '꺼짐'}</button></span>
       <span>피해 숫자</span><span><button class="btn sm ${s.dmgNum ? 'on' : ''}" onclick="${cb(() => { s.dmgNum = !s.dmgNum; saveGame(); render(); })}">${s.dmgNum ? '켜짐' : '꺼짐'}</button></span>
       <span>음량</span><span><input type="range" min="0" max="1" step="0.05" value="${s.vol}" oninput="SAVE.settings.vol=+this.value;SFX.setVol(+this.value)" onchange="saveGame();SFX.play('coin')"></span>
     </div></div>

@@ -59,10 +59,10 @@ function drawHUD() {
   {
     const gy = pad + 78, od = run.od || 0, full = od >= 100;
     panel(pad, gy, 290, 22, P.odT > 0 || full ? '#ff3df0' : 'rgba(255,61,240,0.35)');
-    ctx.fillStyle = '#2a0f2e'; ctx.fillRect(pad + 6, gy + 6, 180, 10);
+    ctx.fillStyle = '#2a0f2e'; ctx.fillRect(pad + 6, gy + 6, 140, 10);
     ctx.fillStyle = P.odT > 0 ? `hsl(${(G.time * 300) % 360},100%,65%)` : full ? (Math.sin(G.time * 10) > 0 ? '#ff3df0' : '#ffffff') : '#c02ab8';
-    ctx.fillRect(pad + 6, gy + 6, 180 * (P.odT > 0 ? P.odT / 8 : od / 100), 10);
-    hudText(P.odT > 0 ? `OVERCLOCK ${P.odT.toFixed(1)}` : full ? '오버클럭 [F]' : 'OVERCLOCK', pad + 192, gy + 16, 11, full || P.odT > 0 ? '#ff3df0' : '#8a90b0');
+    ctx.fillRect(pad + 6, gy + 6, 140 * (P.odT > 0 ? P.odT / 8 : od / 100), 10);
+    hudText(P.odT > 0 ? `OC ${P.odT.toFixed(1)}s` : full ? 'OC 준비 [F]' : `OC ${Math.floor(od)}%`, pad + 152, gy + 16, 11, full || P.odT > 0 ? '#ff3df0' : '#8a90b0');
     hudText(P.hackCd > 0 ? `해킹 ${Math.ceil(P.hackCd)}` : '해킹 OK', pad + 284, gy + 16, 10, P.hackCd > 0 ? '#5a6080' : '#29f0ff', 'right');
   }
   // 체력
@@ -159,6 +159,7 @@ function drawHUD() {
   if (BS.awakened.length) hudText('◆ 각성: ' + BS.awakened.map(t => SETS[t][3].split(':')[0]).join(' · '), pad, topY - 4, 13, `hsl(${(G.time * 120) % 360},100%,72%)`);
   hudText('ESC 일시정지', pad, topY - (BS.awakened.length ? 22 : 4), 11, '#5a6080');
 
+  if (SAVE.settings.minimap) drawMinimap();
   drawBossBar();
   drawOffscreenArrows();
 
@@ -317,3 +318,25 @@ function renderMenuBG(dt) {
 
 // 화면이 좁으면 중앙 상단 표시를 좌우 패널 아래로 내린다
 function hudTopY() { return VW < 1060 ? 130 : 16; }
+
+function drawMinimap() {
+  const mw = Math.min(170, VW * 0.2), k = mw / room.w, mh = room.h * k;
+  const x0 = VW - 16 - mw, y0 = 16 + 80;
+  ctx.fillStyle = 'rgba(6,5,16,0.7)'; ctx.fillRect(x0, y0, mw, mh);
+  ctx.strokeStyle = 'rgba(41,240,255,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(x0 + 0.5, y0 + 0.5, mw - 1, mh - 1);
+  ctx.fillStyle = 'rgba(160,160,200,0.35)';
+  for (const w of room.walls) ctx.fillRect(x0 + w.x * k, y0 + w.y * k, Math.max(1, w.w * k), Math.max(1, w.h * k));
+  const dot = (x, y, c, s) => { ctx.fillStyle = c; ctx.fillRect(x0 + x * k - s / 2, y0 + y * k - s / 2, s, s); };
+  for (const p of room.props) {
+    if (p.type === 'exit') dot(p.x, p.y, '#6dff8a', 6);
+    else if (p.type === 'chip' && !p.dead) dot(p.x, p.y, '#29f0ff', 4);
+    else if (p.type === 'chest') dot(p.x, p.y, '#ffb52e', 5);
+    else if ((p.type === 'drone' || p.type === 'objgen') && !p.dead) dot(p.x, p.y, '#6dff8a', 5);
+  }
+  for (const e of room.enemies) if (!e.dead) dot(e.x, e.y, e.boss ? '#ff3df0' : e.muts || e.bounty ? '#ffb52e' : '#ff4d6d', e.boss ? 6 : 3);
+  for (const h of room.hacked) dot(h.x, h.y, '#29f0ff', 3);
+  if (!room.darkOn) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.strokeRect(x0 + cam.x * k, y0 + cam.y * k, VW * k, VH * k);
+  }
+  dot(P.x, P.y, '#ffffff', 5);
+}

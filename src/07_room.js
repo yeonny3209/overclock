@@ -495,6 +495,7 @@ function completeRoom(success) {
     SFX.play('objective');
     G.banner = { text: '목표 달성!', sub: room.kind === 'arena' ? '' : '출구로 이동하세요', t: 2, color: '#6dff8a' };
     if (BS.regen) healRun(BS.regen, true);
+    if (SAVE.settings.autoCoin) room.timers.push({ t: 0.6, fn: collectAllCoins });
     const chestChance = room.kind === 'boss' ? 1 : room.kind === 'elite' ? 0.5 : 0.22 + BS.lucky;
     if (Math.random() < chestChance) {
       const s = freeSpot(18, 0, 60, (x, y) => d2(x, y, P.x, P.y) < 400 * 400 && d2(x, y, P.x, P.y) > 80 * 80) || { x: clamp(P.x + 80, 40, room.w - 40), y: P.y };
@@ -526,4 +527,11 @@ function playerDie() {
   G.slowmo = 1.5; shake(20); SFX.play('lose');
   room.over = true;
   room.timers.push({ t: 1.6, fn: () => { room.ending = true; } });
+}
+
+function collectAllCoins() {
+  if (!room) return;
+  let sum = 0;
+  room.pickups = room.pickups.filter(p => { if (p.type === 'coin') { sum += p.val; return false; } return true; });
+  if (sum > 0) { run.coins += sum; run.coinsEarned += sum; SFX.play('coin'); floatText(P.x, P.y - 60, `코인 자동 회수 +${sum}`, '#ffe14d', 16); }
 }

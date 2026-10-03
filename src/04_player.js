@@ -29,6 +29,7 @@ function updatePlayer(dt) {
     if (gp.rx || gp.ry) P.ang = Math.atan2(gp.ry, gp.rx);
     else if (ml > 0.2) P.ang = Math.atan2(my, mx);
   } else { const mw = mouseWorld(); P.ang = angTo(P.x, P.y, mw.x, mw.y); }
+  if (SAVE.settings.aimAssist && !Input.touch) { const t = assistTarget(P.ang, 0.3); if (t) P.ang = angTo(P.x, P.y, t.x, t.y); }
 
   const hz = playerHazards();
   // 구르기
@@ -71,7 +72,8 @@ function updatePlayer(dt) {
   const freeAmmo = BS.infAmmo || P.odT > 0;
   if ((P.overT > 0 || freeAmmo) && w.reloadT > 0) { w.reloadT = 0; w.ammo = s.mag; }
   if (w.cd > 0) w.cd -= dt;
-  const firing = !G.bossIntro && (Input.mb[0] || (gp && gp.fire) || Input.touchFire) && P.swapT <= 0;
+  const autoShot = (SAVE.settings.autoFire || Input.touchAuto) && !!assistTarget(P.ang, 0.35);
+  const firing = !G.bossIntro && (Input.mb[0] || (gp && gp.fire) || Input.touchFire || autoShot) && P.swapT <= 0;
   if (!firing && w.spin > 0) w.spin = Math.max(0, w.spin - dt * 0.8);
   if (firing && w.cd <= 0 && w.reloadT <= 0) {
     if (s.mag !== Infinity && w.ammo <= 0 && P.overT <= 0 && !freeAmmo) { startReload(w); }
@@ -399,4 +401,18 @@ function updateCamera(dt, snap) {
   if (room.h + m * 2 <= VH) ty = room.h / 2 - VH / 2; else ty = clamp(ty, -m, room.h + m - VH);
   if (snap) { cam.x = tx; cam.y = ty; }
   else { cam.x = lerp(cam.x, tx, Math.min(1, 8 * dt)); cam.y = lerp(cam.y, ty, Math.min(1, 8 * dt)); }
+}
+
+// 조준 보조: 조준 방향 근처(원뿔 안)에서 가장 가까운 적. 벽 너머는 제외.
+function assistTarget(ang, cone, range = 650) {
+  let best = null, bs = 1e9;
+  for (const e of room.enemies) {
+    if (e.dead || e.spawning || e.invuln) continue;
+    const d = dist(P.x, P.y, e.x, e.y); if (d > range) continue;
+    const ad = Math.abs(angDiff(ang, angTo(P.x, P.y, e.x, e.y))); if (ad > cone) continue;
+    if (rayWalls(P.x, P.y, e.x - P.x, e.y - P.y, d) < d - e.r) continue;
+    const sc = d * (1 + ad * 3);
+    if (sc < bs) { bs = sc; best = e; }
+  }
+  return best;
 }

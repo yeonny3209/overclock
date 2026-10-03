@@ -26,6 +26,7 @@ function showTitle() {
         <button class="btn mg sm" style="min-width:108px" onclick="${cb(showUnlocks)}">해금 <span class="coin">◈${SAVE.chips}</span></button>
         <button class="btn mg sm" style="min-width:108px" onclick="${cb(() => showCodex('element'))}">도감</button>
         <button class="btn mg sm" style="min-width:108px" onclick="${cb(() => showSettings(showTitle))}">설정</button>
+        <button class="btn mg sm" style="min-width:108px" onclick="${cb(() => showHelp(showTitle))}">도움말</button>
       </div>
     </div>
     <div class="hint">WASD 이동 · 마우스 조준 · 좌클릭 사격 · 우클릭 스킬 · 스페이스 구르기<br>R 재장전 · Q/휠 무기 교체 · E 상호작용 · ESC 일시정지 · 게임패드 지원</div>
@@ -73,6 +74,7 @@ function showCharSelect(mode) {
 // ================= 무전 =================
 let radioState = null;
 function radio(lines, done) {
+  if (SAVE.settings.skipRadio) { if (done) setTimeout(done, 0); return; }
   const el = document.createElement('div');
   el.className = 'radio';
   $('ui').appendChild(el);
@@ -147,6 +149,7 @@ function showMap() {
     <div class="row" style="margin-top:4px">
       <button class="btn sm" onclick="${cb(() => showLoadout(showMap))}">장비 / 빌드 보기</button>
       <button class="btn sm" onclick="${cb(() => showSettings(showMap))}">설정</button>
+      <button class="btn sm" onclick="${cb(() => showHelp(showMap))}">도움말</button>
       <button class="btn sm rd" onclick="${cb(() => confirmBox('이번 판을 포기할까요?', () => endRun(false), showMap))}">포기</button>
     </div>`, 'top');
 }
@@ -180,7 +183,7 @@ function buildSummaryHTML() {
     return `<tr><td style="white-space:nowrap">${tagHTML(t)} ${n}</td><td style="color:${col(3)}">3: ${SETS[t][0]}</td><td style="color:${col(5)}">5: ${SETS[t][1]}</td><td style="color:${col(7)}">7: ${SETS[t][2]}</td><td style="color:${n >= 9 ? '#ff3df0' : '#5a6080'}">9: ${SETS[t][3]}</td></tr>`;
   }).join('') || '<tr><td class="muted">아직 태그가 있는 강화가 없다</td></tr>';
   const curses = Object.keys(run.curses).map(c => `<span class="tag" style="background:#ff2d55;color:#fff">${CURSE[c].name}: ${CURSE[c].gain} / ${CURSE[c].cost}</span>`).join('');
-  return `<div class="panel" style="width:min(900px,94vw)"><b>강화</b><div style="margin:6px 0">${ups}</div>${curses ? `<b>저주</b><div style="margin:6px 0">${curses}</div>` : ''}
+  return `<div class="panel" style="width:min(900px,94vw)">${statsHTML()}<b>강화</b><div style="margin:6px 0">${ups}</div>${curses ? `<b>저주</b><div style="margin:6px 0">${curses}</div>` : ''}
     <b>세트 효과</b> <span class="muted small">${PRISM}</span><div style="overflow-x:auto"><table class="tb" style="margin-top:6px">${sets}</table></div>
     ${run.bag.length ? `<div style="margin-top:8px"><b>가방 속 부품</b> ${run.bag.map(m => `<span class="tag" style="background:#29f0ff">${MODS[m].name}</span>`).join('')} <span class="muted small">(정비소에서 장착/교체)</span></div>` : ''}</div>`;
 }
@@ -213,7 +216,7 @@ function genUpgradeChoices(count, rare) {
   return choices;
 }
 function openUpgradePick(opts, done) {
-  const prevScreen = G.screen;
+  const prevScreen = opts._prev || G.screen;
   if (G.screen === 'combat') G.screen = 'overlay';
   const choices = genUpgradeChoices(opts.count || 3, opts.rare);
   const finish = () => { if (prevScreen === 'combat') { G.screen = 'combat'; UI(''); } done && done(); };
@@ -234,7 +237,10 @@ function openUpgradePick(opts, done) {
   }).join('');
   scr(`${topbar()}<h2>${opts.title || '강화 선택'}</h2><div class="sub">${opts.sub || (opts.rare ? '희귀 강화 포함' : '하나를 골라 빌드를 완성하라')}</div>
     <div class="row">${cards}</div>
-    <button class="btn sm" style="margin-top:16px" onclick="${cb(finish)}">건너뛰기</button>`, prevScreen === 'combat' ? 'clear' : '');
+    <div class="row" style="margin-top:16px">
+      <button class="btn sm mg" ${opts.rerolled || run.coins < rerollCost() ? 'disabled' : ''} onclick="${cb(() => { if (run.coins < rerollCost()) return; run.coins -= rerollCost(); SFX.play('coin'); openUpgradePick(Object.assign({}, opts, { rerolled: true, _prev: prevScreen }), done); })}">다시 뽑기 ◆${rerollCost()}${opts.rerolled ? ' (사용함)' : ''}</button>
+      <button class="btn sm" onclick="${cb(finish)}">건너뛰기</button>
+    </div>`, prevScreen === 'combat' ? 'clear' : '');
 }
 
 // ================= 무기 / 부품 획득 =================
@@ -282,4 +288,35 @@ function showModManager(done) {
       <button class="btn ye" onclick="${cb(done)}">완료</button>`, 'top');
   };
   render();
+}
+
+function rerollCost() { return 10 + 5 * (run ? run.zone : 0); }
+// 현재 빌드 수치 요약
+function statsHTML() {
+  const w = curW(), s = wStats(w);
+  const pct = v => `${v >= 1 ? '+' : ''}${Math.round((v - 1) * 100)}%`;
+  const rows = [
+    ['피해', pct(BS.dmgMult * dynDmg())], ['연사', pct(BS.rateMult)], ['치명타', Math.round(s.crit * 100) + '%'],
+    ['이동 속도', pct(BS.moveMult)], ['받는 피해', pct(BS.takenMult)], ['재장전', pct(BS.reloadMult)], ['관통', '+' + BS.pierce],
+    ['최대 체력', run.maxHp], ['오버클럭', Math.round(run.od || 0) + '%']
+  ];
+  return `<div class="kv" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));margin-bottom:10px">${rows.map(r => `<span><span class="muted small">${r[0]}</span> <b>${r[1]}</b></span>`).join('')}</div>`;
+}
+// 도움말
+function showHelp(back) {
+  scr(`<h2>도움말</h2>
+    <div class="panel" style="width:min(820px,94vw);line-height:1.8;font-size:14px">
+      <b style="color:#29f0ff">조작</b><br>
+      WASD 이동 · 마우스 조준 · 좌클릭 사격 · 우클릭 스킬 · 스페이스 구르기(무적) · R 재장전 · Q/휠 무기 교체 · E 상호작용/해킹 · F 오버클럭 · ESC 일시정지<br>
+      게임패드: 왼쪽 스틱 이동 · 오른쪽 스틱 조준 · RT 사격 · LT 스킬 · A 구르기 · X 재장전 · Y 교체 · B 상호작용 · LB 오버클럭<br>
+      터치: 왼쪽 아래 스틱 이동 · 오른쪽 스틱 조준과 사격 · 화면 버튼으로 구르기, 스킬, 오버클럭, 교체, 상호작용<br><br>
+      <b style="color:#29f0ff">진행</b><br>
+      구역마다 갈림길 지도를 내려가 보스를 쓰러뜨린다. 전투에서 이기면 강화 3개 중 1개를 고른다. 같은 태그를 3·5·7개 모으면 세트 효과, 9개면 프리즘 각성.<br><br>
+      <b style="color:#ff3df0">오버클럭 모드</b> — 처치와 반응으로 게이지를 채우고 F를 누르면 8초간 폭주한다.<br>
+      <b style="color:#29f0ff">해킹</b> — 체력 30% 이하의 기계(점선 원 표시) 옆에서 E. 15초간 아군으로 싸우다 자폭한다. 대기 8초.<br>
+      <b style="color:#ffb52e">무기 융합</b> — 정비소에서 두 무기를 합쳐 두 번째 속성을 새긴다.<br><br>
+      <b style="color:#29f0ff">속성</b> — 원소마다 상태 이상이 다르다. 자세한 내용은 도감의 '속성' 탭.<br>
+      ${SET_TAGS.map(t => `${tagHTML(t)} ${STATUS_INFO[t].name}: ${STATUS_INFO[t].core}`).join('<br>')}
+    </div>
+    <button class="btn" onclick="${cb(back)}">돌아가기</button>`, 'top');
 }

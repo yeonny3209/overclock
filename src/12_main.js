@@ -223,6 +223,7 @@ function arenaWaveCleared() {
   ob.state = 'break'; ob.bt = 3; room.bossDead = false; ob.boss = false;
   run.arenaWave = ob.wave;
   SFX.play('objective');
+  if (SAVE.settings.autoCoin) room.timers.push({ t: 0.8, fn: collectAllCoins });
   G.banner = { text: `웨이브 ${ob.wave} 클리어`, t: 1.4, color: '#6dff8a' };
   for (const b of BULLETS) if (b.team === 'e') b.dead = true;
   if (BS.regen) healRun(BS.regen, true);
