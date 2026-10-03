@@ -45,6 +45,7 @@ function spawnPillars(n) {
 function onBossKilled(e) {
   if (room.enemies.some(b => b.boss && !b.dead && b !== e)) return;
   run.bossesKilled++;
+  SAVE.stats.bossKills = (SAVE.stats.bossKills || 0) + 1;
   G.slowmo = 1.4; shake(24); SFX.play('explode');
   for (let i = 0; i < 8; i++) room.timers.push({ t: i * 0.15, fn: () => fxExplosion(e.x + rand(-70, 70), e.y + rand(-70, 70), 80) });
   for (const m of room.enemies) if (!m.dead && !m.boss) { m.noReward = true; killEnemy(m, {}); }

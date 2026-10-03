@@ -404,7 +404,7 @@ function drawEnemy(e) {
   if (e.shred > 0) { for (let i = 0; i < Math.min(e.shred, 10); i++) { const a = i / 10 * TAU - Math.PI / 2; ctx.fillStyle = TAG_COLOR.metal; ctx.fillRect(e.x + Math.cos(a) * (e.r + 6) - 2, e.y + Math.sin(a) * (e.r + 6) - 2, 4, 4); } }
   if (e.blindT > 0 || e.dazzleT > 0) { ctx.font = `bold 13px ${FONT}`; ctx.textAlign = 'center'; ctx.fillStyle = TAG_COLOR.light; ctx.fillText(e.boss ? '✦' : '✦ ?', e.x, e.y - e.r - (e.muts ? 30 : 6)); circlePath(e.x, e.y, e.r + 3); ctx.strokeStyle = 'rgba(255,251,230,0.6)'; ctx.lineWidth = 2; ctx.stroke(); }
   if (e.corrode > 0) {
-    const thr = Math.min(BS.execCap, BS.execPer * e.corrode);
+    const thr = Math.min(BS.execCap, BS.execPer * e.corrode + BS.execFlat);
     if (!e.boss) { const w = Math.max(30, e.r * 2.2); ctx.fillStyle = 'rgba(155,107,255,0.85)'; ctx.fillRect(e.x - w / 2, e.y + e.r + 8, w * thr, 3); }
     for (let i = 0; i < Math.min(e.corrode, 10); i++) { ctx.fillStyle = '#9b6bff'; ctx.fillRect(e.x - 14 + (i % 5) * 6, e.y + e.r + 12 + Math.floor(i / 5) * 5, 4, 4); }
   }
@@ -451,6 +451,8 @@ function drawPlayer() {
     if (BS.aw.wind) { ctx.beginPath(); ctx.arc(P.x, P.y, 95, G.time * 6, G.time * 6 + 4.5); ctx.strokeStyle = 'rgba(125,255,184,0.45)'; ctx.lineWidth = 3; ctx.stroke(); }
     ctx.globalCompositeOperation = 'source-over';
   }
+  if (P.novaT > 0) { circlePath(P.x, P.y, P.r + 14); ctx.fillStyle = 'rgba(255,244,176,0.18)'; ctx.fill(); ctx.strokeStyle = '#fff4b0'; ctx.lineWidth = 2; ctx.stroke(); }
+  if (P.fortT > 0) { polyPath(P.x, P.y, P.r + 12, 6, G.time); ctx.strokeStyle = '#a9b8cc'; ctx.lineWidth = 3; ctx.stroke(); }
   if (P.shield > 0) { circlePath(P.x, P.y, P.r + 8); ctx.strokeStyle = 'rgba(109,255,138,0.7)'; ctx.lineWidth = 2; ctx.stroke(); }
   if (w.reloadT > 0) { hpBar(P.x, P.y + P.r + 8, 34, 1 - w.reloadT / (w.reloadMax || 1), '#29f0ff', 3); }
   if (P.prompt) {

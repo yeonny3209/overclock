@@ -357,12 +357,21 @@ const STATUS_INFO = {
 
 // ---------- 캐릭터 ----------
 const CHARS = {
-  rain: { name: '레인', role: '돌격', color: '#ff5a5a', hp: 150, weapon: 'smg', startGrade: 1, skill: '과충전', skillDesc: '5초간 연사 속도 2배 + 피해 +20%, 재장전 불필요', cd: 14, passive: '체력 30% 이하일 때 피해 +25%', unlock: null },
+  rain: { name: '레인', role: '돌격', color: '#ff5a5a', hp: 150, weapon: 'smg', startGrade: 1, skill: '과충전', skillDesc: '5초간 연사 속도 2배 + 피해 +20%, 재장전 불필요', cd: 14, passive: '연사 속도 +15%, 체력 30% 이하일 때 피해 +25%', unlock: null },
   momo: { name: '모모', role: '기술자', color: '#ffd23d', hp: 160, weapon: 'pistol', startGrade: 1, skill: '포탑 설치', skillDesc: '25초간 자동 사격 포탑 설치 (최대 3개). 포탑은 내 무기 속성을 쏜다.', cd: 7, passive: '상점 가격 -25%, 전투 시작 시 포탑 1개 자동 배치', unlock: { cond: '구역 2 클리어', chips: 40, check: () => SAVE.stats.zone2 } },
   kai: { name: '카이', role: '기동', color: '#3dffb0', hp: 155, weapon: 'shotgun', startGrade: 1, skill: '반사 베기', skillDesc: '넓은 부채꼴을 강하게 베고 적 탄환을 3배 위력으로 되돌림. 베는 순간 무적.', cd: 4, passive: '구르기 2회 충전, 구르기 후 1.5초간 피해 +40%', unlock: { cond: '구르기로 탄환 500발 회피', chips: 60, check: () => SAVE.stats.dodged >= 500 } },
   sera: { name: '세라', role: '저격', color: '#b48cff', hp: 150, weapon: 'sniper', startGrade: 1, skill: '시간 감속', skillDesc: '5초간 주변 시간 70% 감속, 감속 중 내 피해 +30%', cd: 11, passive: '재장전 직후 첫 발 피해 +150%, 치명타 확률 +20%', unlock: { cond: '저격총으로 보스 처치', chips: 80, check: () => SAVE.stats.sniperBoss } }
 };
-const CHAR_IDS = ['rain', 'momo', 'kai', 'sera'];
+// 캐릭터 5~10
+Object.assign(CHARS, {
+  blaze: { name: '블레이즈', role: '화염술사', color: '#ff7a2a', hp: 160, weapon: 'flamer', startGrade: 1, skill: '용암 분출', skillDesc: '주변에 불길 고리를 깔고 가까운 적에게 화상 2중첩', cd: 10, passive: '화상 최대 중첩 +2, 화상 피해 +25%', unlock: { cond: '불 7세트 달성', chips: 50, check: () => SAVE.stats.set7_fire } },
+  volt: { name: '볼트', role: '전격술사', color: '#ffe14d', hp: 145, weapon: 'tesla', startGrade: 1, skill: '천둥 폭풍', skillDesc: '4초간 주변 적에게 낙뢰가 쏟아짐', cd: 12, passive: '감전 연쇄 대상 +1', unlock: { cond: '속성 반응 100회 발동', chips: 50, check: () => SAVE.stats.reactions >= 100 } },
+  nova: { name: '노바', role: '성기사', color: '#fff4b0', hp: 175, weapon: 'lightbeam', startGrade: 1, skill: '빛의 장막', skillDesc: '3초간 무적, 주변 적 실명, 체력 15 회복', cd: 13, passive: '받는 피해 -10%, 실명된 적에게 주는 피해 +20%', unlock: { cond: '보스 5회 처치', chips: 60, check: () => (SAVE.stats.bossKills || 0) >= 5 } },
+  grim: { name: '그림', role: '처형자', color: '#9b6bff', hp: 140, weapon: 'pistol', startGrade: 1, startMods: ['conv_dark'], skill: '그림자 걸음', skillDesc: '조준 방향으로 순간이동하며 지나친 적에게 피해와 침식 3중첩', cd: 6, passive: '피해 +20%, 처형 기준 +5%, 처형할 때 체력 2 회복', unlock: { cond: '처형 50회', chips: 70, check: () => (SAVE.stats.execs || 0) >= 50 } },
+  marin: { name: '마린', role: '조류술사', color: '#3d8bff', hp: 160, weapon: 'hydro', startGrade: 1, skill: '해일', skillDesc: '앞쪽으로 파도를 일으켜 피해와 젖음, 지나간 자리에 물웅덩이', cd: 10, passive: '피해 +10%, 젖은 적 상태 이상 증폭 +25%, 물웅덩이 위에서 이동 속도 +25%', unlock: { cond: '구역 3 도달', chips: 50, check: () => SAVE.stats.bestZone >= 3 } },
+  iron: { name: '아이언', role: '중장갑', color: '#a9b8cc', hp: 220, weapon: 'smg', startGrade: 1, startMods: ['conv_metal'], skill: '강철 요새', skillDesc: '4초간 받는 피해 -80%, 때린 적에게 파쇄 3중첩', cd: 12, passive: '체력이 높고 연사 +20%, 이동 속도 -10%, 보스·엘리트 피해 +15%', unlock: { cond: '누적 처치 1500', chips: 70, check: () => SAVE.stats.kills >= 1500 } }
+});
+const CHAR_IDS = ['rain', 'momo', 'kai', 'sera', 'blaze', 'volt', 'nova', 'grim', 'marin', 'iron'];
 function charUnlocked(id) { const c = CHARS[id]; return !c.unlock || !!SAVE.unlocks['char_' + id] || c.unlock.check(); }
 
 // ---------- 무기 ----------
@@ -636,6 +645,12 @@ const UNLOCKS = [
   { id: 'char_momo', cat: '캐릭터', name: '모모 (기술자)', desc: '포탑 설치 스킬. 조건: 구역 2 클리어', cost: 40 },
   { id: 'char_kai', cat: '캐릭터', name: '카이 (기동)', desc: '반사 베기 스킬. 조건: 구르기로 탄환 500발 회피', cost: 60 },
   { id: 'char_sera', cat: '캐릭터', name: '세라 (저격)', desc: '시간 감속 스킬. 조건: 저격총으로 보스 처치', cost: 80 },
+  { id: 'char_blaze', cat: '캐릭터', name: '블레이즈 (화염술사)', desc: '용암 분출 스킬. 조건: 불 7세트 달성', cost: 50 },
+  { id: 'char_volt', cat: '캐릭터', name: '볼트 (전격술사)', desc: '천둥 폭풍 스킬. 조건: 속성 반응 100회', cost: 50 },
+  { id: 'char_nova', cat: '캐릭터', name: '노바 (성기사)', desc: '빛의 장막 스킬. 조건: 보스 5회 처치', cost: 60 },
+  { id: 'char_grim', cat: '캐릭터', name: '그림 (처형자)', desc: '그림자 걸음 스킬. 조건: 처형 50회', cost: 70 },
+  { id: 'char_marin', cat: '캐릭터', name: '마린 (조류술사)', desc: '해일 스킬. 조건: 구역 3 도달', cost: 50 },
+  { id: 'char_iron', cat: '캐릭터', name: '아이언 (중장갑)', desc: '강철 요새 스킬. 조건: 누적 처치 1500', cost: 70 },
   { id: 'wpn_boomerang', cat: '무기 풀', name: '부메랑 원반', desc: '상점과 상자에 부메랑 원반(바람) 등장', cost: 25 },
   { id: 'wpn_blackhole', cat: '무기 풀', name: '블랙홀 발사기', desc: '상점과 상자에 블랙홀 발사기(어둠) 등장', cost: 35 },
   { id: 'upg_A', cat: '강화 풀', name: '강화 팩 A', desc: '화염 갑옷, 방전, 대구경, 집중, 투자 추가', cost: 30 },
@@ -789,6 +804,21 @@ function recomputeBuild() {
     comboTime: 3 + 2 * u('combokeep'), invest: 8 * u('invest'), lucky: 0.2 * u('lucky'),
     coinMult: c.avarice ? 2 : 1, enemyMult: c.avarice ? 1.25 : 1, berserk: !!c.berserk, noHeal: !!c.berserk
   };
+  BS.execFlat = 0;
+  if (run) {
+    // 캐릭터 패시브
+    switch (run.char) {
+      case 'rain': BS.rateMult *= 1.15; break;
+      case 'blaze': BS.burnMax += 2; BS.burnDmg *= 1.25; break;
+      case 'volt': BS.chainN += 1; break;
+      case 'nova': BS.takenMult *= 0.9; BS.halo += 0.2; break;
+      case 'grim': BS.execFlat = 0.05; BS.dmgMult *= 1.2; break;
+      case 'marin': BS.soakAmp += 0.25; BS.dmgMult *= 1.1; break;
+      case 'iron': BS.moveMult *= 0.9; BS.bigSlayer += 0.15; BS.rateMult *= 1.2; break;
+    }
+    // 세트 달성 기록 (캐릭터 해금 조건)
+    if (run.mode !== 'arena') for (const t of SET_TAGS) if (tags[t] >= 7 && !SAVE.stats['set7_' + t]) { SAVE.stats['set7_' + t] = true; saveGame(); }
+  }
   if (run) {
     const old = run.maxHp || 0;
     let mh = run.baseMaxHp + 15 * u('armor') + (BS.surv3 ? 40 : 0);
@@ -1434,7 +1464,7 @@ function chainLightning(e, dmg, n, rechain) {
 }
 function checkExecute(e, o = {}) {
   if (e.dead || e.boss || !(e.corrode > 0) || e.hp <= 0) return false;
-  const thr = Math.min(BS.execCap, BS.execPer * e.corrode);
+  const thr = Math.min(BS.execCap, BS.execPer * e.corrode + BS.execFlat);
   if (e.hp > e.maxHp * thr) return false;
   // 처형
   floatText(e.x, e.y - e.r - 20, '처형', TAG_COLOR.dark, 18);
@@ -1588,6 +1618,7 @@ function killEnemy(e, o = {}) {
     }
     if (BS.reaper) P.reaperShots = 3;
     if (BS.cdRefund) P.skillCd = Math.max(0, P.skillCd - 1);
+    if (run.char === 'grim') healRun(2, true);
     if (BS.aw.dark) room.vortices.push({ x: e.x, y: e.y, t: 1.5, max: 1.5, r: 170, dmg: 6 * BS.dmgMult, tick: 0, tag: 'dark', stacks: 1 });
   }
   if (o.isExp && BS.chaindet) explode(e.x, e.y, 65 + 20 * (BS.chaindet - 1), 18 * BS.chaindet, { small: true, noSelf: true });
@@ -1605,7 +1636,8 @@ function damagePlayer(dmg, src) {
     part({ x: P.x, y: P.y, vx: 0, vy: 0, life: 0.3, size: 40, color: '#6dff8a', kind: 'ring' });
     return;
   }
-  dmg *= G.eDmgMult * BS.takenMult;
+  dmg *= G.eDmgMult * BS.takenMult * (P.fortT > 0 ? 0.2 : 1);
+  if (P.fortT > 0 && src && !src.dead && src.type && !src.ally) applyStatus(src, 'metal', { stacks: 3 });
   run.hp -= dmg; P.iframe = 0.75; P.hurtT = 0.25;
   breakCombo();
   if (BS.berserk) run.berserk = 0;
@@ -1694,14 +1726,14 @@ function createPlayer(x, y) {
   P = {
     x, y, vx: 0, vy: 0, kx: 0, ky: 0, r: 13, ang: -Math.PI / 2, rollT: 0, rollDx: 1, rollDy: 0, rollCharges: rollMax(), rollRe: 0,
     iframe: 1, hurtT: 0, skillCd: 0, skillMax: 1, overT: 0, slowT: 0, shield: BS.surv5 ? 2 : 0, dead: false, staticShots: 0,
-    chillT: 0, trailT: 0, stepT: 0, prompt: null, swapT: 0, pullT: 0, momT: 0, reaperShots: 0, bladeA: 0, odT: 0, hackCd: 0
+    chillT: 0, trailT: 0, stepT: 0, prompt: null, swapT: 0, pullT: 0, momT: 0, reaperShots: 0, bladeA: 0, odT: 0, hackCd: 0, stormT: 0, stormTick: 0, novaT: 0, fortT: 0
   };
   for (const w of run.weapons) w.first = true;
 }
 
 function updatePlayer(dt) {
   if (P.dead) return;
-  P.iframe -= dt; P.hurtT -= dt; P.overT -= dt; P.slowT -= dt; P.chillT -= dt; P.skillCd -= dt; P.swapT -= dt; P.momT -= dt; P.odT -= dt; P.hackCd -= dt;
+  P.iframe -= dt; P.hurtT -= dt; P.overT -= dt; P.slowT -= dt; P.chillT -= dt; P.skillCd -= dt; P.swapT -= dt; P.momT -= dt; P.odT -= dt; P.hackCd -= dt; P.novaT -= dt; P.fortT -= dt;
   const rm = rollMax();
   if (P.rollCharges < rm) { P.rollRe -= dt; if (P.rollRe <= 0) { P.rollCharges++; P.rollRe = 0.75 * BS.rollCdMult; } }
   const gp = Input.gp;
@@ -1791,6 +1823,15 @@ function updatePlayer(dt) {
     }
   }
   if (BS.awakened.length) updateAwaken(dt);
+  // 볼트: 천둥 폭풍
+  if (P.stormT > 0) {
+    P.stormT -= dt; P.stormTick -= dt;
+    if (P.stormTick <= 0) {
+      P.stormTick = 0.25;
+      const ts = liveNear(450).filter(e => !e.invuln);
+      if (ts.length) { const t = pick(ts); strike(t.x, t.y); damageEnemy(t, 25 * BS.dmgMult * dynDmg(), { tag: 'elec' }); }
+    }
+  }
   if (BS.surv7) { run.regenAcc = (run.regenAcc || 0) + dt; if (run.regenAcc >= 2) { run.regenAcc = 0; if (run.hp < run.maxHp) healRun(3, true); } }
   // 상호작용
   P.prompt = null;
@@ -1839,6 +1880,36 @@ function useSkill() {
       P.slowT = 5; G.flash = 0.2; G.flashColor = '180,140,255';
       part({ x: P.x, y: P.y, vx: 0, vy: 0, life: 0.6, size: 520, color: '#b48cff', kind: 'ring' });
       break;
+    case 'blaze':
+      for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; addHazard({ type: 'fire', x: clamp(P.x + Math.cos(a) * 110, 20, room.w - 20), y: clamp(P.y + Math.sin(a) * 110, 20, room.h - 20), r: 45, life: 4, player: true }); }
+      for (const e of liveNear(230)) applyStatus(e, 'fire', { stacks: 2 });
+      part({ x: P.x, y: P.y, life: 0.5, size: 230, color: '#ff7a2a', kind: 'ring' }); SFX.play('ignite'); shake(6);
+      break;
+    case 'volt': P.stormT = 4; P.stormTick = 0; floatText(P.x, P.y - 36, '천둥 폭풍!', '#ffe14d', 20); break;
+    case 'nova':
+      P.novaT = 3; P.iframe = Math.max(P.iframe, 3); healRun(15, true);
+      for (const e of liveNear(350)) { applyStatus(e, 'light', {}); applyStatus(e, 'light', {}); }
+      part({ x: P.x, y: P.y, life: 0.6, size: 350, color: '#fff4b0', kind: 'ring' }); G.flash = 0.25; G.flashColor = '255,250,210';
+      break;
+    case 'grim': {
+      const L = Math.max(0, Math.min(260, rayWalls(P.x, P.y, Math.cos(P.ang), Math.sin(P.ang), 280) - 20));
+      const tx = P.x + Math.cos(P.ang) * L, ty = P.y + Math.sin(P.ang) * L;
+      for (let k = 0; k <= 6; k++) part({ x: lerp(P.x, tx, k / 6), y: lerp(P.y, ty, k / 6), life: 0.4, size: P.r, color: '#9b6bff', kind: 'ghost' });
+      for (const e of room.enemies.slice()) if (!e.dead && !e.spawning && segDist(e.x, e.y, P.x, P.y, tx, ty) < e.r + 22) damageEnemy(e, 50 * BS.dmgMult * dynDmg(), { tag: 'dark', stacks: 3, ang: P.ang });
+      P.x = tx; P.y = ty; P.iframe = Math.max(P.iframe, 0.35); SFX.play('tele');
+      break;
+    }
+    case 'marin': {
+      for (const e of room.enemies.slice()) {
+        if (e.dead || e.spawning) continue;
+        const d = dist(P.x, P.y, e.x, e.y), a = angTo(P.x, P.y, e.x, e.y);
+        if (d < 330 && Math.abs(angDiff(P.ang, a)) < 0.65) damageEnemy(e, 45 * BS.dmgMult * dynDmg(), { tag: 'water', knock: 220, ang: a });
+      }
+      for (let k = 1; k <= 3; k++) { const x = P.x + Math.cos(P.ang) * 100 * k, y = P.y + Math.sin(P.ang) * 100 * k; if (!wallAt(x, y)) addHazard({ type: 'water', x, y, r: 48, life: 7, player: true }); }
+      part({ x: P.x, y: P.y, life: 0.4, size: 330, color: '#3d8bff', kind: 'arc', rot: P.ang }); SFX.play('water'); shake(5);
+      break;
+    }
+    case 'iron': P.fortT = 4; floatText(P.x, P.y - 36, '강철 요새!', '#a9b8cc', 20); part({ x: P.x, y: P.y, life: 0.5, size: 60, color: '#a9b8cc', kind: 'ring' }); break;
   }
   if (BS.discharge) {
     const ts = room.enemies.filter(e => !e.dead && !e.spawning).sort((a, b) => d2(a.x, a.y, P.x, P.y) - d2(b.x, b.y, P.x, P.y)).slice(0, 5);
@@ -1980,7 +2051,7 @@ function updateAllies(dt) {
         if (a.cd <= 0 && Math.abs(angDiff(a.ang, ta)) < 0.3) {
           a.cd = a.type === 'robot' ? 0.4 : 0.2;
           const tag = wStats(curW()).tag;
-          spawnBullet({ x: a.x + Math.cos(a.ang) * 16, y: a.y + Math.sin(a.ang) * 16, vx: Math.cos(a.ang) * 860, vy: Math.sin(a.ang) * 860, r: 3.5, dmg: 11 * BS.dmgMult * dynDmg(), team: 'p', life: 0.75, tag: tag === 'exp' ? 'bullet' : tag, pierce: a.type === 'turret' ? 1 : 0, color: a.type === 'robot' ? '#6dd5ff' : (TAG_COLOR[tag] || '#ffd23d'), wid: 'turret', small: true });
+          spawnBullet({ x: a.x + Math.cos(a.ang) * 16, y: a.y + Math.sin(a.ang) * 16, vx: Math.cos(a.ang) * 860, vy: Math.sin(a.ang) * 860, r: 3.5, dmg: 11 * BS.dmgMult * dynDmg(), team: 'p', life: 0.75, tag: tag === 'exp' ? 'bullet' : tag, pierce: 0, color: a.type === 'robot' ? '#6dd5ff' : (TAG_COLOR[tag] || '#ffd23d'), wid: 'turret', small: true });
           SFX.play('smg', 0.4);
         }
       }
@@ -2071,7 +2142,7 @@ function playerHazards() {
       case 'oil': r.slow = Math.min(r.slow, 0.85); break;
       case 'fire': if (!h.player) damagePlayer(6, null); break;
       case 'toxic': damagePlayer(5, null); break;
-      case 'water': if (h.elecT > 0 && !h.player) damagePlayer(8, null); break;
+      case 'water': if (h.elecT > 0 && !h.player) damagePlayer(8, null); if (run.char === 'marin') r.slow = Math.max(r.slow, 1.25); break;
       case 'steam': if (h.on) { P.chillT = Math.max(P.chillT, 1); damagePlayer(4, null); } break;
       case 'elecfloor': if (h.state === 'on') damagePlayer(10, null); break;
       case 'laser': if (h.state === 'on') damagePlayer(15, null); break;
@@ -2656,6 +2727,7 @@ function spawnPillars(n) {
 function onBossKilled(e) {
   if (room.enemies.some(b => b.boss && !b.dead && b !== e)) return;
   run.bossesKilled++;
+  SAVE.stats.bossKills = (SAVE.stats.bossKills || 0) + 1;
   G.slowmo = 1.4; shake(24); SFX.play('explode');
   for (let i = 0; i < 8; i++) room.timers.push({ t: i * 0.15, fn: () => fxExplosion(e.x + rand(-70, 70), e.y + rand(-70, 70), 80) });
   for (const m of room.enemies) if (!m.dead && !m.boss) { m.noReward = true; killEnemy(m, {}); }
@@ -3922,7 +3994,7 @@ function drawEnemy(e) {
   if (e.shred > 0) { for (let i = 0; i < Math.min(e.shred, 10); i++) { const a = i / 10 * TAU - Math.PI / 2; ctx.fillStyle = TAG_COLOR.metal; ctx.fillRect(e.x + Math.cos(a) * (e.r + 6) - 2, e.y + Math.sin(a) * (e.r + 6) - 2, 4, 4); } }
   if (e.blindT > 0 || e.dazzleT > 0) { ctx.font = `bold 13px ${FONT}`; ctx.textAlign = 'center'; ctx.fillStyle = TAG_COLOR.light; ctx.fillText(e.boss ? '✦' : '✦ ?', e.x, e.y - e.r - (e.muts ? 30 : 6)); circlePath(e.x, e.y, e.r + 3); ctx.strokeStyle = 'rgba(255,251,230,0.6)'; ctx.lineWidth = 2; ctx.stroke(); }
   if (e.corrode > 0) {
-    const thr = Math.min(BS.execCap, BS.execPer * e.corrode);
+    const thr = Math.min(BS.execCap, BS.execPer * e.corrode + BS.execFlat);
     if (!e.boss) { const w = Math.max(30, e.r * 2.2); ctx.fillStyle = 'rgba(155,107,255,0.85)'; ctx.fillRect(e.x - w / 2, e.y + e.r + 8, w * thr, 3); }
     for (let i = 0; i < Math.min(e.corrode, 10); i++) { ctx.fillStyle = '#9b6bff'; ctx.fillRect(e.x - 14 + (i % 5) * 6, e.y + e.r + 12 + Math.floor(i / 5) * 5, 4, 4); }
   }
@@ -3969,6 +4041,8 @@ function drawPlayer() {
     if (BS.aw.wind) { ctx.beginPath(); ctx.arc(P.x, P.y, 95, G.time * 6, G.time * 6 + 4.5); ctx.strokeStyle = 'rgba(125,255,184,0.45)'; ctx.lineWidth = 3; ctx.stroke(); }
     ctx.globalCompositeOperation = 'source-over';
   }
+  if (P.novaT > 0) { circlePath(P.x, P.y, P.r + 14); ctx.fillStyle = 'rgba(255,244,176,0.18)'; ctx.fill(); ctx.strokeStyle = '#fff4b0'; ctx.lineWidth = 2; ctx.stroke(); }
+  if (P.fortT > 0) { polyPath(P.x, P.y, P.r + 12, 6, G.time); ctx.strokeStyle = '#a9b8cc'; ctx.lineWidth = 3; ctx.stroke(); }
   if (P.shield > 0) { circlePath(P.x, P.y, P.r + 8); ctx.strokeStyle = 'rgba(109,255,138,0.7)'; ctx.lineWidth = 2; ctx.stroke(); }
   if (w.reloadT > 0) { hpBar(P.x, P.y + P.r + 8, 34, 1 - w.reloadT / (w.reloadMax || 1), '#29f0ff', 3); }
   if (P.prompt) {
@@ -4462,7 +4536,7 @@ function showCharSelect(mode) {
         <h3 style="color:${c.color}">${c.name} <span class="muted small">${c.role}</span></h3>
         <p><b>스킬 · ${c.skill}</b><br>${c.skillDesc}<br><span class="muted small">대기 ${c.cd}초</span></p>
         <p style="margin-top:6px"><b>패시브</b><br>${c.passive}</p>
-        <p style="margin-top:6px" class="muted">시작 무기: ${WEAPONS[c.weapon].name}${id === 'momo' ? ' + 포탑' : ''} · 체력 ${c.hp}</p>
+        <p style="margin-top:6px" class="muted">시작 무기: ${GRADES[c.startGrade || 0].name} ${WEAPONS[c.weapon].name}${c.startMods ? ' (' + c.startMods.map(m => MODS[m].name.replace('속성 변환기: ', '') + ' 변환').join(', ') + ')' : ''} · 체력 ${c.hp}</p>
         ${ok ? '' : `<p style="margin-top:8px;color:#ff4d6d"><b>잠김</b> — ${c.unlock.cond}<br>또는 코어 칩 ◈${c.unlock.chips}로 해금</p>`}
       </div>`;
     }).join('');
@@ -4917,7 +4991,7 @@ function todayStr() { const d = new Date(); return `${d.getFullYear()}-${String(
 function showDaily() {
   menuMode();
   const ds = todayStr(), seed = hashStr('overclock-' + ds);
-  const ch = CHAR_IDS[seed % 4];
+  const ch = CHAR_IDS[seed % CHAR_IDS.length];
   const best = SAVE.daily[ds];
   const hist = Object.keys(SAVE.daily).sort().reverse().slice(0, 7).map(k => `<tr><td>${k}</td><td class="coin">${fmt(SAVE.daily[k])}</td></tr>`).join('') || '<tr><td class="muted">기록 없음</td></tr>';
   scr(`<h2>일일 도전</h2><div class="sub">${ds} · 모두 같은 요원, 같은 경로, 같은 강화 등장 · 오버클럭 1 고정<br>기록은 이 브라우저에만 저장된다.</div>
@@ -4981,6 +5055,8 @@ function newRun(mode, charId, oc, seed) {
   recomputeBuild();
   run.hp = run.maxHp;
   run.weapons = [makeWeapon(CHARS[charId].weapon, CHARS[charId].startGrade || 0)];
+  (CHARS[charId].startMods || []).forEach((m, i) => { if (i < run.weapons[0].mods.length) run.weapons[0].mods[i] = m; });
+  fixAmmo(run.weapons[0]);
   codex('weapon', CHARS[charId].weapon);
   SAVE.stats.runs++; saveGame();
 }

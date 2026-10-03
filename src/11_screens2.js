@@ -180,7 +180,7 @@ function todayStr() { const d = new Date(); return `${d.getFullYear()}-${String(
 function showDaily() {
   menuMode();
   const ds = todayStr(), seed = hashStr('overclock-' + ds);
-  const ch = CHAR_IDS[seed % 4];
+  const ch = CHAR_IDS[seed % CHAR_IDS.length];
   const best = SAVE.daily[ds];
   const hist = Object.keys(SAVE.daily).sort().reverse().slice(0, 7).map(k => `<tr><td>${k}</td><td class="coin">${fmt(SAVE.daily[k])}</td></tr>`).join('') || '<tr><td class="muted">기록 없음</td></tr>';
   scr(`<h2>일일 도전</h2><div class="sub">${ds} · 모두 같은 요원, 같은 경로, 같은 강화 등장 · 오버클럭 1 고정<br>기록은 이 브라우저에만 저장된다.</div>

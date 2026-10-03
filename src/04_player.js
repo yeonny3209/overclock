@@ -4,14 +4,14 @@ function createPlayer(x, y) {
   P = {
     x, y, vx: 0, vy: 0, kx: 0, ky: 0, r: 13, ang: -Math.PI / 2, rollT: 0, rollDx: 1, rollDy: 0, rollCharges: rollMax(), rollRe: 0,
     iframe: 1, hurtT: 0, skillCd: 0, skillMax: 1, overT: 0, slowT: 0, shield: BS.surv5 ? 2 : 0, dead: false, staticShots: 0,
-    chillT: 0, trailT: 0, stepT: 0, prompt: null, swapT: 0, pullT: 0, momT: 0, reaperShots: 0, bladeA: 0, odT: 0, hackCd: 0
+    chillT: 0, trailT: 0, stepT: 0, prompt: null, swapT: 0, pullT: 0, momT: 0, reaperShots: 0, bladeA: 0, odT: 0, hackCd: 0, stormT: 0, stormTick: 0, novaT: 0, fortT: 0
   };
   for (const w of run.weapons) w.first = true;
 }
 
 function updatePlayer(dt) {
   if (P.dead) return;
-  P.iframe -= dt; P.hurtT -= dt; P.overT -= dt; P.slowT -= dt; P.chillT -= dt; P.skillCd -= dt; P.swapT -= dt; P.momT -= dt; P.odT -= dt; P.hackCd -= dt;
+  P.iframe -= dt; P.hurtT -= dt; P.overT -= dt; P.slowT -= dt; P.chillT -= dt; P.skillCd -= dt; P.swapT -= dt; P.momT -= dt; P.odT -= dt; P.hackCd -= dt; P.novaT -= dt; P.fortT -= dt;
   const rm = rollMax();
   if (P.rollCharges < rm) { P.rollRe -= dt; if (P.rollRe <= 0) { P.rollCharges++; P.rollRe = 0.75 * BS.rollCdMult; } }
   const gp = Input.gp;
@@ -101,6 +101,15 @@ function updatePlayer(dt) {
     }
   }
   if (BS.awakened.length) updateAwaken(dt);
+  // 볼트: 천둥 폭풍
+  if (P.stormT > 0) {
+    P.stormT -= dt; P.stormTick -= dt;
+    if (P.stormTick <= 0) {
+      P.stormTick = 0.25;
+      const ts = liveNear(450).filter(e => !e.invuln);
+      if (ts.length) { const t = pick(ts); strike(t.x, t.y); damageEnemy(t, 25 * BS.dmgMult * dynDmg(), { tag: 'elec' }); }
+    }
+  }
   if (BS.surv7) { run.regenAcc = (run.regenAcc || 0) + dt; if (run.regenAcc >= 2) { run.regenAcc = 0; if (run.hp < run.maxHp) healRun(3, true); } }
   // 상호작용
   P.prompt = null;
@@ -149,6 +158,36 @@ function useSkill() {
       P.slowT = 5; G.flash = 0.2; G.flashColor = '180,140,255';
       part({ x: P.x, y: P.y, vx: 0, vy: 0, life: 0.6, size: 520, color: '#b48cff', kind: 'ring' });
       break;
+    case 'blaze':
+      for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; addHazard({ type: 'fire', x: clamp(P.x + Math.cos(a) * 110, 20, room.w - 20), y: clamp(P.y + Math.sin(a) * 110, 20, room.h - 20), r: 45, life: 4, player: true }); }
+      for (const e of liveNear(230)) applyStatus(e, 'fire', { stacks: 2 });
+      part({ x: P.x, y: P.y, life: 0.5, size: 230, color: '#ff7a2a', kind: 'ring' }); SFX.play('ignite'); shake(6);
+      break;
+    case 'volt': P.stormT = 4; P.stormTick = 0; floatText(P.x, P.y - 36, '천둥 폭풍!', '#ffe14d', 20); break;
+    case 'nova':
+      P.novaT = 3; P.iframe = Math.max(P.iframe, 3); healRun(15, true);
+      for (const e of liveNear(350)) { applyStatus(e, 'light', {}); applyStatus(e, 'light', {}); }
+      part({ x: P.x, y: P.y, life: 0.6, size: 350, color: '#fff4b0', kind: 'ring' }); G.flash = 0.25; G.flashColor = '255,250,210';
+      break;
+    case 'grim': {
+      const L = Math.max(0, Math.min(260, rayWalls(P.x, P.y, Math.cos(P.ang), Math.sin(P.ang), 280) - 20));
+      const tx = P.x + Math.cos(P.ang) * L, ty = P.y + Math.sin(P.ang) * L;
+      for (let k = 0; k <= 6; k++) part({ x: lerp(P.x, tx, k / 6), y: lerp(P.y, ty, k / 6), life: 0.4, size: P.r, color: '#9b6bff', kind: 'ghost' });
+      for (const e of room.enemies.slice()) if (!e.dead && !e.spawning && segDist(e.x, e.y, P.x, P.y, tx, ty) < e.r + 22) damageEnemy(e, 50 * BS.dmgMult * dynDmg(), { tag: 'dark', stacks: 3, ang: P.ang });
+      P.x = tx; P.y = ty; P.iframe = Math.max(P.iframe, 0.35); SFX.play('tele');
+      break;
+    }
+    case 'marin': {
+      for (const e of room.enemies.slice()) {
+        if (e.dead || e.spawning) continue;
+        const d = dist(P.x, P.y, e.x, e.y), a = angTo(P.x, P.y, e.x, e.y);
+        if (d < 330 && Math.abs(angDiff(P.ang, a)) < 0.65) damageEnemy(e, 45 * BS.dmgMult * dynDmg(), { tag: 'water', knock: 220, ang: a });
+      }
+      for (let k = 1; k <= 3; k++) { const x = P.x + Math.cos(P.ang) * 100 * k, y = P.y + Math.sin(P.ang) * 100 * k; if (!wallAt(x, y)) addHazard({ type: 'water', x, y, r: 48, life: 7, player: true }); }
+      part({ x: P.x, y: P.y, life: 0.4, size: 330, color: '#3d8bff', kind: 'arc', rot: P.ang }); SFX.play('water'); shake(5);
+      break;
+    }
+    case 'iron': P.fortT = 4; floatText(P.x, P.y - 36, '강철 요새!', '#a9b8cc', 20); part({ x: P.x, y: P.y, life: 0.5, size: 60, color: '#a9b8cc', kind: 'ring' }); break;
   }
   if (BS.discharge) {
     const ts = room.enemies.filter(e => !e.dead && !e.spawning).sort((a, b) => d2(a.x, a.y, P.x, P.y) - d2(b.x, b.y, P.x, P.y)).slice(0, 5);
@@ -290,7 +329,7 @@ function updateAllies(dt) {
         if (a.cd <= 0 && Math.abs(angDiff(a.ang, ta)) < 0.3) {
           a.cd = a.type === 'robot' ? 0.4 : 0.2;
           const tag = wStats(curW()).tag;
-          spawnBullet({ x: a.x + Math.cos(a.ang) * 16, y: a.y + Math.sin(a.ang) * 16, vx: Math.cos(a.ang) * 860, vy: Math.sin(a.ang) * 860, r: 3.5, dmg: 11 * BS.dmgMult * dynDmg(), team: 'p', life: 0.75, tag: tag === 'exp' ? 'bullet' : tag, pierce: a.type === 'turret' ? 1 : 0, color: a.type === 'robot' ? '#6dd5ff' : (TAG_COLOR[tag] || '#ffd23d'), wid: 'turret', small: true });
+          spawnBullet({ x: a.x + Math.cos(a.ang) * 16, y: a.y + Math.sin(a.ang) * 16, vx: Math.cos(a.ang) * 860, vy: Math.sin(a.ang) * 860, r: 3.5, dmg: 11 * BS.dmgMult * dynDmg(), team: 'p', life: 0.75, tag: tag === 'exp' ? 'bullet' : tag, pierce: 0, color: a.type === 'robot' ? '#6dd5ff' : (TAG_COLOR[tag] || '#ffd23d'), wid: 'turret', small: true });
           SFX.play('smg', 0.4);
         }
       }
@@ -381,7 +420,7 @@ function playerHazards() {
       case 'oil': r.slow = Math.min(r.slow, 0.85); break;
       case 'fire': if (!h.player) damagePlayer(6, null); break;
       case 'toxic': damagePlayer(5, null); break;
-      case 'water': if (h.elecT > 0 && !h.player) damagePlayer(8, null); break;
+      case 'water': if (h.elecT > 0 && !h.player) damagePlayer(8, null); if (run.char === 'marin') r.slow = Math.max(r.slow, 1.25); break;
       case 'steam': if (h.on) { P.chillT = Math.max(P.chillT, 1); damagePlayer(4, null); } break;
       case 'elecfloor': if (h.state === 'on') damagePlayer(10, null); break;
       case 'laser': if (h.state === 'on') damagePlayer(15, null); break;

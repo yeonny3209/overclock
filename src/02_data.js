@@ -23,12 +23,21 @@ const STATUS_INFO = {
 
 // ---------- 캐릭터 ----------
 const CHARS = {
-  rain: { name: '레인', role: '돌격', color: '#ff5a5a', hp: 150, weapon: 'smg', startGrade: 1, skill: '과충전', skillDesc: '5초간 연사 속도 2배 + 피해 +20%, 재장전 불필요', cd: 14, passive: '체력 30% 이하일 때 피해 +25%', unlock: null },
+  rain: { name: '레인', role: '돌격', color: '#ff5a5a', hp: 150, weapon: 'smg', startGrade: 1, skill: '과충전', skillDesc: '5초간 연사 속도 2배 + 피해 +20%, 재장전 불필요', cd: 14, passive: '연사 속도 +15%, 체력 30% 이하일 때 피해 +25%', unlock: null },
   momo: { name: '모모', role: '기술자', color: '#ffd23d', hp: 160, weapon: 'pistol', startGrade: 1, skill: '포탑 설치', skillDesc: '25초간 자동 사격 포탑 설치 (최대 3개). 포탑은 내 무기 속성을 쏜다.', cd: 7, passive: '상점 가격 -25%, 전투 시작 시 포탑 1개 자동 배치', unlock: { cond: '구역 2 클리어', chips: 40, check: () => SAVE.stats.zone2 } },
   kai: { name: '카이', role: '기동', color: '#3dffb0', hp: 155, weapon: 'shotgun', startGrade: 1, skill: '반사 베기', skillDesc: '넓은 부채꼴을 강하게 베고 적 탄환을 3배 위력으로 되돌림. 베는 순간 무적.', cd: 4, passive: '구르기 2회 충전, 구르기 후 1.5초간 피해 +40%', unlock: { cond: '구르기로 탄환 500발 회피', chips: 60, check: () => SAVE.stats.dodged >= 500 } },
   sera: { name: '세라', role: '저격', color: '#b48cff', hp: 150, weapon: 'sniper', startGrade: 1, skill: '시간 감속', skillDesc: '5초간 주변 시간 70% 감속, 감속 중 내 피해 +30%', cd: 11, passive: '재장전 직후 첫 발 피해 +150%, 치명타 확률 +20%', unlock: { cond: '저격총으로 보스 처치', chips: 80, check: () => SAVE.stats.sniperBoss } }
 };
-const CHAR_IDS = ['rain', 'momo', 'kai', 'sera'];
+// 캐릭터 5~10
+Object.assign(CHARS, {
+  blaze: { name: '블레이즈', role: '화염술사', color: '#ff7a2a', hp: 160, weapon: 'flamer', startGrade: 1, skill: '용암 분출', skillDesc: '주변에 불길 고리를 깔고 가까운 적에게 화상 2중첩', cd: 10, passive: '화상 최대 중첩 +2, 화상 피해 +25%', unlock: { cond: '불 7세트 달성', chips: 50, check: () => SAVE.stats.set7_fire } },
+  volt: { name: '볼트', role: '전격술사', color: '#ffe14d', hp: 145, weapon: 'tesla', startGrade: 1, skill: '천둥 폭풍', skillDesc: '4초간 주변 적에게 낙뢰가 쏟아짐', cd: 12, passive: '감전 연쇄 대상 +1', unlock: { cond: '속성 반응 100회 발동', chips: 50, check: () => SAVE.stats.reactions >= 100 } },
+  nova: { name: '노바', role: '성기사', color: '#fff4b0', hp: 175, weapon: 'lightbeam', startGrade: 1, skill: '빛의 장막', skillDesc: '3초간 무적, 주변 적 실명, 체력 15 회복', cd: 13, passive: '받는 피해 -10%, 실명된 적에게 주는 피해 +20%', unlock: { cond: '보스 5회 처치', chips: 60, check: () => (SAVE.stats.bossKills || 0) >= 5 } },
+  grim: { name: '그림', role: '처형자', color: '#9b6bff', hp: 140, weapon: 'pistol', startGrade: 1, startMods: ['conv_dark'], skill: '그림자 걸음', skillDesc: '조준 방향으로 순간이동하며 지나친 적에게 피해와 침식 3중첩', cd: 6, passive: '피해 +20%, 처형 기준 +5%, 처형할 때 체력 2 회복', unlock: { cond: '처형 50회', chips: 70, check: () => (SAVE.stats.execs || 0) >= 50 } },
+  marin: { name: '마린', role: '조류술사', color: '#3d8bff', hp: 160, weapon: 'hydro', startGrade: 1, skill: '해일', skillDesc: '앞쪽으로 파도를 일으켜 피해와 젖음, 지나간 자리에 물웅덩이', cd: 10, passive: '피해 +10%, 젖은 적 상태 이상 증폭 +25%, 물웅덩이 위에서 이동 속도 +25%', unlock: { cond: '구역 3 도달', chips: 50, check: () => SAVE.stats.bestZone >= 3 } },
+  iron: { name: '아이언', role: '중장갑', color: '#a9b8cc', hp: 220, weapon: 'smg', startGrade: 1, startMods: ['conv_metal'], skill: '강철 요새', skillDesc: '4초간 받는 피해 -80%, 때린 적에게 파쇄 3중첩', cd: 12, passive: '체력이 높고 연사 +20%, 이동 속도 -10%, 보스·엘리트 피해 +15%', unlock: { cond: '누적 처치 1500', chips: 70, check: () => SAVE.stats.kills >= 1500 } }
+});
+const CHAR_IDS = ['rain', 'momo', 'kai', 'sera', 'blaze', 'volt', 'nova', 'grim', 'marin', 'iron'];
 function charUnlocked(id) { const c = CHARS[id]; return !c.unlock || !!SAVE.unlocks['char_' + id] || c.unlock.check(); }
 
 // ---------- 무기 ----------
@@ -302,6 +311,12 @@ const UNLOCKS = [
   { id: 'char_momo', cat: '캐릭터', name: '모모 (기술자)', desc: '포탑 설치 스킬. 조건: 구역 2 클리어', cost: 40 },
   { id: 'char_kai', cat: '캐릭터', name: '카이 (기동)', desc: '반사 베기 스킬. 조건: 구르기로 탄환 500발 회피', cost: 60 },
   { id: 'char_sera', cat: '캐릭터', name: '세라 (저격)', desc: '시간 감속 스킬. 조건: 저격총으로 보스 처치', cost: 80 },
+  { id: 'char_blaze', cat: '캐릭터', name: '블레이즈 (화염술사)', desc: '용암 분출 스킬. 조건: 불 7세트 달성', cost: 50 },
+  { id: 'char_volt', cat: '캐릭터', name: '볼트 (전격술사)', desc: '천둥 폭풍 스킬. 조건: 속성 반응 100회', cost: 50 },
+  { id: 'char_nova', cat: '캐릭터', name: '노바 (성기사)', desc: '빛의 장막 스킬. 조건: 보스 5회 처치', cost: 60 },
+  { id: 'char_grim', cat: '캐릭터', name: '그림 (처형자)', desc: '그림자 걸음 스킬. 조건: 처형 50회', cost: 70 },
+  { id: 'char_marin', cat: '캐릭터', name: '마린 (조류술사)', desc: '해일 스킬. 조건: 구역 3 도달', cost: 50 },
+  { id: 'char_iron', cat: '캐릭터', name: '아이언 (중장갑)', desc: '강철 요새 스킬. 조건: 누적 처치 1500', cost: 70 },
   { id: 'wpn_boomerang', cat: '무기 풀', name: '부메랑 원반', desc: '상점과 상자에 부메랑 원반(바람) 등장', cost: 25 },
   { id: 'wpn_blackhole', cat: '무기 풀', name: '블랙홀 발사기', desc: '상점과 상자에 블랙홀 발사기(어둠) 등장', cost: 35 },
   { id: 'upg_A', cat: '강화 풀', name: '강화 팩 A', desc: '화염 갑옷, 방전, 대구경, 집중, 투자 추가', cost: 30 },

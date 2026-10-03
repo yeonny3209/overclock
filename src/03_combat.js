@@ -71,6 +71,21 @@ function recomputeBuild() {
     comboTime: 3 + 2 * u('combokeep'), invest: 8 * u('invest'), lucky: 0.2 * u('lucky'),
     coinMult: c.avarice ? 2 : 1, enemyMult: c.avarice ? 1.25 : 1, berserk: !!c.berserk, noHeal: !!c.berserk
   };
+  BS.execFlat = 0;
+  if (run) {
+    // 캐릭터 패시브
+    switch (run.char) {
+      case 'rain': BS.rateMult *= 1.15; break;
+      case 'blaze': BS.burnMax += 2; BS.burnDmg *= 1.25; break;
+      case 'volt': BS.chainN += 1; break;
+      case 'nova': BS.takenMult *= 0.9; BS.halo += 0.2; break;
+      case 'grim': BS.execFlat = 0.05; BS.dmgMult *= 1.2; break;
+      case 'marin': BS.soakAmp += 0.25; BS.dmgMult *= 1.1; break;
+      case 'iron': BS.moveMult *= 0.9; BS.bigSlayer += 0.15; BS.rateMult *= 1.2; break;
+    }
+    // 세트 달성 기록 (캐릭터 해금 조건)
+    if (run.mode !== 'arena') for (const t of SET_TAGS) if (tags[t] >= 7 && !SAVE.stats['set7_' + t]) { SAVE.stats['set7_' + t] = true; saveGame(); }
+  }
   if (run) {
     const old = run.maxHp || 0;
     let mh = run.baseMaxHp + 15 * u('armor') + (BS.surv3 ? 40 : 0);
@@ -716,7 +731,7 @@ function chainLightning(e, dmg, n, rechain) {
 }
 function checkExecute(e, o = {}) {
   if (e.dead || e.boss || !(e.corrode > 0) || e.hp <= 0) return false;
-  const thr = Math.min(BS.execCap, BS.execPer * e.corrode);
+  const thr = Math.min(BS.execCap, BS.execPer * e.corrode + BS.execFlat);
   if (e.hp > e.maxHp * thr) return false;
   // 처형
   floatText(e.x, e.y - e.r - 20, '처형', TAG_COLOR.dark, 18);
@@ -870,6 +885,7 @@ function killEnemy(e, o = {}) {
     }
     if (BS.reaper) P.reaperShots = 3;
     if (BS.cdRefund) P.skillCd = Math.max(0, P.skillCd - 1);
+    if (run.char === 'grim') healRun(2, true);
     if (BS.aw.dark) room.vortices.push({ x: e.x, y: e.y, t: 1.5, max: 1.5, r: 170, dmg: 6 * BS.dmgMult, tick: 0, tag: 'dark', stacks: 1 });
   }
   if (o.isExp && BS.chaindet) explode(e.x, e.y, 65 + 20 * (BS.chaindet - 1), 18 * BS.chaindet, { small: true, noSelf: true });
@@ -887,7 +903,8 @@ function damagePlayer(dmg, src) {
     part({ x: P.x, y: P.y, vx: 0, vy: 0, life: 0.3, size: 40, color: '#6dff8a', kind: 'ring' });
     return;
   }
-  dmg *= G.eDmgMult * BS.takenMult;
+  dmg *= G.eDmgMult * BS.takenMult * (P.fortT > 0 ? 0.2 : 1);
+  if (P.fortT > 0 && src && !src.dead && src.type && !src.ally) applyStatus(src, 'metal', { stacks: 3 });
   run.hp -= dmg; P.iframe = 0.75; P.hurtT = 0.25;
   breakCombo();
   if (BS.berserk) run.berserk = 0;

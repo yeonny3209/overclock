@@ -47,7 +47,7 @@ function showCharSelect(mode) {
         <h3 style="color:${c.color}">${c.name} <span class="muted small">${c.role}</span></h3>
         <p><b>스킬 · ${c.skill}</b><br>${c.skillDesc}<br><span class="muted small">대기 ${c.cd}초</span></p>
         <p style="margin-top:6px"><b>패시브</b><br>${c.passive}</p>
-        <p style="margin-top:6px" class="muted">시작 무기: ${WEAPONS[c.weapon].name}${id === 'momo' ? ' + 포탑' : ''} · 체력 ${c.hp}</p>
+        <p style="margin-top:6px" class="muted">시작 무기: ${GRADES[c.startGrade || 0].name} ${WEAPONS[c.weapon].name}${c.startMods ? ' (' + c.startMods.map(m => MODS[m].name.replace('속성 변환기: ', '') + ' 변환').join(', ') + ')' : ''} · 체력 ${c.hp}</p>
         ${ok ? '' : `<p style="margin-top:8px;color:#ff4d6d"><b>잠김</b> — ${c.unlock.cond}<br>또는 코어 칩 ◈${c.unlock.chips}로 해금</p>`}
       </div>`;
     }).join('');

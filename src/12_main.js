@@ -11,6 +11,8 @@ function newRun(mode, charId, oc, seed) {
   recomputeBuild();
   run.hp = run.maxHp;
   run.weapons = [makeWeapon(CHARS[charId].weapon, CHARS[charId].startGrade || 0)];
+  (CHARS[charId].startMods || []).forEach((m, i) => { if (i < run.weapons[0].mods.length) run.weapons[0].mods[i] = m; });
+  fixAmmo(run.weapons[0]);
   codex('weapon', CHARS[charId].weapon);
   SAVE.stats.runs++; saveGame();
 }
