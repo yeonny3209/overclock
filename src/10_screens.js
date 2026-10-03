@@ -4,6 +4,7 @@ function cb(fn) { const id = ++CBID; CBS[id] = fn; return `CBrun(${id})`; }
 function CBrun(id) { SFX.init(); SFX.play('ui'); const f = CBS[id]; if (f) f(); }
 function UI(html) {
   for (const k in CBS) if (+k < CBID - 800) delete CBS[k];
+  if (radioState) { clearInterval(radioState.timer); radioState = null; } // 화면이 바뀌면 무전은 닫는다
   $('ui').innerHTML = html;
 }
 function scr(html, cls = '') { UI(`<div class="scr ${cls}">${html}</div>`); }
@@ -17,13 +18,13 @@ function showTitle() {
     <div class="logo">오버클럭</div>
     <div class="logo-en">OVERCLOCK</div>
     <div class="col">
-      ${(() => { const r = peekRun(); return r ? `<button class="btn big ye" onclick="${cb(resumeRun)}">▶ 이어하기 <span class="muted small">${CHARS[r.char].name} · 구역 ${r.zone + 1} · ${r.mode === 'daily' ? '일일' : r.oc ? 'OC' + r.oc : '캠페인'}</span></button>` : ''; })()}
-      <button class="btn big" onclick="${cb(() => showCharSelect('campaign'))}">${peekRun() ? '새 캠페인' : '▶ 캠페인'}</button>
+      ${(() => { const r = peekRun('campaign'); return r ? `<button class="btn big ye" onclick="${cb(() => resumeRun('campaign'))}">▶ 이어하기 <span class="muted small">${CHARS[r.char].name} · 구역 ${r.zone + 1}${r.oc ? ' · OC' + r.oc : ''}</span></button>` : ''; })()}
+      <button class="btn big" onclick="${cb(() => showCharSelect('campaign'))}">${peekRun('campaign') ? '새 캠페인' : '▶ 캠페인'}</button>
       <button class="btn" onclick="${cb(() => showCharSelect('arena'))}">무한 아레나 <span class="muted small">최고 ${SAVE.arenaBest}웨이브</span></button>
       <button class="btn" onclick="${cb(showDaily)}">일일 도전</button>
       <div class="row" style="gap:0">
         <button class="btn mg sm" style="min-width:108px" onclick="${cb(showUnlocks)}">해금 <span class="coin">◈${SAVE.chips}</span></button>
-        <button class="btn mg sm" style="min-width:108px" onclick="${cb(() => showCodex('weapon'))}">도감</button>
+        <button class="btn mg sm" style="min-width:108px" onclick="${cb(() => showCodex('element'))}">도감</button>
         <button class="btn mg sm" style="min-width:108px" onclick="${cb(() => showSettings(showTitle))}">설정</button>
       </div>
     </div>
@@ -174,11 +175,13 @@ function buildSummaryHTML() {
   const ups = Object.keys(run.ups).map(id => `<span class="tag" style="background:${TAG_COLOR[UPG[id].tag]}">${UPG[id].name}${run.ups[id] > 1 ? ' ×' + run.ups[id] : ''}</span>`).join('') || '<span class="muted">없음</span>';
   const sets = SET_TAGS.map(t => {
     const n = run.tags[t] || 0;
-    return `<tr><td>${tagHTML(t)} ${n}</td><td style="color:${n >= 3 ? TAG_COLOR[t] : '#5a6080'}">3: ${SETS[t][0]}</td><td style="color:${n >= 5 ? TAG_COLOR[t] : '#5a6080'}">5: ${SETS[t][1]}</td><td style="color:${n >= 7 ? TAG_COLOR[t] : '#5a6080'}">7: ${SETS[t][2]}</td></tr>`;
-  }).join('') + `<tr><td colspan="4" style="color:${run.prism ? '#ff3df0' : '#5a6080'};padding-top:8px">◆ ${PRISM}</td></tr>`;
+    if (!n) return '';
+    const col = k => n >= k ? TAG_COLOR[t] : '#5a6080';
+    return `<tr><td style="white-space:nowrap">${tagHTML(t)} ${n}</td><td style="color:${col(3)}">3: ${SETS[t][0]}</td><td style="color:${col(5)}">5: ${SETS[t][1]}</td><td style="color:${col(7)}">7: ${SETS[t][2]}</td><td style="color:${n >= 9 ? '#ff3df0' : '#5a6080'}">9: ${SETS[t][3]}</td></tr>`;
+  }).join('') || '<tr><td class="muted">아직 태그가 있는 강화가 없다</td></tr>';
   const curses = Object.keys(run.curses).map(c => `<span class="tag" style="background:#ff2d55;color:#fff">${CURSE[c].name}: ${CURSE[c].gain} / ${CURSE[c].cost}</span>`).join('');
   return `<div class="panel" style="width:min(900px,94vw)"><b>강화</b><div style="margin:6px 0">${ups}</div>${curses ? `<b>저주</b><div style="margin:6px 0">${curses}</div>` : ''}
-    <b>세트 효과</b><table class="tb" style="margin-top:6px">${sets}</table>
+    <b>세트 효과</b> <span class="muted small">${PRISM}</span><div style="overflow-x:auto"><table class="tb" style="margin-top:6px">${sets}</table></div>
     ${run.bag.length ? `<div style="margin-top:8px"><b>가방 속 부품</b> ${run.bag.map(m => `<span class="tag" style="background:#29f0ff">${MODS[m].name}</span>`).join('')} <span class="muted small">(정비소에서 장착/교체)</span></div>` : ''}</div>`;
 }
 function showLoadout(back) {
@@ -193,15 +196,20 @@ function genUpgradeChoices(count, rare) {
   let pool = upgradePool().filter(u => (run.ups[u.id] || 0) < (u.max || 1));
   const out = [];
   const take = list => { if (!list.length) return null; const u = rweighted(list, x => x.rare ? 0.55 : 1); pool = pool.filter(p => p !== u); out.push(u); return u; };
-  if (rare) take(pool.filter(u => u.rare));
-  // 현재 빌드와 같은 태그 1개 보정
+  let guaranteed = null;
+  if (rare) guaranteed = take(pool.filter(u => u.rare));
+  // 현재 빌드와 같은 태그 보정: 1개 보장, 3개 이상 모았으면 50% 확률로 1개 더
   const top = SET_TAGS.filter(t => run.tags[t]).sort((a, b) => run.tags[b] - run.tags[a])[0];
   if (top && !out.some(u => u.tag === top)) take(pool.filter(u => u.tag === top));
+  if (top && run.tags[top] >= 3 && out.length < count && RNG() < 0.5) take(pool.filter(u => u.tag === top));
   while (out.length < count && pool.length) take(pool);
   rshuffle(out);
   const choices = out.map(u => ({ kind: 'up', u }));
   const curses = CURSES.filter(c => !run.curses[c.id]);
-  if (choices.length >= 3 && curses.length && RNG() < 0.2) choices[2] = { kind: 'curse', c: rp(curses) };
+  if (choices.length >= 3 && curses.length && RNG() < 0.2) {
+    const idx = choices.findIndex(ch => ch.u !== guaranteed && (!top || ch.u.tag !== top));
+    if (idx >= 0) choices[idx] = { kind: 'curse', c: rp(curses) };
+  }
   return choices;
 }
 function openUpgradePick(opts, done) {
@@ -218,13 +226,13 @@ function openUpgradePick(opts, done) {
         <p style="color:#6dff8a">▲ ${c.gain}</p><p style="color:#ff4d6d">▼ ${c.cost}</p></div>`;
     }
     const u = ch.u, have = run.ups[u.id] || 0, n = (run.tags[u.tag] || 0) + 1;
-    const setHint = SETS[u.tag] ? (n === 3 ? `<p style="color:${TAG_COLOR[u.tag]};margin-top:6px">★ 3세트 발동: ${SETS[u.tag][0]}</p>` : n === 5 ? `<p style="color:${TAG_COLOR[u.tag]};margin-top:6px">★★ 5세트 발동: ${SETS[u.tag][1]}</p>` : n === 7 ? `<p style="color:${TAG_COLOR[u.tag]};margin-top:6px">★★★ 7세트 발동: ${SETS[u.tag][2]}</p>` : `<p class="muted small" style="margin-top:6px">${TAG_NAME[u.tag]} 태그 ${n}개째</p>`) : '';
+    const setHint = SETS[u.tag] ? (n === 3 ? `<p style="color:${TAG_COLOR[u.tag]};margin-top:6px">★ 3세트 발동: ${SETS[u.tag][0]}</p>` : n === 5 ? `<p style="color:${TAG_COLOR[u.tag]};margin-top:6px">★★ 5세트 발동: ${SETS[u.tag][1]}</p>` : n === 7 ? `<p style="color:${TAG_COLOR[u.tag]};margin-top:6px">★★★ 7세트 발동: ${SETS[u.tag][2]}</p>` : n === 9 ? `<p style="color:#ff3df0;margin-top:6px">◆ 프리즘 각성: ${SETS[u.tag][3]}</p>` : `<p class="muted small" style="margin-top:6px">${TAG_NAME[u.tag]} 태그 ${n}개째</p>`) : '';
     return `<div class="card ${u.rare ? 'legend' : ''}" onclick="${cb(() => { addUpgrade(u.id); SFX.play('pick'); finish(); })}">
       ${u.rare ? '<span class="rib" style="color:#ffb52e">희귀</span>' : ''}
       <div>${tagHTML(u.tag)}</div><h3 style="margin-top:6px">${u.name}</h3><p>${u.desc}</p>
       ${u.max > 1 ? `<p class="muted small">보유 ${have}/${u.max}</p>` : ''}${setHint}</div>`;
   }).join('');
-  scr(`${topbar()}<h2>${opts.title || '강화 선택'}</h2><div class="sub">${opts.rare ? '엘리트 보상: 희귀 강화 포함' : '하나를 골라 빌드를 완성하라'}</div>
+  scr(`${topbar()}<h2>${opts.title || '강화 선택'}</h2><div class="sub">${opts.sub || (opts.rare ? '희귀 강화 포함' : '하나를 골라 빌드를 완성하라')}</div>
     <div class="row">${cards}</div>
     <button class="btn sm" style="margin-top:16px" onclick="${cb(finish)}">건너뛰기</button>`, prevScreen === 'combat' ? 'clear' : '');
 }

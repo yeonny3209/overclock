@@ -117,19 +117,32 @@ function drawHUD() {
     hudText(i === run.cur ? '' : 'Q', bx + bw - 12, by + 18, 11, '#8a90b0', 'right');
     ctx.globalAlpha = 1;
   }
-  // 태그 (좌하단)
-  let tx = pad, ty = VH - pad - 6;
+  // 태그 (좌하단, 폭이 모자라면 줄바꿈)
+  const maxX = VW - pad - 230;
+  const chips = [];
   for (const t of SET_TAGS) {
     const n = run.tags[t]; if (!n) continue;
-    const lbl = `${TAG_NAME[t]} ${n}${n >= 7 ? ' ★★★' : n >= 5 ? ' ★★' : n >= 3 ? ' ★' : ''}`;
-    ctx.font = `12px ${FONT}`; const w = ctx.measureText(lbl).width + 14;
-    ctx.fillStyle = 'rgba(6,5,16,0.8)'; ctx.fillRect(tx, ty - 18, w, 22);
-    ctx.fillStyle = TAG_COLOR[t]; ctx.fillRect(tx, ty - 18, 3, 22);
-    hudText(lbl, tx + 8, ty - 2, 12, n >= 3 ? TAG_COLOR[t] : '#c5cae6');
-    tx += w + 6;
+    const lbl = `${TAG_NAME[t]} ${n}${n >= 9 ? ' ◆' : n >= 7 ? ' ★★★' : n >= 5 ? ' ★★' : n >= 3 ? ' ★' : ''}`;
+    ctx.font = `12px ${FONT}`;
+    chips.push({ t, n, lbl, w: ctx.measureText(lbl).width + 14 });
   }
-  if (run.prism) hudText(`◆ 프리즘 폭발 ${Math.ceil(Math.max(0, run.prismT || 0))}초`, pad, VH - pad - 52, 13, `hsl(${(G.time * 120) % 360},100%,70%)`);
-  hudText('ESC 일시정지', pad, VH - pad - 32, 11, '#5a6080');
+  let rows = [[]], rw = 0;
+  for (const c of chips) { if (rw + c.w > maxX - pad && rows[rows.length - 1].length) { rows.push([]); rw = 0; } rows[rows.length - 1].push(c); rw += c.w + 6; }
+  rows = rows.filter(r => r.length);
+  let ty = VH - pad - 6 - (rows.length - 1) * 26;
+  for (const r of rows) {
+    let tx = pad;
+    for (const c of r) {
+      ctx.fillStyle = 'rgba(6,5,16,0.8)'; ctx.fillRect(tx, ty - 18, c.w, 22);
+      ctx.fillStyle = TAG_COLOR[c.t]; ctx.fillRect(tx, ty - 18, 3, 22);
+      hudText(c.lbl, tx + 8, ty - 2, 12, c.n >= 9 ? `hsl(${(G.time * 120) % 360},100%,75%)` : c.n >= 3 ? TAG_COLOR[c.t] : '#c5cae6');
+      tx += c.w + 6;
+    }
+    ty += 26;
+  }
+  const topY = VH - pad - 6 - rows.length * 26 - (rows.length ? 0 : -20);
+  if (BS.awakened.length) hudText('◆ 각성: ' + BS.awakened.map(t => SETS[t][3].split(':')[0]).join(' · '), pad, topY - 4, 13, `hsl(${(G.time * 120) % 360},100%,72%)`);
+  hudText('ESC 일시정지', pad, topY - (BS.awakened.length ? 22 : 4), 11, '#5a6080');
 
   drawBossBar();
   drawOffscreenArrows();

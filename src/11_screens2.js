@@ -1,5 +1,5 @@
 // ================= 상점 =================
-function priceMult() { return (1 + 0.15 * run.zone) * (run.char === 'momo' ? 0.85 : 1) * (run.oc >= 3 ? 1.2 : 1); }
+function priceMult() { return (1 + 0.15 * run.zone) * (run.char === 'momo' ? 0.75 : 1) * (run.oc >= 3 ? 1.2 : 1); }
 function genShop() {
   const pm = priceMult();
   const items = [];
@@ -22,7 +22,7 @@ function showShop() {
     if (it.kind === 'weapon') offerWeapon(it.w, showShop);
     else if (it.kind === 'mod') offerMod(it.id, showShop);
     else if (it.kind === 'heal') { healRun(it.amt); showShop(); }
-    else if (it.kind === 'upgrade') { addUpgrade(it.id); showShop(); }
+    else if (it.kind === 'upgrade') { if ((run.ups[it.id] || 0) < (UPG[it.id].max || 1)) addUpgrade(it.id); showShop(); }
   };
   const cards = sh.items.map(it => {
     let body = '';
@@ -30,12 +30,13 @@ function showShop() {
     if (it.kind === 'mod') body = `<span class="rib" style="color:#29f0ff">개조 부품</span><h3>${MODS[it.id].name}</h3><p>${MODS[it.id].desc}</p>`;
     if (it.kind === 'heal') body = `<span class="rib" style="color:#6dff8a">회복</span><h3>수리 키트</h3><p>체력 ${it.amt} 회복${BS.noHeal ? '<br><span style="color:#ff4d6d">광전사: 회복 불가</span>' : ''}</p>`;
     if (it.kind === 'upgrade') { const u = UPG[it.id]; body = `<span class="rib" style="color:#c77dff">강화</span><div>${tagHTML(u.tag)}</div><h3 style="margin-top:4px">${u.name}</h3><p>${u.desc}</p>`; }
-    const can = !it.sold && run.coins >= it.price && !(it.kind === 'heal' && (BS.noHeal || run.hp >= run.maxHp));
+    const maxed = it.kind === 'upgrade' && (run.ups[it.id] || 0) >= (UPG[it.id].max || 1);
+    const can = !it.sold && !maxed && run.coins >= it.price && !(it.kind === 'heal' && (BS.noHeal || run.hp >= run.maxHp));
     return `<div class="card ${it.kind === 'weapon' && it.w.grade === 2 ? 'legend' : it.kind === 'weapon' && it.w.grade === 1 ? 'rare' : ''} ${it.sold ? 'locked' : ''}" style="cursor:default">${body}
       <button class="btn sm ye" style="width:100%;margin:10px 0 0" ${can ? '' : 'disabled'} onclick="${cb(() => buy(it))}">${it.sold ? '판매 완료' : `◆ ${it.price}`}</button></div>`;
   }).join('');
   const reroll = SAVE.unlocks.qol_reroll && !sh.rerolled ? `<button class="btn sm mg" onclick="${cb(() => { sh.items = genShop(); sh.rerolled = true; showShop(); })}">새로고침 (무료 1회)</button>` : '';
-  scr(`${topbar()}<h2>상점</h2><div class="sub">"뭐든 코인만 있으면 되지." ${run.char === 'momo' ? '<span style="color:#ffd23d">(모모 할인 -15%)</span>' : ''}</div>
+  scr(`${topbar()}<h2>상점</h2><div class="sub">"뭐든 코인만 있으면 되지." ${run.char === 'momo' ? '<span style="color:#ffd23d">(모모 할인 -25%)</span>' : ''}</div>
     <div class="row">${cards}</div>
     <div class="row" style="margin-top:12px">${reroll}<button class="btn" onclick="${cb(showMap)}">떠나기</button></div>`, 'top');
 }
@@ -131,7 +132,7 @@ function showUnlocks() {
 // ================= 도감 =================
 function showCodex(tab) {
   menuMode();
-  const tabs = { weapon: '무기', enemy: '적', boss: '보스', reaction: '속성 반응', event: '이벤트', elite: '엘리트 변이' };
+  const tabs = { element: '속성', weapon: '무기', enemy: '적', boss: '보스', reaction: '속성 반응', event: '이벤트', elite: '엘리트 변이' };
   const cx = SAVE.codex;
   let items = [];
   const unk = `<div class="card nohover"><h3 class="muted">???</h3><p class="muted">아직 발견하지 못했다.</p></div>`;
@@ -140,11 +141,13 @@ function showCodex(tab) {
   if (tab === 'boss') items = Object.keys(BOSS_INFO).map(id => cx.boss[id] ? `<div class="card nohover legend"><h3>${BOSS_INFO[id].name}</h3><p class="muted small">${BOSS_INFO[id].sub}</p><p>${BOSS_INFO[id].desc}</p></div>` : unk);
   if (tab === 'reaction') items = Object.keys(REACTIONS).map(id => cx.reaction[id] ? `<div class="card nohover"><h3 style="color:${REACTIONS[id].color}">${REACTIONS[id].name}</h3><p>${REACTIONS[id].desc}</p></div>` : `<div class="card nohover"><h3 class="muted">???</h3><p class="muted">속성을 조합해 발견하라.</p></div>`);
   if (tab === 'event') items = EVENTS.map(e => cx.event[e.id] ? `<div class="card nohover"><h3>${e.icon} ${e.name}</h3><p>${e.desc}</p></div>` : unk);
+  if (tab === 'element') items = SET_TAGS.map(t => `<div class="card nohover" style="grid-column:span 2"><h3>${tagHTML(t)} ${STATUS_INFO[t].name}</h3><p>${STATUS_INFO[t].core}</p><p class="small" style="margin-top:6px">3: ${SETS[t][0]}<br>5: ${SETS[t][1]}<br>7: ${SETS[t][2]}<br><span style="color:#ff3df0">9: ${SETS[t][3]}</span></p></div>`);
   if (tab === 'elite') items = ELITE_IDS.map(id => `<div class="card nohover"><h3 style="color:${ELITES[id].color}">${ELITES[id].name}</h3><p>${ELITES[id].desc}</p></div>`);
   const cnt = k => Object.keys(cx[k] || {}).length;
-  const totals = { weapon: WEAPON_IDS.length, enemy: Object.keys(ENEMY_INFO).length, boss: 4, reaction: 5, event: EVENTS.length };
+  const totals = { weapon: WEAPON_IDS.length, enemy: Object.keys(ENEMY_INFO).length, boss: Object.keys(BOSS_INFO).length, reaction: Object.keys(REACTIONS).length, event: EVENTS.length };
+  const cnt2 = k => Object.keys(cx[k] || {}).filter(id => k === 'weapon' ? WEAPONS[id] : k === 'enemy' ? ENEMY_INFO[id] : k === 'boss' ? BOSS_INFO[id] : k === 'reaction' ? REACTIONS[id] : EVENTS.some(e => e.id === id)).length;
   scr(`<h2>도감</h2>
-    <div class="tabs">${Object.keys(tabs).map(k => `<button class="btn ${k === tab ? 'on' : ''}" onclick="${cb(() => showCodex(k))}">${tabs[k]}${totals[k] ? ` ${cnt(k)}/${totals[k]}` : ''}</button>`).join('')}</div>
+    <div class="tabs">${Object.keys(tabs).map(k => `<button class="btn ${k === tab ? 'on' : ''}" onclick="${cb(() => showCodex(k))}">${tabs[k]}${totals[k] ? ` ${cnt2(k)}/${totals[k]}` : ''}</button>`).join('')}</div>
     <div class="list">${items.join('')}</div>
     <button class="btn" style="margin-top:14px" onclick="${cb(showTitle)}">뒤로</button>`, 'top');
 }
@@ -160,7 +163,7 @@ function showSettings(back) {
       <span>음량</span><span><input type="range" min="0" max="1" step="0.05" value="${s.vol}" oninput="SAVE.settings.vol=+this.value;SFX.setVol(+this.value)" onchange="saveGame();SFX.play('coin')"></span>
     </div></div>
     <div class="row"><button class="btn" onclick="${cb(back)}">돌아가기</button>
-    <button class="btn rd sm" onclick="${cb(() => confirmBox('모든 진행 상황을 지울까요?', () => { const st = SAVE.settings; SAVE = defaultSave(); SAVE.settings = st; saveGame(); showTitle(); }, render))}">저장 데이터 초기화</button></div>`);
+    <button class="btn rd sm" onclick="${cb(() => confirmBox('모든 진행 상황을 지울까요?', () => { const st = SAVE.settings; SAVE = defaultSave(); SAVE.settings = st; saveGame(); clearAllRuns(); showTitle(); }, render))}">저장 데이터 초기화</button></div>`);
   };
   render();
 }
@@ -178,7 +181,7 @@ function showDaily() {
       <div class="card nohover charcard"><div class="av" style="color:${CHARS[ch].color};background:${CHARS[ch].color}22"></div><h3 style="color:${CHARS[ch].color}">오늘의 요원: ${CHARS[ch].name}</h3><p>${CHARS[ch].skill} — ${CHARS[ch].skillDesc}</p><p class="muted small">${CHARS[ch].passive}</p></div>
       <div class="panel"><b>오늘 최고 점수</b><div class="big coin" style="margin:6px 0 12px">${best ? fmt(best) : '-'}</div><b>최근 기록</b><table class="tb" style="margin-top:6px">${hist}</table></div>
     </div>
-    <div class="row"><button class="btn" onclick="${cb(showTitle)}">뒤로</button><button class="btn ye" onclick="${cb(() => startCampaign(ch, 1, 'daily', seed))}">도전 시작 ▶</button></div>`);
+    <div class="row"><button class="btn" onclick="${cb(showTitle)}">뒤로</button>${(() => { const r = peekRun('daily'); return r && r.seed === seed ? `<button class="btn ye" onclick="${cb(() => resumeRun('daily'))}">이어하기 (구역 ${r.zone + 1})</button>` : ''; })()}<button class="btn ye" onclick="${cb(() => startCampaign(ch, 1, 'daily', seed))}">${peekRun('daily') && peekRun('daily').seed === seed ? '처음부터' : '도전 시작 ▶'}</button></div>`);
 }
 
 // ================= 일시정지 =================

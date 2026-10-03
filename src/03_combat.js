@@ -1,7 +1,7 @@
 // ================= 전역 상태 =================
 const G = {
-  screen: 'title', paused: false, time: 0, hitstop: 0, slowmo: 0, shakeAmt: 0, flash: 0, flashColor: '255,40,60',
-  reactTexts: [], lastReact: {}, bossIntro: null, glitchT: 0, glitchWarn: 0, mode: 'campaign', texts: [], bolts: [], banner: null
+  screen: 'title', paused: false, time: 0, hitstop: 0, hsCd: 0, slowmo: 0, shakeAmt: 0, flash: 0, flashColor: '255,40,60',
+  reactTexts: [], lastReact: {}, bossIntro: null, glitchT: 0, glitchWarn: 0, mode: 'campaign', texts: [], bolts: [], beams: [], banner: null
 };
 let run = null;   // 한 판의 상태
 let room = null;  // 현재 전투 방
@@ -13,36 +13,63 @@ const cam = { x: 0, y: 0 };
 function recomputeBuild() {
   const u = id => (run && run.ups[id]) || 0;
   const c = run ? run.curses : {};
-  const tags = { fire: 0, elec: 0, ice: 0, exp: 0, bullet: 0, surv: 0 };
+  const tags = {}; for (const t of SET_TAGS) tags[t] = 0;
   if (run) for (const id in run.ups) { const up = UPG[id]; if (up && tags[up.tag] !== undefined) tags[up.tag] += run.ups[id]; }
-  if (run) run.tags = tags;
   const set = (t, n) => tags[t] >= n;
-  const prism = SET_TAGS.some(t => tags[t] >= 9);
-  if (run) run.prism = prism;
+  const aw = {}; for (const t of SET_TAGS) aw[t] = set(t, 9);
+  const awakened = SET_TAGS.filter(t => aw[t]);
+  if (run) { run.tags = tags; run.awaken = awakened; }
+  const surv7 = set('surv', 7);
   BS = {
-    prism,
-    tags,
-    dmgMult: (1 + 0.15 * u('sharp')) * (u('bigcal') ? 1.1 : 1) * (c.glass ? 1.5 : 1) * (set('bullet', 3) ? 1.1 : 1) * (set('bullet', 7) ? 1.25 : 1) * (prism ? 1.8 : 1),
+    tags, aw, awakened, awakenElems: awakened.filter(t => ELEM_TAGS.includes(t)),
+    dmgMult: (1 + 0.15 * u('sharp')) * (u('bigcal') ? 1.1 : 1) * (c.glass ? 1.5 : 1) * (set('bullet', 3) ? 1.1 : 1) * (set('bullet', 7) ? 1.25 : 1) * (awakened.length ? 1.5 : 1),
     rateMult: (1 + 0.15 * u('rapid')) * (c.frenzy ? 1.4 : 1),
     reloadMult: 1 / (1 + 0.3 * u('quickhand')),
-    crit: 0.1 * u('critup') + (prism ? 0.15 : 0), pierce: u('pierce') + (set('bullet', 7) ? 2 : 0),
-    bulletSpd: set('bullet', 3) ? 1.6 : 1, bulletSize: u('bigcal') ? 1.4 : 1,
+    crit: 0.1 * u('critup') + (aw.bullet ? 0.25 : 0),
+    pierce: u('pierce') + (set('bullet', 7) ? 2 : 0),
+    bulletSpd: (set('bullet', 3) ? 1.6 : 1) * (1 + 0.1 * u('tailwind')),
+    bulletSize: u('bigcal') ? 1.4 : 1,
     spreadMult: c.frenzy ? 2.5 : 1, spreadAdd: c.frenzy ? 0.08 : 0, twin: u('twin') > 0,
-    burnChance: 0.2 * u('ignite'), shockChance: 0.15 * u('conductor'), chillChance: 0.2 * u('frosttip'), burstChance: 0.1 * u('burst'),
-    burnDmg: (1 + 0.5 * u('kindling')) * (set('fire', 7) ? 2 : 1), burnDur: 3 + 2 * u('heat'), incinerate: 0.2 * u('incinerate'),
-    spreadfire: u('spreadfire') > 0, firetrail: u('firetrail') > 0, flamearmor: u('flamearmor') > 0,
-    static: u('static') > 0, transfer: 0.5 + 0.3 * u('highvolt'), chargecoil: u('chargecoil'), overcurrent: 0.15 * u('overcurrent'),
-    thunder: u('thunder') > 0, discharge: u('discharge') > 0,
-    chillDur: 1 + 0.5 * u('frostbite'), chillSlow: 0.3 + 0.15 * u('chill'), shards: u('shards') > 0, permafrost: u('permafrost'), frostarmor: u('frostarmor') > 0,
-    chaindet: u('chaindet'), expDmg: (1 + 0.3 * u('hiexp')) * (set('exp', 7) ? 1.5 : 1), expRadius: (1 + 0.15 * u('shockwave')) * (set('exp', 3) ? 1.45 : 1) * (prism ? 1.3 : 1),
-    expKnock: 1 + 0.5 * u('shockwave'), blastroll: u('blastroll') > 0, safety: u('safety') > 0,
-    vamp: u('vamp'), regen: 8 * u('regen'), evasion: u('evasion') ? 1.5 : 1, medkit: u('medkit') > 0, plating: 0.1 * u('plating'),
-    magnet: u('magnet') ? 2 : 1, afterimage: u('afterimage') > 0, cdMult: Math.pow(0.8, u('cooldown')), moveMult: (1 + 0.1 * u('swift')) * (prism ? 1.15 : 1),
+    extraShots: aw.bullet, infAmmo: aw.bullet, pierceEvery: set('bullet', 5) ? 3 : 0,
+    onHit: { fire: 0.2 * u('ignite'), elec: 0.15 * u('conductor'), ice: 0.2 * u('frosttip'), metal: 0.25 * u('shrapnel'), light: 0.15 * u('flashround'), dark: 0.2 * u('hex'), wind: 0.2 * u('gale'), water: 0.25 * u('splash') },
+    burstChance: 0.1 * u('burst'),
+    // 불
+    burnDmg: (1 + 0.5 * u('kindling')) * (set('fire', 7) ? 2 : 1), burnDur: 3 + 2 * u('heat'), burnTick: u('spreadfire') ? 0.35 : 0.5,
+    burnMax: aw.fire ? 10 : set('fire', 5) ? 5 : 1, incinerate: 0.2 * u('incinerate'), firetrail: u('firetrail') > 0, flamearmor: u('flamearmor') > 0,
+    fire3: set('fire', 3), fire7: set('fire', 7),
+    // 전기
+    static: u('static') > 0, transfer: set('elec', 7) ? Math.max(1, 0.5 + 0.3 * u('highvolt')) : 0.5 + 0.3 * u('highvolt'),
+    chargecoil: u('chargecoil'), overcurrent: 0.15 * u('overcurrent'), thunder: u('thunder') > 0, discharge: u('discharge') > 0,
+    chainN: 1 + (set('elec', 3) ? 2 : 0), rechain: set('elec', 7), elec5: set('elec', 5),
+    // 얼음
+    chillDur: 1 + 0.5 * u('frostbite'), chillSlow: 0.3 + 0.15 * u('chill'), shards: u('shards') > 0, frostarmor: u('frostarmor') > 0,
+    permafrost: u('permafrost') + (set('ice', 7) ? 1 : 0), freezeAt: set('ice', 7) ? 2 : 3, frozenBonus: set('ice', 3) ? 0.5 : 0, ice5: set('ice', 5),
+    // 금속
+    shredPer: (set('metal', 7) ? 0.08 : 0.05) + 0.02 * u('hardened'), shredMax: set('metal', 3) ? 10 : 5, shredDur: 6 + 4 * u('grind'),
+    bigSlayer: 0.15 * u('heavy') + (set('metal', 5) ? 0.25 : 0), ironskin: u('ironskin') > 0, anvil: u('anvil') > 0,
+    // 빛
+    blindDur: 1.5 + 0.7 * u('glare') + (set('light', 3) ? 1 : 0), halo: 0.25 * u('halo'), lens: u('lens') > 0, dawn: u('dawn') > 0, refract: u('refract') > 0,
+    blindCrit: set('light', 5), beamEvery: set('light', 7) ? 4 : 0,
+    // 어둠
+    execPer: (set('dark', 5) ? 0.06 : 0.03) + 0.01 * u('decay'), execCap: aw.dark ? 0.4 : 0.3, corrodeMax: 5 + 2 * u('nightfall') + (aw.dark ? 5 : 0),
+    reaper: u('reaper') > 0, curseblood: u('curseblood') > 0, umbra: u('umbra') > 0, souls: set('dark', 3), cdRefund: set('dark', 7),
+    // 바람
+    gust: 230 * (1 + 0.4 * u('crosswind')), slamMult: (1 + 0.5 * u('impact')) * (set('wind', 3) ? 2 : 1), updraft: u('updraft') > 0, cyclone: u('cyclone') > 0,
+    crash: set('wind', 7), rollCdMult: set('wind', 5) ? 0.6 : 1,
+    // 물
+    soakDur: 4 + 2 * u('deluge'), soakAmp: (set('water', 5) ? 2 : 1.5) + 0.25 * u('catalyst'), spray: u('spray') > 0, pressure: u('pressure') > 0, riptide: u('riptide') > 0,
+    puddleOnDeath: set('water', 3), reactAmp: set('water', 7) ? 2 : 1,
+    // 폭발
+    chaindet: u('chaindet'), expDmg: (1 + 0.3 * u('hiexp')) * (set('exp', 7) ? 1.5 : 1), expRadius: (1 + 0.15 * u('shockwave')) * (set('exp', 3) ? 1.45 : 1),
+    blastroll: u('blastroll') > 0, safety: u('safety') > 0 || aw.exp, exp5: set('exp', 5), exp7: set('exp', 7),
+    // 생존
+    vamp: u('vamp'), regen: 8 * u('regen'), evasion: u('evasion') ? 1.5 : 1, medkit: u('medkit') > 0, surv3: set('surv', 3), surv5: set('surv', 5), surv7,
+    takenMult: (1 - 0.1 * u('plating')) * (surv7 ? 0.85 : 1) * (aw.surv ? 0.75 : 1), revive: aw.surv,
+    // 기타
+    magnet: u('magnet') ? 2 : 1, afterimage: u('afterimage') > 0, cdMult: Math.pow(0.8, u('cooldown')),
+    moveMult: (1 + 0.1 * u('swift')) * (1 + 0.08 * u('tailwind')) * (set('wind', 5) ? 1.2 : 1),
     comboTime: 3 + 2 * u('combokeep'), invest: 8 * u('invest'), lucky: 0.2 * u('lucky'),
-    coinMult: c.avarice ? 2 : 1, enemyMult: c.avarice ? 1.25 : 1, berserk: !!c.berserk, noHeal: !!c.berserk,
-    fire3: set('fire', 3), fire5: set('fire', 5), elec3: set('elec', 3), elec5: set('elec', 5), ice3: set('ice', 3), ice5: set('ice', 5),
-    exp3: set('exp', 3), exp5: set('exp', 5), bullet3: set('bullet', 3), bullet5: set('bullet', 5), surv3: set('surv', 3), surv5: set('surv', 5),
-    fire7: set('fire', 7), elec7: set('elec', 7), ice7: set('ice', 7), exp7: set('exp', 7), bullet7: set('bullet', 7), surv7: set('surv', 7)
+    coinMult: c.avarice ? 2 : 1, enemyMult: c.avarice ? 1.25 : 1, berserk: !!c.berserk, noHeal: !!c.berserk
   };
   if (run) {
     const old = run.maxHp || 0;
@@ -59,16 +86,16 @@ function healRun(n, silent) {
   if (!run || BS.noHeal) { if (!silent && run) toast('광전사: 회복 불가'); return 0; }
   const before = run.hp; run.hp = Math.min(run.maxHp, run.hp + n);
   const h = run.hp - before;
-  if (h > 0 && P && G.screen === 'combat') { floatText(P.x, P.y - 26, '+' + Math.round(h), '#6dff8a', 18); SFX.play('heal'); }
+  if (h > 0 && P && room && G.screen === 'combat') { floatText(P.x, P.y - 26, '+' + Math.round(h), '#6dff8a', 18); SFX.play('heal'); }
   return h;
 }
 function hurtRun(n) { run.hp = Math.max(1, run.hp - n); }
-function addUpgrade(id) { run.ups[id] = (run.ups[id] || 0) + 1; recomputeBuild(); }
+function addUpgrade(id) { if (!UPG[id]) return; run.ups[id] = Math.min(UPG[id].max || 1, (run.ups[id] || 0) + 1); recomputeBuild(); }
 function applyCurse(id) { run.curses[id] = 1; recomputeBuild(); }
 
 // ================= 무기 인스턴스 =================
 function makeWeapon(id, grade = 0) {
-  const w = { id, grade, mods: new Array(GRADES[grade].slots).fill(null), bonus: null, ammo: 0, cd: 0, reloadT: 0, shots: 0, first: false };
+  const w = { id, grade, mods: new Array(GRADES[grade].slots).fill(null), bonus: null, ammo: 0, cd: 0, reloadT: 0, shots: 0, first: true, spin: 0 };
   if (grade >= 1) w.bonus = rp(Object.keys(RARE_BONUS));
   w.ammo = wStats(w).mag;
   return w;
@@ -83,11 +110,11 @@ function gradeUp(w) {
 function weaponName(w) { return w.grade === 2 ? `${LEGEND[w.id].name}(${WEAPONS[w.id].name})` : `${GRADES[w.grade].name} ${WEAPONS[w.id].name}`; }
 function randomWeaponId(exclude) { const pool = weaponPool().filter(id => id !== exclude); return rp(pool); }
 function rollGrade(w = [60, 32, 8]) { const r = RNG() * (w[0] + w[1] + w[2]); return r < w[0] ? 0 : r < w[0] + w[1] ? 1 : 2; }
-function curW() { return run.weapons[run.cur]; }
+function curW() { return run.weapons[run.cur] || run.weapons[0]; }
 
 function wStats(w) {
   const b = WEAPONS[w.id]; const s = Object.assign({}, b);
-  for (const m of w.mods) if (m && MODS[m].conv) s.tag = MODS[m].conv;
+  for (const m of w.mods) if (m && MODS[m] && MODS[m].conv) s.tag = MODS[m].conv;
   let dm = 1, rm = 1, mm = 1, rl = 1, sp = 1, crit = 0.05;
   switch (w.bonus) {
     case 'dmg': dm *= 1.15; break; case 'rate': rm *= 1.15; break; case 'mag': mm *= 1.4; break;
@@ -100,19 +127,26 @@ function wStats(w) {
   s.dmg = b.dmg * dm; s.rate = b.rate * rm;
   s.mag = b.mag === Infinity ? Infinity : Math.max(1, Math.round(b.mag * mm));
   s.reload = b.reload * rl; s.crit = crit; s.spd = b.spd * sp; s.pierce = b.pierce + BS.pierce;
-  s.r = b.r * BS.bulletSize; s.spread = b.spread * BS.spreadMult + (b.type === 'tesla' ? 0 : BS.spreadAdd);
-  s.legend = w.grade === 2; s.critMult = 2;
+  s.r = b.r * BS.bulletSize; s.spread = b.spread * BS.spreadMult + (b.type === 'tesla' || b.type === 'beam' ? 0 : BS.spreadAdd);
+  s.legend = w.grade === 2; s.critMult = 2; s.stacks = 1;
   s.ric = w.mods.includes('ricochet') ? 1 : 0; s.split = w.mods.includes('split'); s.homing = w.mods.includes('homing'); s.silencer = w.mods.includes('silencer');
   if (s.legend) {
     if (w.id === 'pistol') { s.crit += 0.25; s.critMult = 3; }
-    if (w.id === 'shotgun') { s.pellets += 3; s.knock += 200; }
+    if (w.id === 'shotgun') s.pellets += 3;
     if (w.id === 'tesla') s.chain += 3;
+    if (w.id === 'smg') s.rate *= 1 + 0.6 * (w.spin || 0);
+    if (w.id === 'flamer') { s.life *= 1.5; s.stacks = 2; }
+    if (w.id === 'hydro') s.pierce += 3;
   }
+  if (run && run.char === 'sera') s.crit += 0.2;
   return s;
 }
 function dynDmg() {
   let m = 1;
   if (run.char === 'rain' && run.hp <= run.maxHp * 0.3) m *= 1.25;
+  if (run.char === 'kai' && P && P.momT > 0) m *= 1.4;
+  if (run.char === 'sera' && P && P.slowT > 0) m *= 1.3;
+  if (run.char === 'rain' && P && P.overT > 0) m *= 1.2;
   if (BS.berserk) m *= 1 + Math.min(0.9, 0.03 * run.berserk);
   return m;
 }
@@ -129,9 +163,9 @@ function spawnBullet(o) {
   b.x = o.x; b.y = o.y; b.px = o.x; b.py = o.y; b.vx = o.vx || 0; b.vy = o.vy || 0; b.r = o.r || 4; b.dmg = o.dmg || 0;
   b.team = o.team || 'p'; b.life = b.maxLife = o.life || 1; b.pierce = o.pierce || 0; b.tag = o.tag || 'bullet';
   b.crit = !!o.crit; b.color = o.color || '#fff'; b.knock = o.knock || 0; b.type = o.type || 'n'; b.ric = o.ric || 0;
-  b.split = !!o.split; b.homing = !!o.homing; b.explosive = !!o.explosive; b.owner = o.owner || null; b.wid = o.wid || null;
+  b.split = !!o.split; b.homing = !!o.homing; b.owner = o.owner || null; b.wid = o.wid || null;
   b.t = 0; b.dodged = false; b.dead = false; b.returning = false; b.aoe = o.aoe || 0; b.legend = !!o.legend;
-  b.chill = !!o.chill; b.status = o.status || null; b.pierced = 0; b.small = !!o.small; b.big = !!o.big;
+  b.chill = !!o.chill; b.status = o.status || null; b.pierced = 0; b.small = !!o.small; b.big = !!o.big; b.stacks = o.stacks || 1;
   b.tx = o.tx || 0; b.ty = o.ty || 0; b.sx = o.x; b.sy = o.y; b.debris = !!o.debris; b.noWall = !!o.noWall; b.accel = o.accel || 0;
   BULLETS.push(b);
   return b;
@@ -178,13 +212,15 @@ function updateBullets(dt) {
         }
       }
     } else if (b.type === 'flame') { b.r += 38 * bdt; b.vx *= 0.97; b.vy *= 0.97; }
+    else if (b.type === 'stream') { b.r += 9 * bdt; b.vx *= 0.985; b.vy *= 0.985; }
     if (b.accel) { b.vx *= 1 + b.accel * bdt; b.vy *= 1 + b.accel * bdt; }
     if (b.homing && b.team === 'p') {
-      let best = null, bd = 260 * 260;
-      for (const e of ens) { if (e.dead || e.invuln) continue; const dd = d2(b.x, b.y, e.x, e.y); if (dd < bd) { bd = dd; best = e; } }
+      let best = null, bd = (b.wid === 'soul' ? 600 : 260) ** 2;
+      for (const e of ens) { if (e.dead || e.invuln || e.spawning || b.hit.has(e)) continue; const dd = d2(b.x, b.y, e.x, e.y); if (dd < bd) { bd = dd; best = e; } }
       if (best) {
         const sp = Math.hypot(b.vx, b.vy), a = Math.atan2(b.vy, b.vx), ta = angTo(b.x, b.y, best.x, best.y);
-        const na = a + clamp(angDiff(a, ta), -3.2 * bdt, 3.2 * bdt);
+        const turn = b.wid === 'soul' ? 8 : 3.2;
+        const na = a + clamp(angDiff(a, ta), -turn * bdt, turn * bdt);
         b.vx = Math.cos(na) * sp; b.vy = Math.sin(na) * sp;
       }
     }
@@ -275,33 +311,36 @@ function updateBullets(dt) {
 }
 
 function bulletHitEnemy(b, e) {
-  let dmg = b.dmg;
-  if (b.legend && b.wid === 'sniper') dmg *= 1 + 0.25 * b.pierced;
-  const wasFrozen = e.frozenT > 0;
-  const ang = Math.atan2(b.vy, b.vx);
   if (b.type === 'grenade') { explodeGrenade(b); b.dead = true; return; }
   if (b.type === 'bh') { spawnVortex(b); b.dead = true; return; }
-  damageEnemy(e, dmg, { tag: b.tag, crit: b.crit, knock: b.knock, ang, wid: b.wid, statusDmg: dmg });
-  if (b.status) applyStatus(e, b.status, { dmg });
-  if (b.team === 'p' && b.tag !== 'fire' && BS.burnChance && Math.random() < BS.burnChance) applyStatus(e, 'fire', { dmg });
-  if (BS.shockChance && b.tag !== 'elec' && Math.random() < BS.shockChance) applyStatus(e, 'elec', { dmg });
-  if (BS.chillChance && b.tag !== 'ice' && Math.random() < BS.chillChance) applyStatus(e, 'ice', { dmg });
-  if (BS.burstChance && Math.random() < BS.burstChance) explode(b.x, b.y, 55, 12, { small: true });
-  if (BS.elec7 && Math.random() < 0.25 && !e.dead) { strike(e.x, e.y); damageEnemy(e, 25 * dynDmg(), { tag: 'elec', noChain: true, quiet: true }); }
-  if (BS.prism && Math.random() < 0.5 && !e.dead) {
-    const pt = pick(['fire', 'elec', 'ice', 'exp']);
-    if (pt === 'exp') explode(e.x, e.y, 50, 10, { small: true, noSelf: true }); else applyStatus(e, pt, { dmg });
-  }
-  if (b.explosive) explode(b.x, b.y, 65, 22, { small: true, wid: b.wid });
+  let dmg = b.dmg;
+  if (b.legend && b.wid === 'sniper') dmg *= 1 + 0.25 * b.pierced;
+  if (b.legend && b.wid === 'shotgun' && P && d2(P.x, P.y, e.x, e.y) < 150 * 150) dmg *= 1.4;
+  const wasFrozen = e.frozenT > 0;
+  const ang = Math.atan2(b.vy, b.vx);
+  damageEnemy(e, dmg, { tag: b.tag, crit: b.crit, knock: b.knock, ang, wid: b.wid, statusDmg: dmg, stacks: b.stacks, long: b.legend && b.wid === 'hydro' });
+  if (b.status) applyStatus(e, b.status, { dmg, ang });
+  onHitProcs(e, dmg, b.tag, { crit: b.crit, ang, x: b.x, y: b.y, small: b.small, wid: b.wid });
   if (b.split && !b.small) for (const s of [-0.55, 0.55]) {
     const a = ang + s, sp = Math.hypot(b.vx, b.vy) * 0.8;
     const nb = spawnBullet({ x: b.x, y: b.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: b.r * 0.7, dmg: b.dmg * 0.4, team: 'p', life: 0.35, tag: b.tag, color: b.color, small: true, wid: b.wid });
     nb.hit.add(e);
   }
   if (b.legend && b.wid === 'cryo' && wasFrozen) spawnShards(e.x, e.y, 6, 10, e);
-  if (BS.thunder && b.crit && !e.dead) { strike(e.x, e.y); damageEnemy(e, 20, { tag: 'elec' }); }
   b.hit.add(e); b.pierced++;
   if (b.pierce > 0) b.pierce--; else b.dead = true;
+}
+// 명중 시 공통 추가 효과 (확률 상태 이상, 각성, 치명타 효과 등)
+function onHitProcs(e, dmg, srcTag, o) {
+  for (const t of ELEM_TAGS) {
+    const c = BS.onHit[t];
+    if (c && t !== srcTag && !e.dead && Math.random() < c) applyStatus(e, t, { dmg, ang: o.ang });
+  }
+  for (const t of BS.awakenElems) if (t !== srcTag && !e.dead) applyStatus(e, t, { dmg, ang: o.ang, stacks: (t === 'metal' || t === 'dark') ? 2 : 1 });
+  if (BS.lens && o.crit && !e.dead) applyStatus(e, 'light', {});
+  if (BS.thunder && o.crit && !e.dead) { strike(e.x, e.y); damageEnemy(e, 20, { tag: 'elec', noChain: true }); }
+  if (BS.burstChance && Math.random() < BS.burstChance) explode(o.x, o.y, 55, 12, { small: true, noSelf: true });
+  if (BS.aw.exp && !o.small && G.time - (G.expProcT || 0) > 0.05) { G.expProcT = G.time; explode(o.x, o.y, 48, dmg * 0.35 + 6, { small: true, noSelf: true }); }
 }
 function spawnShards(x, y, n, dmg, skip) {
   for (let i = 0; i < n; i++) {
@@ -324,21 +363,31 @@ function shoot(w) {
   const a = P.ang, ca = Math.cos(a), sa = Math.sin(a);
   const mx = P.x + ca * 22, my = P.y + sa * 22;
   let dmg = s.dmg * dynDmg();
-  if (run.char === 'sera' && w.first) { dmg *= 2; w.first = false; burst(mx, my, '#b48cff', 8, 200, 0.25, 3); }
+  if (run.char === 'sera' && w.first) { dmg *= 2.5; burst(mx, my, '#b48cff', 8, 200, 0.25, 3); }
+  w.first = false;
+  if (P.reaperShots > 0) { dmg *= 1.6; P.reaperShots--; }
   const crit = Math.random() < s.crit;
   if (crit) dmg *= s.critMult;
   run.lastWeapon = w.id; w.shots++;
+  if (s.legend && w.id === 'smg') w.spin = Math.min(1, (w.spin || 0) + 0.04);
   let pierceBonus = 0;
-  if (BS.bullet5) { run.shotCounter++; if (run.shotCounter % 3 === 0) pierceBonus = 3; }
+  run.shotCounter++;
+  if (BS.pierceEvery && run.shotCounter % BS.pierceEvery === 0) pierceBonus = 3;
   let status = null;
   if (P.staticShots > 0) { P.staticShots--; status = 'elec'; }
-  const offs = BS.twin ? [-0.07, 0.07] : [0];
+  let offs = BS.twin ? [-0.07, 0.07] : [0];
+  if (BS.extraShots) offs = offs.concat([-0.2, 0.2]);
   const dm = BS.twin ? 0.65 : 1;
-  const common = { team: 'p', tag: s.tag, crit, color: BS.prism ? `hsl(${(G.time * 360) % 360},100%,70%)` : s.color, knock: s.knock, ric: s.ric, split: s.split, homing: s.homing, wid: w.id, legend: s.legend, status };
+  const common = { team: 'p', tag: s.tag, crit, color: s.tag !== WEAPONS[w.id].tag ? TAG_COLOR[s.tag] : s.color, knock: s.knock, ric: s.ric, split: s.split, homing: s.homing, wid: w.id, legend: s.legend, status, stacks: s.stacks };
   const mw = mouseWorld();
   const aimD = dist(P.x, P.y, mw.x, mw.y);
   switch (s.type) {
     case 'tesla': for (const o of offs) teslaFire(s, dmg * dm, crit, a + o, status); break;
+    case 'beam': {
+      const n = s.legend ? 3 : 1;
+      for (const o of offs) for (let i = 0; i < n; i++) fireBeam(a + o + (n > 1 ? (i - 1) * 0.12 : 0), dmg * dm, crit, s.tag, { wid: w.id, range: s.range });
+      break;
+    }
     case 'grenade': case 'blackhole': {
       const maxD = s.spd * s.life, d = clamp(aimD, 60, maxD);
       for (const o of offs) {
@@ -355,22 +404,23 @@ function shoot(w) {
       }
       break;
     }
-    case 'flame':
+    case 'flame': case 'stream':
       for (const o of offs) {
         const aa = a + o + rand(-s.spread, s.spread), sp = s.spd * rand(0.85, 1.15);
-        spawnBullet(Object.assign({}, common, { x: mx, y: my, vx: Math.cos(aa) * sp + P.vx * 0.5, vy: Math.sin(aa) * sp + P.vy * 0.5, r: s.r, dmg: dmg * dm, life: s.life * rand(0.85, 1.1), type: 'flame', pierce: 99, ric: 0 }));
+        spawnBullet(Object.assign({}, common, { x: mx, y: my, vx: Math.cos(aa) * sp + P.vx * 0.5, vy: Math.sin(aa) * sp + P.vy * 0.5, r: s.r, dmg: dmg * dm, life: s.life * rand(0.85, 1.1), type: s.type, pierce: s.type === 'flame' ? 99 : s.pierce, ric: 0 }));
       }
       break;
     default:
       for (const o of offs) for (let i = 0; i < s.pellets; i++) {
         const aa = a + o + (s.pellets > 1 ? ((i + 0.5) / s.pellets - 0.5) * s.spread * 2 + rand(-0.04, 0.04) : rand(-s.spread, s.spread));
         const sp = s.spd * (s.pellets > 1 ? rand(0.85, 1.1) : 1);
-        const explosive = s.legend && w.id === 'smg' && w.shots % 10 === 0;
-        spawnBullet(Object.assign({}, common, { x: mx, y: my, vx: Math.cos(aa) * sp, vy: Math.sin(aa) * sp, r: explosive ? s.r * 1.8 : s.r, dmg: dmg * dm, life: s.life, pierce: s.pierce + pierceBonus, explosive, big: w.id === 'sniper' }));
+        spawnBullet(Object.assign({}, common, { x: mx, y: my, vx: Math.cos(aa) * sp, vy: Math.sin(aa) * sp, r: s.r, dmg: dmg * dm, life: s.life, pierce: s.pierce + pierceBonus, big: w.id === 'sniper' }));
       }
   }
+  // 빛 7세트: 4번째 공격마다 관통 광선
+  if (BS.beamEvery && run.shotCounter % BS.beamEvery === 0 && s.type !== 'beam') fireBeam(a, Math.max(14, dmg * 0.8), crit, 'light', { wid: 'beam7', w: 3 });
   // 연출
-  part({ x: mx, y: my, vx: 0, vy: 0, life: 0.06, size: 10 + s.shake * 2, color: s.color, kind: 'flash' });
+  part({ x: mx, y: my, vx: 0, vy: 0, life: 0.06, size: 10 + s.shake * 2, color: common.color, kind: 'flash' });
   if (['pistol', 'smg', 'shotgun', 'sniper'].includes(w.id)) {
     const pa = a + Math.PI / 2 * (Math.random() < 0.5 ? 1 : -1);
     part({ x: P.x, y: P.y, vx: Math.cos(pa) * rand(60, 120), vy: Math.sin(pa) * rand(60, 120), life: rand(1.5, 2.5), size: 3, color: '#e6c15a', kind: 'shell', rot: rand(0, TAU) });
@@ -378,6 +428,23 @@ function shoot(w) {
   shake(s.shake * 0.6);
   P.kx -= ca * s.shake * 10; P.ky -= sa * s.shake * 10;
   SFX.play(s.sfx);
+}
+
+// 관통 광선 (광선총, 빛 7세트, 빛 굴절)
+function fireBeam(a, dmg, crit, tag, o = {}) {
+  const sx = (o.x != null ? o.x : P.x + Math.cos(a) * 20), sy = (o.y != null ? o.y : P.y + Math.sin(a) * 20);
+  const L = rayWalls(sx, sy, Math.cos(a), Math.sin(a), o.range || 900);
+  const ex = sx + Math.cos(a) * L, ey = sy + Math.sin(a) * L;
+  G.beams.push({ x1: sx, y1: sy, x2: ex, y2: ey, t: 0.14, max: 0.14, color: TAG_COLOR[tag] || '#fff', w: o.w || 5 });
+  if (G.beams.length > 40) G.beams.shift();
+  for (const e of room.enemies.slice()) {
+    if (e.dead || e.spawning) continue;
+    if (segDist(e.x, e.y, sx, sy, ex, ey) < e.r + 6) {
+      damageEnemy(e, dmg, { tag, crit, wid: o.wid, ang: a, statusDmg: dmg });
+      if (!o.noProc) onHitProcs(e, dmg, tag, { crit, ang: a, x: e.x, y: e.y, wid: o.wid });
+    }
+  }
+  for (const p of room.props) if (p.shootable && !p.dead && segDist(p.x, p.y, sx, sy, ex, ey) < p.r + 6) hitProp(p, dmg, null);
 }
 
 function teslaFire(s, dmg, crit, a, status) {
@@ -405,12 +472,11 @@ function teslaFire(s, dmg, crit, a, status) {
   }
   const hit = new Set([best]);
   let cur = best;
-  addBolt(sx, sy, best.x, best.y, s.color);
+  addBolt(sx, sy, best.x, best.y, TAG_COLOR[s.tag] || s.color);
   const zap = t => {
-    damageEnemy(t, dmg, { tag: s.tag, crit, wid: 'tesla', statusDmg: dmg });
+    damageEnemy(t, dmg, { tag: s.tag, crit, wid: 'tesla', statusDmg: dmg, ang: angTo(P.x, P.y, t.x, t.y) });
     if (status) applyStatus(t, status, { dmg });
-    if (BS.burnChance && Math.random() < BS.burnChance) applyStatus(t, 'fire', { dmg });
-    if (BS.chillChance && Math.random() < BS.chillChance) applyStatus(t, 'ice', { dmg });
+    onHitProcs(t, dmg, s.tag, { crit, ang: angTo(P.x, P.y, t.x, t.y), x: t.x, y: t.y, wid: 'tesla' });
     if (s.tag === 'elec') { const h = hazardAt(t.x, t.y, 'water'); if (h) electrify(h, true); }
   };
   zap(best);
@@ -418,25 +484,26 @@ function teslaFire(s, dmg, crit, a, status) {
     let n = null, nd = 240 * 240;
     for (const e of cands) { if (e.dead || hit.has(e)) continue; const dd = d2(cur.x, cur.y, e.x, e.y); if (dd < nd) { nd = dd; n = e; } }
     if (!n) break;
-    addBolt(cur.x, cur.y, n.x, n.y, s.color);
+    addBolt(cur.x, cur.y, n.x, n.y, TAG_COLOR[s.tag] || s.color);
     hit.add(n); zap(n); cur = n;
   }
 }
 
 function startReload(w) {
   const s = wStats(w);
-  if (s.mag === Infinity || w.reloadT > 0 || w.ammo >= s.mag) return;
+  if (s.mag === Infinity || w.reloadT > 0 || w.ammo >= s.mag || BS.infAmmo) return;
   w.reloadT = s.reload; w.reloadMax = s.reload;
   SFX.play('reload');
-  if (BS.chargecoil) {
-    for (const e of room.enemies) if (!e.dead && d2(e.x, e.y, P.x, P.y) < 180 * 180) { addBolt(P.x, P.y, e.x, e.y, '#fff04d'); damageEnemy(e, 12 * BS.chargecoil, { tag: 'elec' }); }
+  if (BS.chargecoil && room) {
+    for (const e of room.enemies) if (!e.dead && !e.spawning && d2(e.x, e.y, P.x, P.y) < 180 * 180) { addBolt(P.x, P.y, e.x, e.y, '#fff04d'); damageEnemy(e, 12 * BS.chargecoil, { tag: 'elec' }); }
     burst(P.x, P.y, '#fff04d', 12, 250, 0.3, 2);
   }
 }
 
-// ================= 블랙홀 =================
+// ================= 중력장 (블랙홀 / 어둠 각성 균열) =================
 function spawnVortex(b) {
-  room.vortices.push({ x: b.x, y: b.y, t: 3, max: 3, r: 220, dmg: b.dmg, tick: 0, legend: b.legend, tag: b.tag });
+  const legend = b.legend && b.wid === 'blackhole';
+  room.vortices.push({ x: b.x, y: b.y, t: legend ? 6 : 3, max: legend ? 6 : 3, r: 220, dmg: b.dmg, tick: 0, tag: b.tag, stacks: legend ? 2 : 1 });
   SFX.play('bhole');
   shake(5);
 }
@@ -445,23 +512,20 @@ function updateVortices(dt) {
     const v = room.vortices[i];
     v.t -= dt; v.tick -= dt;
     for (const e of room.enemies) {
-      if (e.dead || e.boss || e.heavy) continue;
+      if (e.dead || e.boss || e.heavy || e.spawning) continue;
       const d = dist(v.x, v.y, e.x, e.y);
       if (d < v.r && d > 4) { const f = (260 * (1 - d / v.r) + 70) * dt; e.x += (v.x - e.x) / d * f; e.y += (v.y - e.y) / d * f; }
     }
     if (v.tick <= 0) {
       v.tick = 0.25;
-      for (const e of room.enemies) if (!e.dead && d2(v.x, v.y, e.x, e.y) < (v.r * 0.6) ** 2) damageEnemy(e, v.dmg * dynDmg(), { tag: v.tag === 'special' ? null : v.tag, quiet: true });
+      for (const e of room.enemies) if (!e.dead && !e.spawning && d2(v.x, v.y, e.x, e.y) < (v.r * 0.6) ** 2) damageEnemy(e, v.dmg * dynDmg(), { tag: ELEM_TAGS.includes(v.tag) ? v.tag : null, quiet: true, dot: true, stacks: v.stacks });
     }
-    if (Math.random() < 0.6) { const a = rand(0, TAU); part({ x: v.x + Math.cos(a) * v.r, y: v.y + Math.sin(a) * v.r, vx: -Math.cos(a) * v.r * 2, vy: -Math.sin(a) * v.r * 2, life: 0.45, size: 2.5, color: '#c77dff', kind: 'dot' }); }
-    if (v.t <= 0) {
-      if (v.legend) explode(v.x, v.y, 190, 90, { noSelf: true });
-      room.vortices.splice(i, 1);
-    }
+    if (Math.random() < 0.6) { const a = rand(0, TAU); part({ x: v.x + Math.cos(a) * v.r, y: v.y + Math.sin(a) * v.r, vx: -Math.cos(a) * v.r * 2, vy: -Math.sin(a) * v.r * 2, life: 0.45, size: 2.5, color: '#9b6bff', kind: 'dot' }); }
+    if (v.t <= 0) room.vortices.splice(i, 1);
   }
 }
 
-// ================= 폭발 =================
+// ================= 폭발 (폭발 태그 전용) =================
 function explode(x, y, r, dmg, o = {}) {
   const team = o.team || 'p';
   if (team === 'p') { r *= BS.expRadius; dmg *= BS.expDmg; }
@@ -475,7 +539,7 @@ function explode(x, y, r, dmg, o = {}) {
     if (dd < r + e.r) {
       const f = 1 - 0.4 * clamp(dd / r, 0, 1);
       const mult = team === 'e' ? (o.friendly != null ? o.friendly : 0.5) : 1;
-      if (mult > 0) damageEnemy(e, dmg * f * mult, { tag: o.tag && o.tag !== 'exp' ? o.tag : 'exp', isExp: true, knock: 240 * BS.expKnock, ang: angTo(x, y, e.x, e.y), wid: o.wid, quiet: o.small });
+      if (mult > 0) damageEnemy(e, dmg * f * mult, { tag: o.tag && ELEM_TAGS.includes(o.tag) ? o.tag : null, isExp: true, knock: 60, ang: angTo(x, y, e.x, e.y), wid: o.wid, quiet: o.small, dot: o.small });
     }
   }
   if (!P.dead && dist(x, y, P.x, P.y) < r + P.r) {
@@ -493,16 +557,16 @@ function explode(x, y, r, dmg, o = {}) {
   const big = r > 70 && !o.small;
   part({ x, y, vx: 0, vy: 0, life: 0.35, size: r, color: team === 'e' ? '#ff5a3a' : '#ffb347', kind: 'ring' });
   part({ x, y, vx: 0, vy: 0, life: 0.12, size: r * 0.8, color: '#fff2c0', kind: 'flash' });
-  burst(x, y, '#ff8a2a', big ? 26 : 12, r * 3.2, 0.5, 4);
-  burst(x, y, '#ffe14d', big ? 14 : 6, r * 2.4, 0.35, 3);
-  smoke(x, y, big ? 8 : 4, r);
-  addDecal(x, y, r * 0.8, 'scorch');
-  shake(big ? r / 9 : r / 16);
+  burst(x, y, '#ff8a2a', big ? 26 : 10, r * 3.2, 0.5, 4);
+  burst(x, y, '#ffe14d', big ? 14 : 5, r * 2.4, 0.35, 3);
+  smoke(x, y, big ? 8 : 3, r);
+  if (big) addDecal(x, y, r * 0.8, 'scorch');
+  shake(big ? r / 9 : r / 18);
   if (big) hitstop(0.035);
   SFX.play(big ? 'explode' : 'smallexp');
 }
 
-// ================= 피해 / 상태 이상 / 반응 =================
+// ================= 피해 =================
 function damageEnemy(e, dmg, o = {}) {
   if (e.dead || e.spawning) return 0;
   if (e.invuln) {
@@ -510,9 +574,18 @@ function damageEnemy(e, dmg, o = {}) {
     return 0;
   }
   e.alert = 0;
-  if (e.frozenT > 0 && BS.ice3) dmg *= 1.5;
+  let crit = !!o.crit;
+  if (e.frozenT > 0) dmg *= 1 + BS.frozenBonus;
   if (e.shockT > 0) dmg *= 1 + BS.overcurrent;
   if (e.burnT > 0) dmg *= 1 + BS.incinerate;
+  if (e.shred > 0) dmg *= 1 + e.shred * BS.shredPer;
+  if (e.blindT > 0) {
+    dmg *= 1 + BS.halo;
+    if (BS.blindCrit && !crit && !o.dot) { dmg *= 2; crit = true; }
+  }
+  if ((e.boss || e.muts) && BS.bigSlayer) dmg *= 1 + BS.bigSlayer;
+  if (BS.anvil && e.shred >= 5 && !o.dot && Math.random() < 0.1) { dmg *= 3; floatText(e.x, e.y - e.r - 24, '분쇄!', TAG_COLOR.metal, 18); }
+  if (o.reaction) dmg *= BS.reactAmp * (e.soakT > 0 && BS.pressure ? 1.5 : 1);
   if (e.dmgTakenMult) dmg *= e.dmgTakenMult;
   if (o.isExp && e.frozenT > 0) {
     dmg *= 2; e.frozenT = 0; e.chill = 0;
@@ -526,55 +599,189 @@ function damageEnemy(e, dmg, o = {}) {
   }
   e.hp -= dmg; e.flash = 0.07; e.lastHit = G.time;
   if (SAVE.settings.dmgNum && !(o.quiet && Math.random() < 0.6)) {
-    const big = o.crit || dmg >= 50;
-    floatText(e.x + rand(-8, 8), e.y - e.r - 6, Math.max(1, Math.round(dmg)) + (o.crit ? '!' : ''), o.crit ? '#ffe14d' : big ? '#ffd0a0' : '#ffffff', o.crit ? 22 : big ? 18 : 13);
+    const big = crit || dmg >= 50;
+    floatText(e.x + rand(-8, 8), e.y - e.r - 6, Math.max(1, Math.round(dmg)) + (crit ? '!' : ''), crit ? '#ffe14d' : big ? '#ffd0a0' : '#ffffff', crit ? 22 : big ? 18 : 13);
   }
-  if (o.knock && !e.heavy && !e.boss) { const k = o.knock * (e.elite ? 0.5 : 1); e.kx += Math.cos(o.ang) * k; e.ky += Math.sin(o.ang) * k; }
-  if (o.crit) { hitstop(0.02); SFX.play('crit'); } else SFX.play('hit');
-  if (dmg >= 45) hitstop(0.05);
-  if (o.tag && o.tag !== 'bullet' && o.tag !== 'special' && !o.noStatus) applyStatus(e, o.tag, { dmg: o.statusDmg || dmg, noChain: o.noChain, isExp: o.isExp });
-  if (e.hp <= 0 && !e.dead) {
+  if (o.knock && !e.heavy && !e.boss) { const k = o.knock * (e.muts ? 0.5 : 1); e.kx += Math.cos(o.ang) * k; e.ky += Math.sin(o.ang) * k; }
+  if (!o.dot) { if (crit) { hitstop(0.02); SFX.play('crit'); } else SFX.play('hit'); }
+  if (dmg >= 60 && !o.dot) hitstop(0.04);
+  // 이안류: 젖은 적끼리 피해 공유
+  if (BS.riptide && e.soakT > 0 && !o.riptide && !o.dot) {
+    for (const t of room.enemies) if (t !== e && !t.dead && !t.spawning && t.soakT > 0 && d2(t.x, t.y, e.x, e.y) < 300 * 300) damageEnemy(t, dmg * 0.2, { riptide: true, quiet: true, dot: true });
+  }
+  if (o.tag && ELEM_TAGS.includes(o.tag) && !o.noStatus && !e.dead) applyStatus(e, o.tag, { dmg: o.statusDmg || dmg, noChain: o.noChain, ang: o.ang, stacks: o.stacks, long: o.long });
+  if (e.dead) return dmg;
+  if (e.hp <= 0) {
     const def = EN[e.type];
     if (def.onZero && def.onZero(e, o)) return dmg;
     killEnemy(e, o);
+    return dmg;
   }
+  checkExecute(e, o);
   return dmg;
 }
 
+// ================= 상태 이상 (원소마다 고유 동작) =================
 function applyStatus(e, tag, o = {}) {
-  if (e.dead) return;
-  if (tag === 'fire') {
-    if (e.frozenT > 0 || e.chill > 0) { thermal(e); return; }
-    e.burnT = BS.burnDur;
-    e.burnStacks = BS.fire5 ? Math.min(5, (e.burnStacks || 0) + 1) : 1;
-    e.burnDps = 5 * BS.burnDmg;
-    const h = hazardAt(e.x, e.y, 'oil'); if (h) ignite(h, true);
-  } else if (tag === 'elec') {
-    e.shockT = 2;
-    if (!o.noChain) {
-      const n = 1 + (BS.elec3 ? 2 : 0);
-      const tgts = room.enemies.filter(t => t !== e && !t.dead && !t.spawning && d2(t.x, t.y, e.x, e.y) < 170 * 170).sort((a, b) => d2(a.x, a.y, e.x, e.y) - d2(b.x, b.y, e.x, e.y)).slice(0, n);
-      for (const t of tgts) { addBolt(e.x, e.y, t.x, t.y, '#fff04d', 0.15); damageEnemy(t, Math.max(3, (o.dmg || 10) * BS.transfer), { tag: 'elec', noChain: true, quiet: true }); }
-    }
-    const h = hazardAt(e.x, e.y, 'water'); if (h) electrify(h, true);
-  } else if (tag === 'ice') {
-    if (e.burnT > 0) { thermal(e); return; }
-    e.chillT = 3 * BS.chillDur;
-    if (e.frozenT <= 0) {
-      e.chill = (e.chill || 0) + 1;
-      if (e.chill >= (BS.ice7 ? 2 : 3)) {
-        e.chill = 0;
-        if (!e.boss) { e.frozenT = 1.5 * BS.chillDur + BS.permafrost; SFX.play('freeze'); burst(e.x, e.y, '#bff4ff', 10, 160, 0.4, 3); if (BS.ice7) spawnShards(e.x, e.y, 6, 12, e); }
-        else { e.chill = 2; e.chillT = 3; }
+  if (e.dead || e.spawning) return;
+  const amp = (e.soakT > 0 && tag !== 'water') ? BS.soakAmp : 1;
+  const st = (o.stacks || 1) + (amp > 1 ? Math.round(amp - 1) : 0);
+  switch (tag) {
+    case 'fire': // 화상: 지속 피해
+      if (e.frozenT > 0 || e.chill > 0) { thermal(e); return; }
+      if (e.soakT > 0) scald(e);
+      e.burnT = BS.burnDur * (amp > 1 ? 1.5 : 1);
+      e.burnStacks = Math.min(BS.burnMax, (e.burnStacks || 0) + st);
+      e.burnDps = 5 * BS.burnDmg * amp;
+      if (e.gustT > 0) tornado(e);
+      { const h = hazardAt(e.x, e.y, 'oil'); if (h) ignite(h, true); }
+      break;
+    case 'elec': // 감전: 연쇄
+      e.shockT = 2 * amp;
+      if (!o.noChain) {
+        if (e.soakT > 0) conduct(e, o.dmg);
+        if (e.shred >= 3) magnetize(e);
+        chainLightning(e, o.dmg || 10, BS.chainN + (amp > 1 ? 1 : 0), BS.rechain);
       }
+      { const h = hazardAt(e.x, e.y, 'water'); if (h) electrify(h, true); }
+      break;
+    case 'ice': // 빙결: 둔화 → 얼어붙음
+      if (e.burnT > 0) { thermal(e); return; }
+      e.chillT = 3 * BS.chillDur * (amp > 1 ? 1.5 : 1);
+      if (e.frozenT <= 0) {
+        e.chill = (e.chill || 0) + st;
+        if (e.chill >= BS.freezeAt) {
+          e.chill = 0;
+          if (!e.boss) freezeNow(e);
+          else { e.chill = BS.freezeAt - 1; e.chillT = 3; }
+        }
+      }
+      break;
+    case 'metal': // 파쇄: 받는 피해 증가 중첩
+      if (e.soakT > 0) rust(e);
+      e.shred = Math.min(BS.shredMax, (e.shred || 0) + st);
+      e.shredT = BS.shredDur;
+      break;
+    case 'light': // 실명: 공격 불가
+      if (e.corrode > 0) { eclipse(e); return; }
+      if (e.boss) e.dazzleT = 2.5 * amp;
+      else e.blindT = Math.max(e.blindT || 0, BS.blindDur * amp);
+      break;
+    case 'dark': // 침식: 처형 기준 누적
+      if (e.blindT > 0 || e.dazzleT > 0) { eclipse(e); return; }
+      e.corrode = Math.min(BS.corrodeMax, (e.corrode || 0) + st);
+      e.corrodeT = 6;
+      checkExecute(e, o);
+      break;
+    case 'wind': { // 돌풍: 밀어내기 + 충돌
+      if (e.burnT > 0) tornado(e);
+      if (!e.heavy && !e.boss) {
+        const a = o.ang != null ? o.ang : angTo(P.x, P.y, e.x, e.y);
+        const k = BS.gust * amp * (e.muts ? 0.6 : 1);
+        e.kx += Math.cos(a) * k; e.ky += Math.sin(a) * k;
+        e.gustT = 0.45; e.gustDmg = Math.max(10, o.dmg || 10); e.crashed = false;
+      }
+      break;
+    }
+    case 'water': // 젖음: 다른 상태 이상 증폭
+      e.soakT = BS.soakDur * (o.long ? 2 : 1);
+      break;
+  }
+}
+function freezeNow(e) {
+  e.chill = 0;
+  e.frozenT = 1.5 * BS.chillDur + BS.permafrost;
+  SFX.play('freeze'); burst(e.x, e.y, '#bff4ff', 10, 160, 0.4, 3);
+}
+function chainLightning(e, dmg, n, rechain) {
+  const tgts = room.enemies.filter(t => t !== e && !t.dead && !t.spawning && d2(t.x, t.y, e.x, e.y) < 170 * 170).sort((a, b) => d2(a.x, a.y, e.x, e.y) - d2(b.x, b.y, e.x, e.y)).slice(0, n);
+  for (const t of tgts) {
+    addBolt(e.x, e.y, t.x, t.y, '#fff04d', 0.15);
+    damageEnemy(t, Math.max(3, dmg * BS.transfer), { tag: 'elec', noChain: true, quiet: true });
+    if (rechain && !t.dead) {
+      const t2 = room.enemies.find(q => q !== t && q !== e && !q.dead && !q.spawning && !tgts.includes(q) && d2(q.x, q.y, t.x, t.y) < 170 * 170);
+      if (t2) { addBolt(t.x, t.y, t2.x, t2.y, '#fff04d', 0.15); damageEnemy(t2, Math.max(3, dmg * BS.transfer), { tag: 'elec', noChain: true, quiet: true }); }
     }
   }
 }
+function checkExecute(e, o = {}) {
+  if (e.dead || e.boss || !(e.corrode > 0) || e.hp <= 0) return false;
+  const thr = Math.min(BS.execCap, BS.execPer * e.corrode);
+  if (e.hp > e.maxHp * thr) return false;
+  // 처형
+  floatText(e.x, e.y - e.r - 20, '처형', TAG_COLOR.dark, 18);
+  part({ x: e.x, y: e.y, life: 0.25, size: e.r * 2.2, color: '#9b6bff', kind: 'ring' });
+  addBolt(e.x - 20, e.y - 20, e.x + 20, e.y + 20, '#9b6bff', 0.12); addBolt(e.x + 20, e.y - 20, e.x - 20, e.y + 20, '#9b6bff', 0.12);
+  SFX.play('slash');
+  killEnemy(e, Object.assign({}, o, { exec: true }));
+  return true;
+}
+// 충돌 피해 (바람)
+function slamEnemy(e, mult = 1) {
+  if (e.dead) return;
+  const dmg = (e.gustDmg * 0.5 + 12) * BS.slamMult * mult * dynDmg();
+  e.gustT = 0;
+  floatText(e.x, e.y - e.r - 20, '충돌!', TAG_COLOR.wind, 15);
+  burst(e.x, e.y, TAG_COLOR.wind, 8, 200, 0.3, 3); shake(3); SFX.play('stun', 0.5);
+  if (BS.cyclone) for (const t of room.enemies) if (t !== e && !t.dead && !t.spawning && d2(t.x, t.y, e.x, e.y) < 130 * 130 && !t.heavy && !t.boss) { const a = angTo(e.x, e.y, t.x, t.y); t.kx += Math.cos(a) * 260; t.ky += Math.sin(a) * 260; t.gustT = 0.4; t.gustDmg = e.gustDmg * 0.6; }
+  damageEnemy(e, dmg, { noStatus: true });
+}
+
+// ================= 속성 반응 =================
+function reactDmg(base) { return base * (1 + 0.15 * (run ? run.zone : 0)) * dynDmg(); }
 function thermal(e) {
   e.burnT = 0; e.burnStacks = 0; e.chill = 0; e.chillT = 0; e.frozenT = 0;
   reaction('thermal', e.x, e.y);
   part({ x: e.x, y: e.y, vx: 0, vy: 0, life: 0.3, size: e.r * 2.5, color: '#ff8ad5', kind: 'ring' });
-  damageEnemy(e, (35 + 15 * (run ? run.zone : 0)) * dynDmg(), { noStatus: true });
+  damageEnemy(e, reactDmg(35), { noStatus: true, reaction: true });
+}
+function scald(e) {
+  e.soakT = 0;
+  reaction('scald', e.x, e.y);
+  if (room.hazards.length < 140) addHazard({ type: 'scald', x: e.x, y: e.y, r: 90, life: 2.5, dmg: reactDmg(8) * BS.reactAmp });
+}
+function conduct(e, dmg) {
+  e.soakT = 0;
+  let n = 0;
+  for (const t of room.enemies) {
+    if (t === e || t.dead || t.spawning || !(t.soakT > 0) || d2(t.x, t.y, e.x, e.y) > 350 * 350) continue;
+    addBolt(e.x, e.y, t.x, t.y, '#7fd0ff', 0.18); n++;
+    damageEnemy(t, (dmg || 10) * 0.8 + reactDmg(8), { tag: 'elec', noChain: true, reaction: true, quiet: true });
+  }
+  if (n) reaction('conduct', e.x, e.y);
+}
+function magnetize(e) {
+  if ((e.magCd || 0) > G.time) return;
+  e.magCd = G.time + 1;
+  reaction('magnet', e.x, e.y);
+  for (const t of room.enemies) {
+    if (t === e || t.dead || t.spawning || t.heavy || t.boss) continue;
+    const d = dist(t.x, t.y, e.x, e.y);
+    if (d < 230 && d > 1) { t.kx += (e.x - t.x) / d * 420; t.ky += (e.y - t.y) / d * 420; }
+  }
+  part({ x: e.x, y: e.y, life: 0.35, size: 230, color: '#c8d8ff', kind: 'ring' });
+  damageEnemy(e, reactDmg(4 * e.shred), { noStatus: true, reaction: true });
+}
+function rust(e) {
+  e.soakT = 0;
+  e.shred = Math.min(BS.shredMax, (e.shred || 0) + 3); e.shredT = BS.shredDur;
+  reaction('rust', e.x, e.y);
+  damageEnemy(e, reactDmg(10), { noStatus: true, reaction: true });
+}
+function eclipse(e) {
+  e.blindT = 0; e.dazzleT = 0; e.corrode = 0;
+  reaction('eclipse', e.x, e.y);
+  part({ x: e.x, y: e.y, life: 0.4, size: e.r * 3, color: '#d9b8ff', kind: 'ring' });
+  damageEnemy(e, e.maxHp * (e.boss ? 0.04 : 0.2) + reactDmg(10), { noStatus: true, reaction: true });
+}
+let inTornado = false;
+function tornado(e) {
+  if (inTornado || (e.tornCd || 0) > G.time) return;
+  inTornado = true; e.tornCd = G.time + 0.8;
+  reaction('tornado', e.x, e.y);
+  for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; part({ x: e.x + Math.cos(a) * 30, y: e.y + Math.sin(a) * 30, vx: -Math.sin(a) * 200, vy: Math.cos(a) * 200, life: 0.5, size: 4, color: pick(['#ff7a2a', '#ffb86b']), kind: 'dot' }); }
+  for (const t of room.enemies) if (t !== e && !t.dead && !t.spawning && d2(t.x, t.y, e.x, e.y) < 150 * 150) { applyStatus(t, 'fire', {}); damageEnemy(t, reactDmg(6), { noStatus: true, reaction: true, quiet: true }); }
+  inTornado = false;
 }
 function ignite(h, byPlayer) {
   if (h.type !== 'oil') return;
@@ -588,7 +795,7 @@ function electrify(h, byPlayer) {
   h.elecT = 2.5;
   if (byPlayer) reaction('current', h.x, h.y);
   SFX.play('zap');
-  for (const e of room.enemies) if (!e.dead && pointInHazard(h, e.x, e.y)) { applyStatus(e, 'elec', { noChain: true }); damageEnemy(e, 15, { quiet: true }); }
+  for (const e of room.enemies) if (!e.dead && !e.spawning && pointInHazard(h, e.x, e.y)) { applyStatus(e, 'elec', { noChain: true }); damageEnemy(e, 15, { quiet: true, reaction: true }); }
   if (pointInHazard(h, P.x, P.y)) damagePlayer(8, null);
 }
 function strike(x, y) {
@@ -598,18 +805,20 @@ function strike(x, y) {
 }
 function reaction(id, x, y) {
   const R = REACTIONS[id];
+  if (!R) return;
   if (!G.lastReact[id] || G.time - G.lastReact[id] > 0.6) {
     G.reactTexts.push({ text: R.name, color: R.color, t: 1.2 });
     if (G.reactTexts.length > 3) G.reactTexts.shift();
     G.lastReact[id] = G.time;
     SFX.play('reaction');
+    floatText(x, y - 24, R.name, R.color, 18);
   }
-  floatText(x, y - 24, R.name, R.color, 18);
   if (codex('reaction', id)) toast(`새 속성 반응 발견: <b style="color:${R.color}">${R.name}</b>`);
   if (run) run.reactions++;
   SAVE.stats.reactions++;
 }
 
+// ================= 처치 =================
 function killEnemy(e, o = {}) {
   if (e.dead) return;
   e.dead = true; e.hp = 0;
@@ -624,47 +833,68 @@ function killEnemy(e, o = {}) {
   run.kills++; room.kills++; SAVE.stats.kills++;
   addCombo();
   // 코인
-  let coins = (def.coin || 1) * (e.elite ? 4 : 1) * comboMult() * BS.coinMult;
+  let coins = (def.coin || 1) * (e.muts ? 4 : 1) * comboMult() * BS.coinMult;
   coins = Math.floor(coins) + (Math.random() < coins % 1 ? 1 : 0);
   if (e.heldCoins) coins += e.heldCoins;
   dropCoins(e.x, e.y, coins);
-  // 강화/세트 효과
-  if (e.burnT > 0) {
-    if (BS.spreadfire || BS.fire3) {
-      for (const t of room.enemies) if (!t.dead && t !== e && d2(t.x, t.y, e.x, e.y) < 150 * 150) applyStatus(t, 'fire', {});
-      burst(e.x, e.y, '#ff7a2a', 12, 200, 0.5, 3);
-    }
-    if (BS.fire7 && !o.isExp) explode(e.x, e.y, 80, 30, { tag: 'fire', small: true, noSelf: true });
-    if (o.wid === 'flamer' && curW() && curW().id === 'flamer' && curW().grade === 2) explode(e.x, e.y, 70, 25, { tag: 'fire', small: true, noSelf: true });
+  // 원소별 처치 효과 (서로 겹치지 않음)
+  const near = (r) => room.enemies.filter(t => t !== e && !t.dead && !t.spawning && d2(t.x, t.y, e.x, e.y) < r * r);
+  if (e.burnT > 0 && BS.fire3) { for (const t of near(150)) applyStatus(t, 'fire', {}); burst(e.x, e.y, '#ff7a2a', 12, 200, 0.5, 3); }
+  if (e.frozenT > 0) {
+    if (BS.shards) spawnShards(e.x, e.y, 6, 12, e);
+    if (BS.aw.ice) for (const t of near(150)) if (!t.boss) freezeNow(t);
   }
-  if (e.frozenT > 0 && BS.shards) spawnShards(e.x, e.y, 6, 12, e);
+  if (e.soakT > 0 && BS.puddleOnDeath && room.hazards.length < 130) addHazard({ type: 'water', x: e.x, y: e.y, r: 52, life: 8 });
+  if (e.corrode > 0 && BS.curseblood && room.hazards.length < 130) addHazard({ type: 'shadow', x: e.x, y: e.y, r: 60, life: 5 });
+  if (e.blindT > 0 && BS.refract) {
+    for (const t of near(320).slice(0, 2)) fireBeam(angTo(e.x, e.y, t.x, t.y), 20 * BS.dmgMult, false, 'light', { x: e.x, y: e.y, range: dist(e.x, e.y, t.x, t.y) + 20, w: 3, noProc: true });
+  }
+  if (o.exec) {
+    if (BS.souls) {
+      const t = near(600).sort((a, b) => d2(a.x, a.y, e.x, e.y) - d2(b.x, b.y, e.x, e.y))[0];
+      const a = t ? angTo(e.x, e.y, t.x, t.y) : rand(0, TAU);
+      spawnBullet({ x: e.x, y: e.y, vx: Math.cos(a) * 420, vy: Math.sin(a) * 420, r: 7, dmg: 15 * BS.dmgMult, team: 'p', life: 2.2, tag: 'dark', stacks: 2, homing: true, color: '#b58cff', wid: 'soul', noWall: true });
+    }
+    if (BS.reaper) P.reaperShots = 3;
+    if (BS.cdRefund) P.skillCd = Math.max(0, P.skillCd - 1);
+    if (BS.aw.dark) room.vortices.push({ x: e.x, y: e.y, t: 1.5, max: 1.5, r: 170, dmg: 6 * BS.dmgMult, tick: 0, tag: 'dark', stacks: 1 });
+  }
   if (o.isExp && BS.chaindet) explode(e.x, e.y, 65 + 20 * (BS.chaindet - 1), 18 * BS.chaindet, { small: true, noSelf: true });
   else if (BS.exp5 && Math.random() < 0.35) explode(e.x, e.y, 55, 14, { small: true, noSelf: true });
   if (o.wid === 'sniper') { const w = run.weapons.find(w => w.id === 'sniper' && w.grade === 2); if (w) w.ammo = Math.min(wStats(w).mag, w.ammo + 1); }
   if (BS.vamp) { run.vampCount++; if (run.vampCount >= 30) { run.vampCount = 0; healRun(5 * BS.vamp, true); } }
   if (BS.berserk) run.berserk++;
-  if (room.onKill) room.onKill(e);
 }
 
 function damagePlayer(dmg, src) {
-  if (!P || P.dead || room.over) return;
+  if (!P || P.dead || !room || room.over) return;
   if (P.rollT > 0 || P.iframe > 0) return;
   if (P.shield > 0) {
     P.shield--; P.iframe = 0.6; SFX.play('shield');
     part({ x: P.x, y: P.y, vx: 0, vy: 0, life: 0.3, size: 40, color: '#6dff8a', kind: 'ring' });
     return;
   }
-  dmg *= G.eDmgMult * (1 - BS.plating) * (BS.surv7 ? 0.85 : 1);
+  dmg *= G.eDmgMult * BS.takenMult;
   run.hp -= dmg; P.iframe = 0.75; P.hurtT = 0.25;
   breakCombo();
   if (BS.berserk) run.berserk = 0;
-  shake(10); G.flash = 0.3; G.flashColor = '255,40,60'; hitstop(0.06); SFX.play('hurt');
+  shake(10); G.flash = 0.3; G.flashColor = '255,40,60'; hitstop(0.06, true); SFX.play('hurt');
   floatText(P.x, P.y - 24, '-' + Math.round(dmg), '#ff4d6d', 20);
   if (src && src.muts && src.muts.includes('vamp') && !src.dead) { src.hp = Math.min(src.maxHp, src.hp + src.maxHp * 0.25); floatText(src.x, src.y - src.r - 8, '흡혈', '#e0306a', 14); }
-  if (BS.flamearmor) for (const e of room.enemies) if (!e.dead && d2(e.x, e.y, P.x, P.y) < 150 * 150) applyStatus(e, 'fire', {});
-  if (BS.frostarmor) for (const e of room.enemies) if (!e.dead && d2(e.x, e.y, P.x, P.y) < 150 * 150) { applyStatus(e, 'ice', {}); applyStatus(e, 'ice', {}); }
+  const near = r => room.enemies.filter(e => !e.dead && !e.spawning && d2(e.x, e.y, P.x, P.y) < r * r);
+  if (BS.flamearmor) for (const e of near(150)) applyStatus(e, 'fire', {});
+  if (BS.frostarmor) for (const e of near(150)) applyStatus(e, 'ice', { stacks: 2 });
+  if (BS.ironskin) for (const e of near(150)) applyStatus(e, 'metal', { stacks: 3 });
   if (run.hp > 0 && BS.medkit && !room.medkitUsed && run.hp <= run.maxHp * 0.3) { room.medkitUsed = true; healRun(25, true); floatText(P.x, P.y - 44, '응급 키트!', '#6dff8a', 16); }
-  if (run.hp <= 0) { run.hp = 0; playerDie(); }
+  if (run.hp <= 0) {
+    if (BS.revive && !room.revived) {
+      room.revived = true; run.hp = Math.max(1, Math.round(run.maxHp * 0.5)); P.iframe = 2.5;
+      floatText(P.x, P.y - 50, '불사!', TAG_COLOR.surv, 24); burst(P.x, P.y, TAG_COLOR.surv, 40, 360, 0.7, 4);
+      part({ x: P.x, y: P.y, life: 0.6, size: 160, color: TAG_COLOR.surv, kind: 'ring' }); SFX.play('heal');
+      return;
+    }
+    run.hp = 0; playerDie();
+  }
 }
 
 // ================= 코인 / 콤보 =================

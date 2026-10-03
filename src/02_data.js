@@ -1,31 +1,50 @@
 // ================= 게임 데이터 =================
-const TAG_NAME = { fire: '불', elec: '전기', ice: '얼음', exp: '폭발', bullet: '탄환', surv: '생존', none: '없음', special: '특수' };
-const TAG_COLOR = { fire: '#ff7a2a', elec: '#ffe14d', ice: '#8fe8ff', exp: '#ff4d6d', bullet: '#d8dcf0', surv: '#6dff8a', none: '#b0a8d0', special: '#c77dff' };
-const SET_TAGS = ['fire', 'elec', 'ice', 'exp', 'bullet', 'surv'];
-function tagHTML(t) { return `<span class="tag" style="background:${TAG_COLOR[t]}">${TAG_NAME[t]}</span>`; }
+// 속성(태그) 체계: 원소 8종은 각자 고유한 상태 이상을 가진다. 폭발/탄환/생존은 원소가 아닌 전투 스타일 태그.
+const TAG_NAME = { fire: '불', elec: '전기', ice: '얼음', metal: '금속', light: '빛', dark: '어둠', wind: '바람', water: '물', exp: '폭발', bullet: '탄환', surv: '생존', none: '없음' };
+const TAG_COLOR = { fire: '#ff7a2a', elec: '#ffe14d', ice: '#8fe8ff', metal: '#a9b8cc', light: '#fffbe6', dark: '#9b6bff', wind: '#7dffb8', water: '#3d8bff', exp: '#ff4d6d', bullet: '#e6c78a', surv: '#ff8fd0', none: '#b0a8d0' };
+const ELEM_TAGS = ['fire', 'elec', 'ice', 'metal', 'light', 'dark', 'wind', 'water'];
+const SET_TAGS = ['fire', 'elec', 'ice', 'metal', 'light', 'dark', 'wind', 'water', 'exp', 'bullet', 'surv'];
+function tagHTML(t) { return `<span class="tag" style="background:${TAG_COLOR[t] || '#888'}">${TAG_NAME[t] || t}</span>`; }
+
+// 원소별 고유 상태 이상 (서로 겹치는 동작이 없도록 설계)
+const STATUS_INFO = {
+  fire: { name: '화상', core: '지속 피해. 시간이 지나며 체력을 태운다.' },
+  elec: { name: '감전', core: '연쇄. 맞은 적 주변으로 번개가 옮겨 붙는다.' },
+  ice: { name: '빙결', core: '군중 제어. 둔화가 쌓이면 완전히 얼어붙는다.' },
+  metal: { name: '파쇄', core: '방어 붕괴. 중첩마다 받는 모든 피해가 늘어난다. 보스에게도 통한다.' },
+  light: { name: '실명', core: '무력화. 실명된 적은 공격하지 못하고 헤맨다. 보스는 공격이 느려진다.' },
+  dark: { name: '침식', core: '처형. 중첩에 비례한 체력 이하가 되면 즉시 죽는다.' },
+  wind: { name: '돌풍', core: '밀어내기. 밀려난 적이 벽에 부딪히면 충돌 피해를 받는다.' },
+  water: { name: '젖음', core: '촉매. 젖은 적에게 거는 다른 상태 이상이 증폭된다.' },
+  exp: { name: '폭발', core: '범위 피해. 폭발 계열 효과는 이 태그만 가진다.' },
+  bullet: { name: '탄환', core: '총기 성능. 피해, 연사, 관통, 치명타.' },
+  surv: { name: '생존', core: '체력, 보호막, 회복, 피해 감소.' }
+};
 
 // ---------- 캐릭터 ----------
 const CHARS = {
-  rain: { name: '레인', role: '돌격', color: '#ff5a5a', hp: 150, weapon: 'smg', skill: '과충전', skillDesc: '5초간 연사 속도 2배, 재장전 불필요', cd: 14, passive: '체력 30% 이하일 때 피해 +25%', unlock: null },
-  momo: { name: '모모', role: '기술자', color: '#ffd23d', hp: 150, weapon: 'pistol', skill: '포탑 설치', skillDesc: '20초간 자동 사격 포탑 설치 (최대 2개)', cd: 9, passive: '상점 가격 -15%', unlock: { cond: '구역 2 클리어', chips: 40, check: () => SAVE.stats.zone2 } },
-  kai: { name: '카이', role: '기동', color: '#3dffb0', hp: 150, weapon: 'shotgun', skill: '반사 베기', skillDesc: '앞쪽 부채꼴을 베고 적 탄환을 되돌려 보냄', cd: 4.5, passive: '구르기 2회 충전', unlock: { cond: '구르기로 탄환 500발 회피', chips: 60, check: () => SAVE.stats.dodged >= 500 } },
-  sera: { name: '세라', role: '저격', color: '#b48cff', hp: 150, weapon: 'sniper', skill: '시간 감속', skillDesc: '3초간 주변 시간 70% 감속', cd: 13, passive: '재장전 직후 첫 발 피해 +100%', unlock: { cond: '저격총으로 보스 처치', chips: 80, check: () => SAVE.stats.sniperBoss } }
+  rain: { name: '레인', role: '돌격', color: '#ff5a5a', hp: 150, weapon: 'smg', startGrade: 1, skill: '과충전', skillDesc: '5초간 연사 속도 2배 + 피해 +20%, 재장전 불필요', cd: 14, passive: '체력 30% 이하일 때 피해 +25%', unlock: null },
+  momo: { name: '모모', role: '기술자', color: '#ffd23d', hp: 160, weapon: 'pistol', startGrade: 1, skill: '포탑 설치', skillDesc: '25초간 자동 사격 포탑 설치 (최대 3개). 포탑은 내 무기 속성을 쏜다.', cd: 7, passive: '상점 가격 -25%, 전투 시작 시 포탑 1개 자동 배치', unlock: { cond: '구역 2 클리어', chips: 40, check: () => SAVE.stats.zone2 } },
+  kai: { name: '카이', role: '기동', color: '#3dffb0', hp: 155, weapon: 'shotgun', startGrade: 1, skill: '반사 베기', skillDesc: '넓은 부채꼴을 강하게 베고 적 탄환을 3배 위력으로 되돌림. 베는 순간 무적.', cd: 4, passive: '구르기 2회 충전, 구르기 후 1.5초간 피해 +40%', unlock: { cond: '구르기로 탄환 500발 회피', chips: 60, check: () => SAVE.stats.dodged >= 500 } },
+  sera: { name: '세라', role: '저격', color: '#b48cff', hp: 150, weapon: 'sniper', startGrade: 1, skill: '시간 감속', skillDesc: '5초간 주변 시간 70% 감속, 감속 중 내 피해 +30%', cd: 11, passive: '재장전 직후 첫 발 피해 +150%, 치명타 확률 +20%', unlock: { cond: '저격총으로 보스 처치', chips: 80, check: () => SAVE.stats.sniperBoss } }
 };
 const CHAR_IDS = ['rain', 'momo', 'kai', 'sera'];
 function charUnlocked(id) { const c = CHARS[id]; return !c.unlock || !!SAVE.unlocks['char_' + id] || c.unlock.check(); }
 
 // ---------- 무기 ----------
 const WEAPONS = {
-  pistol: { name: '권총', dmg: 12, rate: 3, mag: Infinity, reload: 0, spd: 950, spread: 0.02, pellets: 1, life: 0.85, tag: 'bullet', pierce: 0, r: 4, shake: 1.5, sfx: 'pistol', color: '#fff3a0', knock: 30, desc: '정확하지만 약하다. 탄창 무한.' },
+  pistol: { name: '권총', dmg: 13, rate: 3.2, mag: Infinity, reload: 0, spd: 950, spread: 0.02, pellets: 1, life: 0.85, tag: 'bullet', pierce: 0, r: 4, shake: 1.5, sfx: 'pistol', color: '#fff3a0', knock: 30, desc: '정확하지만 약하다. 탄창 무한.' },
   smg: { name: '기관단총', dmg: 7, rate: 10, mag: 30, reload: 1.3, spd: 900, spread: 0.13, pellets: 1, life: 0.7, tag: 'bullet', pierce: 0, r: 3.5, shake: 1, sfx: 'smg', color: '#ffe38a', knock: 15, desc: '빠른 연사, 탄 퍼짐.' },
-  shotgun: { name: '산탄총', dmg: 8, rate: 1.2, mag: 6, reload: 1.6, spd: 850, spread: 0.38, pellets: 6, life: 0.36, tag: 'bullet', pierce: 0, r: 3.5, shake: 5, sfx: 'shotgun', color: '#ffc27a', knock: 90, desc: '근거리 특화. 6발 동시 발사.' },
-  sniper: { name: '저격총', dmg: 60, rate: 0.8, mag: 5, reload: 1.9, spd: 1900, spread: 0, pellets: 1, life: 0.8, tag: 'bullet', pierce: 99, r: 4, shake: 6, sfx: 'sniper', color: '#e0d0ff', knock: 60, desc: '적을 관통하는 강력한 한 발.' },
+  shotgun: { name: '산탄총', dmg: 9, rate: 1.3, mag: 6, reload: 1.5, spd: 850, spread: 0.38, pellets: 6, life: 0.36, tag: 'bullet', pierce: 0, r: 3.5, shake: 5, sfx: 'shotgun', color: '#ffc27a', knock: 70, desc: '근거리 특화. 6발 동시 발사.' },
+  sniper: { name: '저격총', dmg: 70, rate: 1.0, mag: 5, reload: 1.8, spd: 1900, spread: 0, pellets: 1, life: 0.8, tag: 'metal', pierce: 99, r: 4, shake: 6, sfx: 'sniper', color: '#d0dcf0', knock: 40, desc: '적을 관통하는 철갑탄. 파쇄 부여.' },
   grenade: { name: '유탄발사기', dmg: 35, rate: 1, mag: 4, reload: 1.8, spd: 540, spread: 0.03, pellets: 1, life: 1.1, tag: 'exp', pierce: 0, r: 7, shake: 3, sfx: 'grenade', color: '#ff9b3d', type: 'grenade', aoe: 85, knock: 0, desc: '범위 폭발. 자신도 피해를 입을 수 있다.' },
   flamer: { name: '화염방사기', dmg: 3, rate: 20, mag: 100, reload: 2, spd: 430, spread: 0.2, pellets: 1, life: 0.42, tag: 'fire', pierce: 99, r: 9, shake: 0.3, sfx: 'flame', color: '#ff7a2a', type: 'flame', knock: 0, desc: '짧은 사거리. 화상 부여.' },
   tesla: { name: '테슬라 코일', dmg: 15, rate: 2, mag: 12, reload: 1.5, spd: 0, spread: 0, pellets: 1, life: 0, tag: 'elec', pierce: 0, r: 0, shake: 2, sfx: 'tesla', color: '#fff04d', type: 'tesla', range: 400, chain: 3, knock: 0, desc: '가까운 적 3명에게 연쇄 번개.' },
   cryo: { name: '냉각포', dmg: 9, rate: 5, mag: 20, reload: 1.4, spd: 720, spread: 0.05, pellets: 1, life: 0.8, tag: 'ice', pierce: 0, r: 5, shake: 1, sfx: 'cryo', color: '#8fe8ff', knock: 10, desc: '둔화를 부여하는 냉기탄.' },
-  boomerang: { name: '부메랑 원반', dmg: 20, rate: 1.5, mag: Infinity, reload: 0, spd: 720, spread: 0, pellets: 1, life: 0.5, tag: 'bullet', pierce: 99, r: 11, shake: 1.5, sfx: 'boomer', color: '#7dffea', type: 'boomerang', knock: 40, desc: '날아갔다 돌아오며 두 번 타격.', locked: true },
-  blackhole: { name: '블랙홀 발사기', dmg: 5, rate: 0.3, mag: 2, reload: 2.5, spd: 400, spread: 0, pellets: 1, life: 0.9, tag: 'special', pierce: 0, r: 9, shake: 4, sfx: 'bhole', color: '#c77dff', type: 'blackhole', knock: 0, desc: '적을 한곳으로 빨아들이는 중력장.', locked: true }
+  lightbeam: { name: '광선총', dmg: 16, rate: 2.5, mag: 15, reload: 1.6, spd: 0, spread: 0, pellets: 1, life: 0, tag: 'light', pierce: 99, r: 0, shake: 2, sfx: 'laser', color: '#fffbe6', type: 'beam', range: 900, knock: 0, desc: '벽까지 닿는 관통 광선. 실명 부여.' },
+  hydro: { name: '물대포', dmg: 4, rate: 14, mag: 80, reload: 1.8, spd: 620, spread: 0.12, pellets: 1, life: 0.55, tag: 'water', pierce: 2, r: 6, shake: 0.4, sfx: 'water', color: '#5aa0ff', type: 'stream', knock: 0, desc: '물줄기로 적을 적신다. 젖음 부여.' },
+  boomerang: { name: '부메랑 원반', dmg: 20, rate: 1.5, mag: Infinity, reload: 0, spd: 720, spread: 0, pellets: 1, life: 0.5, tag: 'wind', pierce: 99, r: 11, shake: 1.5, sfx: 'boomer', color: '#7dffb8', type: 'boomerang', knock: 0, desc: '날아갔다 돌아오며 두 번 타격. 돌풍 부여.', locked: true },
+  blackhole: { name: '블랙홀 발사기', dmg: 5, rate: 0.3, mag: 2, reload: 2.5, spd: 400, spread: 0, pellets: 1, life: 0.9, tag: 'dark', pierce: 0, r: 9, shake: 4, sfx: 'bhole', color: '#9b6bff', type: 'blackhole', knock: 0, desc: '적을 빨아들이는 중력장. 침식 부여.', locked: true }
 };
 const WEAPON_IDS = Object.keys(WEAPONS);
 function weaponPool() { return WEAPON_IDS.filter(id => !WEAPONS[id].locked || SAVE.unlocks['wpn_' + id]); }
@@ -40,15 +59,17 @@ const RARE_BONUS = {
 };
 const LEGEND = {
   pistol: { name: '골든 이글', desc: '치명타 확률 +25%, 치명타 피해 3배' },
-  smg: { name: '폭풍', desc: '10발째마다 폭발탄' },
-  shotgun: { name: '파쇄기', desc: '펠릿 +3, 강력한 넉백' },
+  smg: { name: '폭풍', desc: '계속 쏠수록 연사 속도 증가 (최대 +60%)' },
+  shotgun: { name: '파쇄기', desc: '펠릿 +3, 가까운 적(150 이내)에게 피해 +40%' },
   sniper: { name: '심판', desc: '처치 시 탄 1발 회복, 관통할수록 피해 +25%' },
   grenade: { name: '집속탄', desc: '폭발 후 소형 폭탄 3개 분산' },
-  flamer: { name: '용의 숨결', desc: '화상 걸린 적 처치 시 불꽃 폭발' },
+  flamer: { name: '용의 숨결', desc: '사거리 +50%, 명중 시 화상 2중첩' },
   tesla: { name: '뇌신', desc: '연쇄 대상 +3' },
   cryo: { name: '절대영도', desc: '빙결된 적 명중 시 얼음 파편 확산' },
+  lightbeam: { name: '여명의 창', desc: '광선 3줄기 동시 발사' },
+  hydro: { name: '해일포', desc: '관통 +3, 젖음 지속시간 2배' },
   boomerang: { name: '삼중륜', desc: '원반 3개를 부채꼴로 투척' },
-  blackhole: { name: '사건의 지평선', desc: '블랙홀 소멸 시 대폭발' }
+  blackhole: { name: '사건의 지평선', desc: '중력장 지속 2배, 빨려든 적의 침식 중첩 증가' }
 };
 
 // ---------- 개조 부품 ----------
@@ -56,48 +77,88 @@ const MODS = {
   extmag: { name: '확장 탄창', desc: '탄창 +50%' },
   ricochet: { name: '도탄 모듈', desc: '탄이 벽에 한 번 튕김' },
   split: { name: '분열 탄두', desc: '적에게 맞으면 작은 탄 2개로 갈라짐' },
-  conv_fire: { name: '속성 변환기: 불', desc: '무기 태그를 불로 변경', conv: 'fire' },
-  conv_elec: { name: '속성 변환기: 전기', desc: '무기 태그를 전기로 변경', conv: 'elec' },
-  conv_ice: { name: '속성 변환기: 얼음', desc: '무기 태그를 얼음으로 변경', conv: 'ice' },
   homing: { name: '유도 칩', desc: '탄이 가까운 적 쪽으로 약하게 휘어짐' },
-  silencer: { name: '소음기', desc: '피해 -10%, 적이 플레이어를 늦게 알아챔' }
+  silencer: { name: '소음기', desc: '피해 -10%, 적이 플레이어를 늦게 알아챔' },
+  conv_fire: { name: '속성 변환기: 불', desc: '무기 속성을 불로 변경', conv: 'fire' },
+  conv_elec: { name: '속성 변환기: 전기', desc: '무기 속성을 전기로 변경', conv: 'elec' },
+  conv_ice: { name: '속성 변환기: 얼음', desc: '무기 속성을 얼음으로 변경', conv: 'ice' },
+  conv_metal: { name: '속성 변환기: 금속', desc: '무기 속성을 금속으로 변경', conv: 'metal' },
+  conv_light: { name: '속성 변환기: 빛', desc: '무기 속성을 빛으로 변경', conv: 'light' },
+  conv_dark: { name: '속성 변환기: 어둠', desc: '무기 속성을 어둠으로 변경', conv: 'dark' },
+  conv_wind: { name: '속성 변환기: 바람', desc: '무기 속성을 바람으로 변경', conv: 'wind' },
+  conv_water: { name: '속성 변환기: 물', desc: '무기 속성을 물로 변경', conv: 'water' }
 };
 const MOD_IDS = Object.keys(MODS);
 
 // ---------- 강화 ----------
-// pack: 'A' / 'B' 는 해금 트리에서 열어야 등장
+// pack: 'A' / 'B' 는 해금 트리에서 열어야 등장. 각 태그는 팩 없이도 9개 이상 모을 수 있다.
 const UPGRADES = [
-  // 불
+  // 불: 지속 피해
   { id: 'ignite', name: '점화 탄두', tag: 'fire', desc: '탄환이 20% 확률로 화상 부여', max: 2 },
   { id: 'kindling', name: '불쏘시개', tag: 'fire', desc: '화상 피해 +50%', max: 2 },
-  { id: 'spreadfire', name: '연소 확산', tag: 'fire', desc: '화상 걸린 적이 죽으면 주변 적에게 화상', rare: 1 },
+  { id: 'spreadfire', name: '연소 가속', tag: 'fire', desc: '화상 피해 간격 0.5초 → 0.35초', rare: 1 },
   { id: 'firetrail', name: '발화 구르기', tag: 'fire', desc: '구르기 경로에 불길을 남김' },
   { id: 'heat', name: '열기', tag: 'fire', desc: '화상 지속시간 +2초' },
   { id: 'incinerate', name: '소각로', tag: 'fire', desc: '화상 걸린 적에게 주는 피해 +20%', max: 2 },
   { id: 'flamearmor', name: '화염 갑옷', tag: 'fire', desc: '피격 시 주변 적에게 화상', pack: 'A' },
-  // 전기
+  // 전기: 연쇄
   { id: 'static', name: '정전기', tag: 'elec', desc: '구르기 후 다음 3발이 감전 부여' },
   { id: 'conductor', name: '도체 탄두', tag: 'elec', desc: '탄환이 15% 확률로 감전 부여', max: 2 },
   { id: 'highvolt', name: '고전압', tag: 'elec', desc: '감전 전이 피해 50% → 80% (2중첩 110%)', max: 2 },
-  { id: 'chargecoil', name: '충전 코일', tag: 'elec', desc: '재장전 시 주변 적 감전 + 피해 12 (중첩 시 피해 증가)', max: 2 },
+  { id: 'chargecoil', name: '충전 코일', tag: 'elec', desc: '재장전 시 주변 적 감전 + 피해 12 (중첩 시 증가)', max: 2 },
   { id: 'overcurrent', name: '과전류', tag: 'elec', desc: '감전된 적이 받는 피해 +15%', max: 2 },
   { id: 'thunder', name: '번개 강타', tag: 'elec', desc: '치명타 시 대상에게 낙뢰 (피해 20)', rare: 1, pack: 'B' },
   { id: 'discharge', name: '방전', tag: 'elec', desc: '스킬 사용 시 주변 적 5명에게 번개', pack: 'A' },
-  // 얼음
-  { id: 'frostbite', name: '동상', tag: 'ice', desc: '빙결 지속시간 +50%', max: 2 },
+  // 얼음: 둔화와 빙결
+  { id: 'frostbite', name: '동상', tag: 'ice', desc: '둔화 지속시간 +50%', max: 2 },
   { id: 'frosttip', name: '서리 탄두', tag: 'ice', desc: '탄환이 20% 확률로 빙결 1중첩', max: 2 },
-  { id: 'chill', name: '한기', tag: 'ice', desc: '빙결 둔화 30% → 45% (2중첩 60%)', max: 2 },
+  { id: 'chill', name: '한기', tag: 'ice', desc: '둔화 30% → 45% (2중첩 60%)', max: 2 },
   { id: 'shards', name: '얼음 파편', tag: 'ice', desc: '얼어붙은 적이 죽으면 파편 6개가 튐', rare: 1 },
   { id: 'permafrost', name: '영구 동토', tag: 'ice', desc: '얼어붙음 지속시간 +1초', max: 2 },
   { id: 'frostarmor', name: '냉각 갑옷', tag: 'ice', desc: '피격 시 주변 적 빙결 2중첩', pack: 'B' },
-  // 폭발
+  // 금속: 파쇄 (받는 피해 증가 중첩)
+  { id: 'shrapnel', name: '파편 탄두', tag: 'metal', desc: '탄환이 25% 확률로 파쇄 1중첩', max: 2 },
+  { id: 'hardened', name: '경화', tag: 'metal', desc: '파쇄 1중첩당 받는 피해 +2% 추가', max: 2 },
+  { id: 'heavy', name: '중량탄', tag: 'metal', desc: '보스·엘리트에게 주는 피해 +15%', max: 2 },
+  { id: 'ironskin', name: '강철 가시', tag: 'metal', desc: '피격 시 주변 적에게 파쇄 3중첩' },
+  { id: 'anvil', name: '모루', tag: 'metal', desc: '파쇄 5중첩 이상인 적 명중 시 10% 확률로 피해 3배', rare: 1 },
+  { id: 'grind', name: '연마', tag: 'metal', desc: '파쇄 지속시간 +4초' },
+  // 빛: 실명 (공격 불가)
+  { id: 'flashround', name: '섬광탄', tag: 'light', desc: '탄환이 15% 확률로 실명 부여', max: 2 },
+  { id: 'glare', name: '눈부심', tag: 'light', desc: '실명 지속시간 +0.7초', max: 2 },
+  { id: 'halo', name: '후광', tag: 'light', desc: '실명된 적에게 주는 피해 +25%', max: 2 },
+  { id: 'lens', name: '집광 렌즈', tag: 'light', desc: '치명타가 실명을 부여' },
+  { id: 'dawn', name: '여명', tag: 'light', desc: '스킬 사용 시 주변 적 전부 실명' },
+  { id: 'refract', name: '빛 굴절', tag: 'light', desc: '실명된 적이 죽으면 가까운 적 2명에게 빛줄기', rare: 1 },
+  // 어둠: 침식 (처형)
+  { id: 'hex', name: '저주탄', tag: 'dark', desc: '탄환이 20% 확률로 침식 1중첩', max: 2 },
+  { id: 'decay', name: '부패', tag: 'dark', desc: '침식 1중첩당 처형 기준 +1%', max: 2 },
+  { id: 'reaper', name: '수확자', tag: 'dark', desc: '처형할 때마다 다음 3발 피해 +60%' },
+  { id: 'nightfall', name: '땅거미', tag: 'dark', desc: '침식 최대 중첩 +2', max: 2 },
+  { id: 'curseblood', name: '피의 저주', tag: 'dark', desc: '침식된 적이 죽으면 그 자리에 침식 웅덩이', rare: 1 },
+  { id: 'umbra', name: '그늘 구르기', tag: 'dark', desc: '구르며 스친 적에게 침식 2중첩' },
+  // 바람: 돌풍 (밀어내기 + 충돌)
+  { id: 'gale', name: '질풍탄', tag: 'wind', desc: '탄환이 20% 확률로 돌풍 부여', max: 2 },
+  { id: 'impact', name: '충돌', tag: 'wind', desc: '벽 충돌 피해 +50%', max: 2 },
+  { id: 'tailwind', name: '순풍', tag: 'wind', desc: '이동 속도 +8%, 탄속 +10%', max: 2 },
+  { id: 'updraft', name: '상승기류', tag: 'wind', desc: '구르기가 끝날 때 주변 적을 밀쳐냄' },
+  { id: 'crosswind', name: '횡풍', tag: 'wind', desc: '돌풍 밀어내기 거리 +40%' },
+  { id: 'cyclone', name: '소용돌이', tag: 'wind', desc: '벽에 부딪힌 적 주변의 적도 밀려남', rare: 1 },
+  // 물: 젖음 (상태 이상 증폭)
+  { id: 'splash', name: '물총탄', tag: 'water', desc: '탄환이 25% 확률로 젖음 부여', max: 2 },
+  { id: 'deluge', name: '홍수', tag: 'water', desc: '젖음 지속시간 +2초', max: 2 },
+  { id: 'catalyst', name: '촉매', tag: 'water', desc: '젖은 적에게 거는 상태 이상 증폭 +25%', max: 2 },
+  { id: 'spray', name: '물보라 구르기', tag: 'water', desc: '구르기 경로에 물웅덩이를 남김' },
+  { id: 'pressure', name: '수압', tag: 'water', desc: '젖은 적이 받는 반응 피해 +50%' },
+  { id: 'riptide', name: '이안류', tag: 'water', desc: '젖은 적이 피해를 받으면 다른 젖은 적도 20% 피해', rare: 1 },
+  // 폭발: 범위
   { id: 'chaindet', name: '연쇄 기폭', tag: 'exp', desc: '폭발에 맞은 적이 죽으면 다시 폭발 (2중첩 시 더 크게)', rare: 1, max: 2 },
   { id: 'hiexp', name: '고폭 화약', tag: 'exp', desc: '폭발 피해 +30%', max: 2 },
   { id: 'burst', name: '파열탄', tag: 'exp', desc: '탄환이 10% 확률로 소형 폭발', max: 2 },
   { id: 'blastroll', name: '폭발 구르기', tag: 'exp', desc: '구르기가 끝날 때 폭발 (자신은 피해 없음)' },
-  { id: 'shockwave', name: '충격파', tag: 'exp', desc: '폭발 범위 +15%, 넉백 +50%', max: 2 },
+  { id: 'shockwave', name: '충격파', tag: 'exp', desc: '폭발 범위 +15%', max: 2 },
   { id: 'safety', name: '안전 장치', tag: 'exp', desc: '자신의 폭발에 피해를 입지 않음', pack: 'B' },
-  // 탄환
+  // 탄환: 총기 성능
   { id: 'twin', name: '쌍발', tag: 'bullet', desc: '탄 2발 발사, 각 탄 피해 -35%', rare: 1 },
   { id: 'sharp', name: '날카로운 탄', tag: 'bullet', desc: '피해 +15%', max: 3 },
   { id: 'rapid', name: '속사', tag: 'bullet', desc: '연사 속도 +15%', max: 3 },
@@ -132,15 +193,21 @@ const CURSES = [
 ];
 const CURSE = {}; CURSES.forEach(c => CURSE[c.id] = c);
 
+// 세트 효과: [3세트, 5세트, 7세트, 9세트(프리즘 각성)]. 태그마다 효과의 종류가 다르다.
 const SETS = {
-  fire: ['화상으로 죽은 적이 불씨를 퍼뜨림 (범위 150)', '화상 피해 중첩 (최대 5중첩)', '화상 피해 2배, 화상으로 죽은 적이 폭발'],
-  elec: ['감전 전이 대상 +2', '2.5초마다 가까운 적 3명에게 번개', '모든 명중이 25% 확률로 낙뢰 (피해 25)'],
-  ice: ['얼어붙은 적이 받는 피해 +50%', '구르기 경로에 얼음 바닥 생성', '2중첩으로 빙결, 빙결 시 얼음 파편 발사'],
-  exp: ['폭발 범위 +45%', '적 처치 시 35% 확률로 소형 폭발', '폭발 피해 +50%, 폭발마다 연쇄 소폭발 3개'],
-  bullet: ['탄 속도 +60%, 피해 +10%', '3발마다 관통탄', '모든 탄 관통 +2, 피해 +25%'],
-  surv: ['최대 체력 +40', '방에 입장할 때마다 보호막 2회', '받는 피해 -15%, 2초마다 체력 3 회복']
+  fire: ['화상으로 죽은 적의 불이 주변(150)으로 옮겨 붙음', '화상 최대 5중첩', '화상 피해 2배, 화상 피해가 들어갈 때마다 10% 확률로 가까운 적에게 번짐', '태양 코어: 모든 공격이 화상, 최대 10중첩, 몸 주위 170 안의 적이 계속 불탐'],
+  elec: ['감전 연쇄 대상 +2', '2.5초마다 가까운 적 3명에게 낙뢰', '연쇄된 번개가 한 번 더 튀고, 전이 피해 100%', '뇌신 강림: 모든 공격이 감전, 1초마다 화면 안의 적에게 낙뢰'],
+  ice: ['얼어붙은 적이 받는 피해 +50%', '구르기 경로에 얼음 바닥 생성', '2중첩으로 빙결, 얼어붙음 +1초', '절대영도: 모든 공격이 빙결, 몸 주위 200 안의 적이 계속 얼어감, 얼어붙은 적이 죽으면 주변이 즉시 얼어붙음'],
+  metal: ['파쇄 최대 10중첩', '보스·엘리트에게 주는 피해 +25%', '파쇄 1중첩당 받는 피해 5% → 8%', '강철 폭풍: 모든 공격이 파쇄 2중첩, 강철 칼날 4개가 몸 주위를 돌며 적을 벰'],
+  light: ['실명 지속시간 +1초', '실명된 적에게 주는 피해는 항상 치명타', '4번 공격할 때마다 관통 광선 발사', '성광: 모든 공격이 실명, 6초마다 섬광이 터져 화면 안의 적 실명 + 적 탄 소멸'],
+  dark: ['처형된 적의 영혼이 다른 적을 쫓아가 침식', '처형 기준 2배 (중첩당 3% → 6%)', '처형할 때마다 스킬 대기시간 1초 감소', '공허: 모든 공격이 침식 2중첩, 침식 최대 +5, 처형한 자리에 공허 균열이 생겨 적을 빨아들임'],
+  wind: ['벽 충돌 피해 2배', '이동 속도 +20%, 구르기 충전 40% 빨라짐', '밀려난 적이 다른 적과 부딪히면 둘 다 충돌 피해', '폭풍의 눈: 모든 공격이 돌풍, 몸 주위 바람 장벽이 적 탄을 되돌려 보냄, 3초마다 주변 적을 날려버림'],
+  water: ['젖은 적이 죽으면 물웅덩이가 생김 (웅덩이는 적을 적심)', '젖은 적에게 거는 상태 이상 증폭 1.5배 → 2배', '모든 속성 반응 피해 2배', '해일: 모든 공격이 젖음, 5초마다 해일이 퍼져 주변 적을 적시고 모든 상태 이상 지속시간을 초기화'],
+  exp: ['폭발 범위 +45%', '적 처치 시 35% 확률로 소형 폭발', '폭발 피해 +50%, 폭발마다 연쇄 소폭발 3개', '핵융합: 모든 명중이 소형 폭발, 자신의 폭발에 피해 없음'],
+  bullet: ['탄 속도 +60%, 피해 +10%', '3발마다 관통탄', '모든 탄 관통 +2, 피해 +25%', '탄막: 탄 2발 추가 발사, 치명타 +25%, 재장전 없음'],
+  surv: ['최대 체력 +40', '방에 입장할 때마다 보호막 2회', '받는 피해 -15%, 2초마다 체력 3 회복', '불사: 전투마다 1회 쓰러지면 체력 50%로 부활, 받는 피해 -25%']
 };
-const PRISM = '프리즘 (같은 속성 강화 9개): 모든 피해 +80%, 치명타 +15%, 이동 +15%, 폭발 범위 +30%, 명중 시 50% 확률로 무작위 속성(불/전기/얼음) 부여, 조각 3개(불=화상+불길 / 전기=연쇄 번개 / 얼음=빙결)가 몸 주위를 돌며 적 탄을 지움, 8초마다 프리즘 폭발: 불=화상 링·기름 점화, 전기=번개 8줄기·물 감전, 얼음=범위 빙결, 폭발=무작위 4곳 폭발, 탄환=관통 탄막 16발, 생존=체력 10 회복+보호막';
+const PRISM = '프리즘 각성 (같은 태그 강화 9개): 모든 피해 +50% + 태그마다 다른 각성 효과';
 
 // ---------- 적 ----------
 const ENEMY_INFO = {
@@ -187,13 +254,19 @@ const BOSS_INFO = {
   mother: { name: '마더보드', sub: '도시 관리 AI', desc: '서버 기둥을 파괴해야 본체에 피해가 들어간다. 3페이즈.' }
 };
 
-// ---------- 반응 ----------
+// ---------- 속성 반응 ----------
 const REACTIONS = {
+  thermal: { name: '열충격', color: '#ff8ad5', desc: '화상 + 빙결: 두 상태가 해제되며 큰 단일 피해.' },
   shatter: { name: '산산조각', color: '#bff4ff', desc: '얼어붙은 적 + 폭발: 폭발 피해 2배, 파편이 튄다.' },
+  overload: { name: '과부하', color: '#ffd23d', desc: '감전 + 폭발: 폭발 범위 +50%.' },
   firestorm: { name: '화염 폭풍', color: '#ff6a1a', desc: '화상 + 기름 웅덩이: 웅덩이 전체가 불타는 지대가 된다.' },
   current: { name: '전류 확산', color: '#fff04d', desc: '감전 + 물웅덩이: 웅덩이 위 모든 적 감전.' },
-  thermal: { name: '열충격', color: '#ff8ad5', desc: '화상 + 빙결: 두 상태가 해제되며 큰 단일 피해.' },
-  overload: { name: '과부하', color: '#ffd23d', desc: '감전 + 폭발: 폭발 범위 +50%.' }
+  scald: { name: '증기 화상', color: '#ffc2a0', desc: '젖음 + 화상: 젖음이 증발하며 뜨거운 증기 구름이 남아 주변 적을 데운다.' },
+  conduct: { name: '전도', color: '#7fd0ff', desc: '젖음 + 감전: 범위 안의 모든 젖은 적에게 번개가 흐른다.' },
+  magnet: { name: '전자석', color: '#c8d8ff', desc: '파쇄 3중첩 이상 + 감전: 주변 적을 대상 쪽으로 끌어당기고 파쇄 중첩만큼 피해.' },
+  rust: { name: '부식', color: '#d08a50', desc: '젖음 + 파쇄: 젖음이 사라지며 파쇄 3중첩 추가.' },
+  eclipse: { name: '일식', color: '#d9b8ff', desc: '실명 + 침식: 두 상태가 사라지며 최대 체력 비례 피해 (보스는 감소).' },
+  tornado: { name: '불꽃 회오리', color: '#ffb86b', desc: '화상 + 돌풍: 회오리가 불을 감아올려 주변 적에게 화상을 퍼뜨린다.' }
 };
 
 // ---------- 전투 목표 ----------
@@ -229,8 +302,8 @@ const UNLOCKS = [
   { id: 'char_momo', cat: '캐릭터', name: '모모 (기술자)', desc: '포탑 설치 스킬. 조건: 구역 2 클리어', cost: 40 },
   { id: 'char_kai', cat: '캐릭터', name: '카이 (기동)', desc: '반사 베기 스킬. 조건: 구르기로 탄환 500발 회피', cost: 60 },
   { id: 'char_sera', cat: '캐릭터', name: '세라 (저격)', desc: '시간 감속 스킬. 조건: 저격총으로 보스 처치', cost: 80 },
-  { id: 'wpn_boomerang', cat: '무기 풀', name: '부메랑 원반', desc: '상점과 상자에 부메랑 원반 등장', cost: 25 },
-  { id: 'wpn_blackhole', cat: '무기 풀', name: '블랙홀 발사기', desc: '상점과 상자에 블랙홀 발사기 등장', cost: 35 },
+  { id: 'wpn_boomerang', cat: '무기 풀', name: '부메랑 원반', desc: '상점과 상자에 부메랑 원반(바람) 등장', cost: 25 },
+  { id: 'wpn_blackhole', cat: '무기 풀', name: '블랙홀 발사기', desc: '상점과 상자에 블랙홀 발사기(어둠) 등장', cost: 35 },
   { id: 'upg_A', cat: '강화 풀', name: '강화 팩 A', desc: '화염 갑옷, 방전, 대구경, 집중, 투자 추가', cost: 30 },
   { id: 'upg_B', cat: '강화 풀', name: '강화 팩 B', desc: '번개 강타, 냉각 갑옷, 안전 장치, 방탄판, 행운 추가', cost: 45 },
   { id: 'qol_start', cat: '편의', name: '출격 준비', desc: '런 시작 시 강화 1개 선택', cost: 40 },
@@ -306,6 +379,6 @@ const EVENTS = [
   { id: 'payback', name: '저항군의 보답', icon: '🤝', special: true, desc: '예전에 도와준 저항군 대원이 동료들과 함께 나타났다. "약속대로 보답하러 왔다!"',
     choices: [
       { t: '보급품을 받는다 (체력 전부 회복, 최대 체력 +15, 코인 +40)', act: () => { changeMaxHp(15); run.hp = run.maxHp; run.coins += 40; run.helped = -99; return { text: '동료들의 응원을 받으며 다시 출발한다.' }; } },
-      { t: '장비를 받는다 (희귀 이상 강화 선택)', act: () => { run.helped = -99; return { text: '대원이 아껴둔 강화 모듈을 건넸다.', then: d => openUpgradePick({ count: 3, rare: true }, d) }; } }
+      { t: '장비를 받는다 (희귀 이상 강화 선택)', act: () => { run.helped = -99; return { text: '대원이 아껴둔 강화 모듈을 건넸다.', then: d => openUpgradePick({ count: 3, rare: true, sub: '저항군의 선물: 희귀 강화 포함' }, d) }; } }
     ] }
 ];

@@ -315,6 +315,7 @@ function spawnEnemy(type, x, y, o = {}) {
     type, x, y, vx: 0, vy: 0, kx: 0, ky: 0, r: def.r, hp: def.hp * G.eHp * (o.hpMult || 1), maxHp: 0, spd: def.spd * G.eSpd, color: def.color,
     contact: def.contact || 0, t: 0, st: '', cd: rand(0.8, 1.8), ang: 0, mang: 0, flash: 0, dead: false, muts: null, elite: null,
     burnT: 0, burnDps: 0, burnStacks: 0, burnTick: 0, shockT: 0, chill: 0, chillT: 0, frozenT: 0,
+    shred: 0, shredT: 0, blindT: 0, dazzleT: 0, corrode: 0, corrodeT: 0, soakT: 0, gustT: 0, gustDmg: 0,
     alert: 0, heavy: !!def.heavy, boss: !!def.boss, spawning: !o.instant, spawnT: o.instant ? 0 : 0.75,
     atkMult: 1, sm: 1, heldCoins: 0, noReward: !!o.noReward, hzT: 0, objHitT: 0, clone: !!o.clone, objTarget: !!o.objTarget, flying: !!def.flying
   };
@@ -329,7 +330,7 @@ function spawnEnemy(type, x, y, o = {}) {
   if (def.init) def.init(e, o);
   room.enemies.push(e);
   if (!o.instant && (type === 'tele' || type === 'mimic')) SFX.play('warn');
-  if (!e.boss) codex('enemy', type);
+  if (!e.boss && ENEMY_INFO[type]) codex('enemy', type);
   return e;
 }
 
@@ -346,18 +347,32 @@ function updateEnemies(dt) {
     // 상태 이상
     if (e.burnT > 0) {
       e.burnT -= edt; e.burnTick -= edt;
-      if (e.burnTick <= 0) { e.burnTick = 0.5; damageEnemy(e, e.burnDps * 0.5 * (e.burnStacks || 1), { quiet: true }); if (e.dead) continue; }
+      if (e.burnT <= 0) e.burnStacks = 0;
+      if (e.burnTick <= 0) {
+        e.burnTick = BS.burnTick;
+        damageEnemy(e, e.burnDps * BS.burnTick * (e.burnStacks || 1), { quiet: true, dot: true });
+        if (e.dead) continue;
+        if (BS.fire7 && Math.random() < 0.1) { const t = room.enemies.find(q => q !== e && !q.dead && !q.spawning && !(q.burnT > 0) && d2(q.x, q.y, e.x, e.y) < 120 * 120); if (t) applyStatus(t, 'fire', {}); }
+      }
       if (Math.random() < 0.3) part({ x: e.x + rand(-e.r, e.r), y: e.y + rand(-e.r, e.r) * 0.5, vx: 0, vy: -rand(30, 70), life: 0.4, size: rand(2, 4), color: pick(['#ff6a1a', '#ffb347']), kind: 'dot' });
     }
     if (e.shockT > 0) { e.shockT -= edt; if (Math.random() < 0.08) addBolt(e.x + rand(-e.r, e.r), e.y + rand(-e.r, e.r), e.x + rand(-e.r, e.r), e.y + rand(-e.r, e.r), '#fff04d', 0.06); }
     if (e.chillT > 0) { e.chillT -= edt; if (e.chillT <= 0) e.chill = 0; }
+    if (e.shredT > 0) { e.shredT -= edt; if (e.shredT <= 0) e.shred = 0; }
+    if (e.corrodeT > 0) { e.corrodeT -= edt; if (e.corrodeT <= 0) e.corrode = 0; }
+    if (e.blindT > 0) e.blindT -= edt;
+    if (e.dazzleT > 0) e.dazzleT -= edt;
+    if (e.soakT > 0) { e.soakT -= edt; if (Math.random() < 0.06) part({ x: e.x + rand(-e.r, e.r), y: e.y, vx: 0, vy: 40, life: 0.4, size: 2.5, color: '#5aa0ff', kind: 'dot' }); }
     const hzSlow = e.boss ? 1 : enemyHazards(e, edt);
     if (e.dead) continue;
     e.sm = ((e.chill > 0 || e.chillT > 0) ? 1 - BS.chillSlow : 1) * hzSlow;
     if (e.muts) { if (e.muts.includes('haste')) e.sm *= 2; updateElite(e, edt); }
-    e.atkMult = e.muts && e.muts.includes('rage') && e.hp < e.maxHp * 0.5 ? 2 : 1;
+    e.atkMult = (e.muts && e.muts.includes('rage') && e.hp < e.maxHp * 0.5 ? 2 : 1) * (e.dazzleT > 0 ? 0.6 : 1);
     if (e.frozenT > 0) {
       e.frozenT -= edt;
+    } else if (e.blindT > 0 && !e.boss) {
+      // 실명: 공격하지 못하고 헤맨다
+      e.t += edt; moveDir(e, Math.sin(e.t * 1.3 + e.y * 0.01) * TAU, e.spd * 0.45 * e.sm, edt);
     } else if (e.alert > 0) {
       e.alert -= edt;
       if (d2(e.x, e.y, P.x, P.y) < 220 * 220) e.alert = 0;
@@ -366,15 +381,20 @@ function updateEnemies(dt) {
       if (e.bounty) bountyAI(e, edt); else EN[e.type].update(e, edt);
       if (e.dead) continue;
     }
-    // 넉백
+    // 넉백 (+ 바람: 벽 충돌)
     e.x += e.kx * edt; e.y += e.ky * edt;
+    if (e.gustT > 0) {
+      e.gustT -= edt;
+      const hitWall = (!e.flying && wallCircle(e.x, e.y, e.r)) || e.x <= e.r || e.x >= room.w - e.r || e.y <= e.r || e.y >= room.h - e.r;
+      if (hitWall && Math.hypot(e.kx, e.ky) > 70) { slamEnemy(e); e.kx *= -0.3; e.ky *= -0.3; if (e.dead) continue; }
+    }
     e.kx -= e.kx * Math.min(1, 9 * edt); e.ky -= e.ky * Math.min(1, 9 * edt);
     if (!e.flying) pushOutWalls(e);
     e.x = clamp(e.x, e.r, room.w - e.r); e.y = clamp(e.y, e.r, room.h - e.r);
     if (EN[e.type].post) EN[e.type].post(e, edt);
     // 접촉 피해
-    if (e.contact && !P.dead && e.frozenT <= 0 && d2(e.x, e.y, P.x, P.y) < (e.r + P.r - 2) ** 2) damagePlayer(e.contact, e);
-    if (room.objProp && !room.objProp.dead && e.contact && d2(e.x, e.y, room.objProp.x, room.objProp.y) < (e.r + room.objProp.r) ** 2) {
+    if (e.contact && !P.dead && e.frozenT <= 0 && !(e.blindT > 0) && d2(e.x, e.y, P.x, P.y) < (e.r + P.r - 2) ** 2) damagePlayer(e.contact, e);
+    if (room.objProp && !room.objProp.dead && e.contact && !(e.blindT > 0) && d2(e.x, e.y, room.objProp.x, room.objProp.y) < (e.r + room.objProp.r) ** 2) {
       e.objHitT -= edt; if (e.objHitT <= 0) { e.objHitT = 0.6; hitAllyProp(room.objProp, e.contact); }
     }
   }
@@ -386,6 +406,12 @@ function updateEnemies(dt) {
       const dx = b.x - a.x, dy = b.y - a.y, mr = a.r + b.r, dd = dx * dx + dy * dy;
       if (dd < mr * mr && dd > 0.01) {
         const d = Math.sqrt(dd), push = (mr - d) / 2, nx = dx / d, ny = dy / d;
+        // 바람 7세트: 밀려난 적끼리 부딪히면 둘 다 충돌 피해
+        if (BS.crash && ((a.gustT > 0 && !a.crashed) || (b.gustT > 0 && !b.crashed))) {
+          const src = a.gustT > 0 ? a : b, other = src === a ? b : a;
+          src.crashed = true; other.gustDmg = Math.max(other.gustDmg || 0, src.gustDmg); other.gustT = Math.max(other.gustT, 0.01);
+          slamEnemy(src, 0.7); if (!other.dead) slamEnemy(other, 0.7);
+        }
         const aw = a.heavy || a.boss ? 0 : 1, bw = b.heavy || b.boss ? 0 : 1, tw = aw + bw;
         if (tw === 0) continue;
         a.x -= nx * push * 2 * aw / tw; a.y -= ny * push * 2 * aw / tw;
@@ -421,9 +447,13 @@ function enemyHazards(e, dt) {
     if (!pointInHazard(h, e.x, e.y)) continue;
     switch (h.type) {
       case 'fire': if (tick) applyStatus(e, 'fire', {}); break;
-      case 'water': if (h.elecT > 0 && tick) { applyStatus(e, 'elec', { noChain: true }); damageEnemy(e, 6, { quiet: true }); } break;
-      case 'elecfloor': if (h.state === 'on' && tick) { damageEnemy(e, 15, { quiet: true }); applyStatus(e, 'elec', { noChain: true }); } break;
-      case 'laser': if (h.state === 'on' && tick) damageEnemy(e, 20, { quiet: true }); break;
+      case 'water':
+        if (tick) { if (h.elecT > 0) { applyStatus(e, 'elec', { noChain: true }); damageEnemy(e, 6, { quiet: true, dot: true }); } else if (!(e.soakT > 0)) applyStatus(e, 'water', {}); }
+        break;
+      case 'scald': if (tick) damageEnemy(e, h.dmg || 8, { quiet: true, dot: true }); break;
+      case 'shadow': if (tick) applyStatus(e, 'dark', {}); break;
+      case 'elecfloor': if (h.state === 'on' && tick) { damageEnemy(e, 15, { quiet: true, dot: true }); applyStatus(e, 'elec', { noChain: true }); } break;
+      case 'laser': if (h.state === 'on' && tick) damageEnemy(e, 20, { quiet: true, dot: true }); break;
       case 'steam': if (h.on && tick) applyStatus(e, 'ice', {}); break;
       case 'frostfloor': if (tick) applyStatus(e, 'ice', {}); break;
       case 'conveyor': if (!e.heavy) { e.x += h.dx * 140 * dt; e.y += h.dy * 140 * dt; } break;

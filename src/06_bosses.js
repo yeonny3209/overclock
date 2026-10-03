@@ -50,6 +50,8 @@ function onBossKilled(e) {
   for (const m of room.enemies) if (!m.dead && !m.boss) { m.noReward = true; killEnemy(m, {}); }
   for (const b of BULLETS) if (b.team === 'e') b.dead = true;
   room.props = room.props.filter(p => p.type !== 'spillar' && p.type !== 'heater');
+  room.hazards = room.hazards.filter(h => !h.boss); // 보스가 만든 얼음 바닥 제거 (아레나에서 계속 남던 문제)
+  G.glitchT = 0; G.glitchWarn = 0;
   room.bossDead = true;
 }
 

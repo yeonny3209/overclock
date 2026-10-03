@@ -297,6 +297,7 @@ function startRoom(o) {
     if (zone === 0) for (let i = 0; i < 2; i++) addHazard({ type: 'oil', x: W * (0.35 + i * 0.3), y: H * 0.82, r: 70 });
   } else genLayout(objType);
   createPlayer(room.sx, room.sy);
+  if (run.char === 'momo') placeTurret(P.x + 40, P.y - 30);
   room.eliteChance = kind === 'elite' ? 0.22 : zone === 0 ? 0 : 0.03 + 0.035 * zone + ((o.row || 0) >= 4 ? 0.03 : 0);
   if (run.oc >= 2) room.eliteChance += 0.06;
   room.muts2 = run.sealedNext || run.oc >= 10; run.sealedNext = false;
@@ -412,13 +413,13 @@ function updateRoom(dt) {
     case 'exterminate': {
       ob.waveT -= dt;
       if (ob.wave < ob.waves && (ob.wave === 0 || alive <= 2 || ob.waveT <= 0)) {
-        if (ob.wave > 0) healRun(15);
+        if (ob.wave > 0) healRun(15, true);
         ob.wave++; ob.waveT = 14;
         const n = ob.per + (ob.wave - 1);
         for (let i = 0; i < n; i++) spawnOne(null, { elite: room.kind === 'elite' && i < (ob.wave === 1 ? 2 : 1) });
         if (ob.wave > 1) G.banner = { text: `웨이브 ${ob.wave}/${ob.waves}`, t: 1, color: '#29f0ff' };
       }
-      if (ob.wave >= ob.waves && alive === 0) { healRun(15); completeRoom(true); }
+      if (ob.wave >= ob.waves && alive === 0) { healRun(15, true); completeRoom(true); }
       break;
     }
     case 'survive':

@@ -167,7 +167,7 @@ const SFX = {
   play(n, v = 1) {
     if (!this.ctx || SAVE.settings.vol <= 0) return;
     const now = this.ctx.currentTime;
-    const gap = { flame: 0.06, smg: 0.04, hit: 0.035, eshoot: 0.05, coin: 0.04, kill: 0.03 }[n] || 0.025;
+    const gap = { water: 0.06, flame: 0.06, smg: 0.04, hit: 0.035, eshoot: 0.05, coin: 0.04, kill: 0.03 }[n] || 0.025;
     if (this.last[n] && now - this.last[n] < gap) return;
     this.last[n] = now;
     const p = rand(0.92, 1.08);
@@ -179,6 +179,7 @@ const SFX = {
         case 'sniper': this.tone('sawtooth', 1500 * p, 70, 0.32, 0.22 * v); this.noise(0.35, 0.35 * v, 6000, 150); break;
         case 'grenade': this.tone('sine', 320 * p, 140, 0.14, 0.2 * v); this.noise(0.08, 0.12 * v, 1500, 300); break;
         case 'flame': this.noise(0.12, 0.1 * v, 900, 400, 'bandpass'); break;
+        case 'water': this.noise(0.1, 0.09 * v, 2600, 1200, 'bandpass'); this.tone('sine', 700 * p, 400, 0.06, 0.03 * v); break;
         case 'tesla': this.tone('sawtooth', 1700 * p, 300, 0.16, 0.12 * v); this.tone('square', 2600, 900, 0.1, 0.06 * v); this.noise(0.12, 0.1 * v, 8000, 3000, 'highpass'); break;
         case 'cryo': this.tone('triangle', 1900 * p, 800, 0.12, 0.13 * v); break;
         case 'boomer': this.tone('triangle', 420 * p, 950, 0.16, 0.13 * v); break;
@@ -223,12 +224,18 @@ const SFX = {
   }
 };
 
-// ================= 진행 중인 판 자동 저장 =================
+// ================= 진행 중인 판 자동 저장 (모드별 슬롯) =================
 const RUN_KEY = 'overclock_run_v1';
+function runKey(mode) { return RUN_KEY + '_' + (mode || 'campaign'); }
 function saveRun() {
-  try { if (run && run.mode !== 'arena' && run.map) localStorage.setItem(RUN_KEY, JSON.stringify(run)); } catch (e) { }
+  try { if (run && run.mode !== 'arena' && run.map) localStorage.setItem(runKey(run.mode), JSON.stringify(run)); } catch (e) { }
 }
-function clearRun() { try { localStorage.removeItem(RUN_KEY); } catch (e) { } }
-function peekRun() {
-  try { const r = JSON.parse(localStorage.getItem(RUN_KEY)); return r && r.map && r.weapons ? r : null; } catch (e) { return null; }
+function clearRun(mode) { try { localStorage.removeItem(runKey(mode)); if ((mode || 'campaign') === 'campaign') localStorage.removeItem(RUN_KEY); } catch (e) { } }
+function clearAllRuns() { for (const m of ['campaign', 'daily']) clearRun(m); }
+function peekRun(mode = 'campaign') {
+  try {
+    let r = JSON.parse(localStorage.getItem(runKey(mode)));
+    if (!r) { const old = JSON.parse(localStorage.getItem(RUN_KEY)); if (old && (old.mode || 'campaign') === mode) r = old; }
+    return r && r.map && r.weapons && CHARS[r.char] ? r : null;
+  } catch (e) { return null; }
 }

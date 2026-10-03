@@ -10,19 +10,27 @@ function newRun(mode, charId, oc, seed) {
   reseed(run.seed);
   recomputeBuild();
   run.hp = run.maxHp;
-  run.weapons = [makeWeapon(CHARS[charId].weapon, 0)];
+  run.weapons = [makeWeapon(CHARS[charId].weapon, CHARS[charId].startGrade || 0)];
   codex('weapon', CHARS[charId].weapon);
   SAVE.stats.runs++; saveGame();
 }
-function resumeRun() {
-  const r = peekRun(); if (!r) { showTitle(); return; }
+function resumeRun(mode = 'campaign') {
+  const r = peekRun(mode); if (!r) { showTitle(); return; }
   run = r; G.mode = run.mode; reseed(run.seed + run.zone);
+  // 이전 버전 저장 데이터 정리 (없어진 무기/부품/강화 제거)
+  run.weapons = (run.weapons || []).filter(w => w && WEAPONS[w.id]);
+  if (!run.weapons.length) run.weapons = [makeWeapon(CHARS[run.char].weapon, 0)];
+  for (const w of run.weapons) { w.mods = (w.mods || []).map(m => m && MODS[m] ? m : null); if (!(w.ammo > 0)) w.ammo = 1; w.reloadT = 0; w.cd = 0; }
+  run.bag = (run.bag || []).filter(m => MODS[m]);
+  for (const id in run.ups) if (!UPG[id]) delete run.ups[id];
+  run.cur = clamp(run.cur || 0, 0, run.weapons.length - 1);
   recomputeBuild(); run.hp = Math.min(run.hp, run.maxHp);
+  for (const w of run.weapons) fixAmmo(w);
   toast('저장된 판을 불러왔습니다');
   showMap();
 }
 function startCampaign(charId, oc, mode, seed) {
-  clearRun();
+  clearRun(mode || 'campaign');
   newRun(mode || 'campaign', charId, oc, seed);
   G.mode = run.mode;
   run.map = genMap(0);
@@ -106,11 +114,11 @@ function afterCombat(success, kind) {
     saveGame();
     const heal = healRun(Math.round(run.maxHp * 0.25), true);
     if (heal) toast(`구역 돌파 보급: 체력 ${Math.round(heal)} 회복`);
-    openUpgradePick({ count: 3, rare: true, title: `${ZONES[run.zone].name} 돌파! 보스 보상` }, nextZone);
+    openUpgradePick({ count: 3, rare: true, title: `${ZONES[run.zone].name} 돌파! 보스 보상`, sub: '보스 보상: 희귀 강화 포함' }, nextZone);
     return;
   }
   void r;
-  if (success) openUpgradePick({ count: 3, rare: kind === 'elite' }, showMap);
+  if (success) openUpgradePick({ count: 3, rare: kind === 'elite', sub: kind === 'elite' ? '엘리트 보상: 희귀 강화 포함' : null }, showMap);
   else showMap();
 }
 function nextZone() {
@@ -123,7 +131,7 @@ function nextZone() {
 // ================= 런 종료 =================
 function endRun(victory) {
   if (!run) return;
-  clearRun();
+  if (run.mode !== 'arena') clearRun(run.mode);
   if (radioState) { clearInterval(radioState.timer); radioState = null; }
   let chips, extra = '';
   if (run.mode === 'arena') {
@@ -169,6 +177,7 @@ function startArena(charId) {
   addHazard({ type: 'slick', x: W * 0.5, y: H * 0.82, r: 120 });
   arenaBarrels();
   createPlayer(room.sx, room.sy);
+  if (run.char === 'momo') placeTurret(P.x + 40, P.y - 30);
   setupObjective('arena');
   G.screen = 'combat'; G.paused = false; UI('');
   updateCamera(0, true);
@@ -177,7 +186,7 @@ function arenaBarrels() {
   room.props = room.props.filter(p => p.type !== 'barrel');
   for (const [x, y] of [[0.1, 0.12], [0.9, 0.12], [0.1, 0.88], [0.9, 0.88], [0.5, 0.35], [0.5, 0.65]]) room.props.push({ type: 'barrel', x: room.w * x, y: room.h * y, r: 15, hp: 20, shootable: true });
 }
-function arenaSpawnTable() { return ZONES[Math.min(3, Math.floor(((room.obj && room.obj.wave) || 1) / 4))].spawn; }
+function arenaSpawnTable() { return ZONES[clamp(room.zone, 0, 3)].spawn; }
 function startArenaWave() {
   const ob = room.obj;
   ob.wave++; run.row = ob.wave;
@@ -217,7 +226,7 @@ function arenaWaveCleared() {
   G.banner = { text: `웨이브 ${ob.wave} 클리어`, t: 1.4, color: '#6dff8a' };
   for (const b of BULLETS) if (b.team === 'e') b.dead = true;
   if (BS.regen) healRun(BS.regen, true);
-  healRun(15);
+  healRun(15, true);
   if (ob.wave % 5 === 0) {
     const s = freeSpot(18, 0, 60, (x, y) => d2(x, y, P.x, P.y) < 300 * 300) || { x: P.x + 60, y: P.y };
     room.props.push({ type: 'chest', x: s.x, y: s.y, r: 18, interact: '[E] 무기 상자 열기' });
@@ -247,6 +256,7 @@ function update(dt, rdt) {
   updateParticles(dt);
   for (let i = G.texts.length - 1; i >= 0; i--) { const t = G.texts[i]; t.t -= rdt; t.y += t.vy * rdt; t.vy *= 0.94; if (t.t <= 0) G.texts.splice(i, 1); }
   for (let i = G.bolts.length - 1; i >= 0; i--) { G.bolts[i].t -= rdt; if (G.bolts[i].t <= 0) G.bolts.splice(i, 1); }
+  for (let i = G.beams.length - 1; i >= 0; i--) { G.beams[i].t -= rdt; if (G.beams[i].t <= 0) G.beams.splice(i, 1); }
   for (let i = G.reactTexts.length - 1; i >= 0; i--) { G.reactTexts[i].t -= rdt; if (G.reactTexts[i].t <= 0) G.reactTexts.splice(i, 1); }
   G.flash = Math.max(0, G.flash - rdt * 1.5);
   G.shakeAmt = Math.max(0, G.shakeAmt - rdt * 40);
