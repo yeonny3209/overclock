@@ -116,24 +116,25 @@ function drawHUD() {
   // 무기 슬롯 (우하단)
   for (let i = 0; i < 2; i++) {
     const w = run.weapons[i];
-    const bw = 210, bh = 58, bx = VW - pad - bw, by = VH - pad - bh - (1 - i) * 0 - (i === 0 ? bh + 8 : 0);
+    const T = Input.touch, bw = T ? 170 : 210, bh = T ? 40 : 58, bx = VW - pad - bw, by = T ? pad + 80 + i * 46 : VH - pad - bh - (i === 0 ? bh + 8 : 0);
     const cur = i === run.cur;
     panel(bx, by, bw, bh, cur ? '#29f0ff' : 'rgba(80,80,120,0.5)');
     if (!w) { hudText('빈 슬롯', bx + 12, by + 34, 13, '#5a6080'); continue; }
     const s = wStats(w);
     ctx.globalAlpha = cur ? 1 : 0.55;
-    hudText(w.grade === 2 ? LEGEND[w.id].name : WEAPONS[w.id].name, bx + 12, by + 22, 16, GRADES[w.grade].color);
-    ctx.fillStyle = TAG_COLOR[s.tag]; ctx.fillRect(bx + 12, by + 30, 30, 4);
-    hudText(TAG_NAME[s.tag], bx + 46, by + 35, 10, TAG_COLOR[s.tag]);
-    for (let m = 0; m < w.mods.length; m++) { ctx.fillStyle = w.mods[m] ? '#29f0ff' : '#2a3050'; ctx.fillRect(bx + 12 + m * 12, by + 42, 9, 9); }
+    hudText(w.grade === 2 ? LEGEND[w.id].name : WEAPONS[w.id].name, bx + 12, by + (T ? 17 : 22), T ? 13 : 16, GRADES[w.grade].color);
+    ctx.fillStyle = TAG_COLOR[s.tag]; ctx.fillRect(bx + 12, by + (T ? 24 : 30), 30, 4);
+    if (s.tag2) { ctx.fillStyle = TAG_COLOR[s.tag2]; ctx.fillRect(bx + 44, by + (T ? 24 : 30), 18, 4); }
+    hudText(TAG_NAME[s.tag] + (s.tag2 ? '+' + TAG_NAME[s.tag2] : ''), bx + (T ? 12 : 66), by + (T ? 36 : 35), 10, TAG_COLOR[s.tag]);
+    if (!T) for (let m = 0; m < w.mods.length; m++) { ctx.fillStyle = w.mods[m] ? '#29f0ff' : '#2a3050'; ctx.fillRect(bx + 12 + m * 12, by + 42, 9, 9); }
     const ammo = s.mag === Infinity ? '∞' : w.reloadT > 0 ? '재장전' : `${w.ammo}/${s.mag}`;
-    hudText(ammo, bx + bw - 12, by + 42, w.reloadT > 0 ? 15 : 22, w.ammo <= 0 && s.mag !== Infinity ? '#ff4d6d' : '#fff', 'right');
+    hudText(ammo, bx + bw - 10, by + (T ? 30 : 42), w.reloadT > 0 ? 13 : T ? 17 : 22, w.ammo <= 0 && s.mag !== Infinity ? '#ff4d6d' : '#fff', 'right');
     if (cur && w.reloadT > 0) { ctx.fillStyle = '#29f0ff'; ctx.fillRect(bx, by + bh - 3, bw * (1 - w.reloadT / (w.reloadMax || 1)), 3); }
-    hudText(i === run.cur ? '' : 'Q', bx + bw - 12, by + 18, 11, '#8a90b0', 'right');
+    if (!T) hudText(i === run.cur ? '' : 'Q', bx + bw - 12, by + 18, 11, '#8a90b0', 'right');
     ctx.globalAlpha = 1;
   }
   // 태그 (좌하단, 폭이 모자라면 줄바꿈)
-  const maxX = VW - pad - 230;
+  const maxX = Input.touch ? VW * 0.5 : VW - pad - 230;
   const chips = [];
   for (const t of SET_TAGS) {
     const n = run.tags[t]; if (!n) continue;
@@ -144,7 +145,7 @@ function drawHUD() {
   let rows = [[]], rw = 0;
   for (const c of chips) { if (rw + c.w > maxX - pad && rows[rows.length - 1].length) { rows.push([]); rw = 0; } rows[rows.length - 1].push(c); rw += c.w + 6; }
   rows = rows.filter(r => r.length);
-  let ty = VH - pad - 6 - (rows.length - 1) * 26;
+  let ty = Input.touch ? pad + 146 : VH - pad - 6 - (rows.length - 1) * 26;
   for (const r of rows) {
     let tx = pad;
     for (const c of r) {
@@ -155,11 +156,11 @@ function drawHUD() {
     }
     ty += 26;
   }
-  const topY = VH - pad - 6 - rows.length * 26 - (rows.length ? 0 : -20);
+  const topY = Input.touch ? ty + 18 : VH - pad - 6 - rows.length * 26 - (rows.length ? 0 : -20);
   if (BS.awakened.length) hudText('◆ 각성: ' + BS.awakened.map(t => SETS[t][3].split(':')[0]).join(' · '), pad, topY - 4, 13, `hsl(${(G.time * 120) % 360},100%,72%)`);
-  hudText('ESC 일시정지', pad, topY - (BS.awakened.length ? 22 : 4), 11, '#5a6080');
+  if (!Input.touch) hudText('ESC 일시정지', pad, topY - (BS.awakened.length ? 22 : 4), 11, '#5a6080');
 
-  if (SAVE.settings.minimap) drawMinimap();
+  if (SAVE.settings.minimap && (!Input.touch || VH >= 640)) drawMinimap();
   drawBossBar();
   drawOffscreenArrows();
 
@@ -206,6 +207,7 @@ function drawHUD() {
     ctx.globalAlpha = 1;
   }
   if (P.dead) hudText('요원 신호 소실...', VW / 2, VH / 2, 40, '#ff4d6d', 'center');
+  drawTouchControls();
   drawCrosshair();
 }
 
@@ -268,7 +270,7 @@ function drawOffscreenArrows() {
 }
 
 function drawCrosshair() {
-  if (Input.usingPad) return;
+  if (Input.usingPad || Input.touch) return;
   const x = Input.mx, y = Input.my, w = curW();
   const s = wStats(w);
   const spread = 8 + s.spread * 60;
@@ -321,7 +323,7 @@ function hudTopY() { return VW < 1060 ? 130 : 16; }
 
 function drawMinimap() {
   const mw = Math.min(170, VW * 0.2), k = mw / room.w, mh = room.h * k;
-  const x0 = VW - 16 - mw, y0 = 16 + 80;
+  const x0 = VW - 16 - mw, y0 = Input.touch ? 16 + 80 + 94 : 16 + 80;
   ctx.fillStyle = 'rgba(6,5,16,0.7)'; ctx.fillRect(x0, y0, mw, mh);
   ctx.strokeStyle = 'rgba(41,240,255,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(x0 + 0.5, y0 + 0.5, mw - 1, mh - 1);
   ctx.fillStyle = 'rgba(160,160,200,0.35)';

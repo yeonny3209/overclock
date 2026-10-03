@@ -248,6 +248,7 @@ function update(dt, rdt) {
   if (G.bossIntro) { G.bossIntro.t -= rdt; if (G.bossIntro.t <= 0) G.bossIntro = null; }
   if (G.objBanner) G.objBanner.t -= rdt;
   if (G.banner) { G.banner.t -= rdt; if (G.banner.t <= 0) G.banner = null; }
+  updateTouchInput();
   updatePlayer(dt);
   updateAllies(dt);
   if (!G.bossIntro) { updateEnemies(dt); updateHacked(dt); }
@@ -307,5 +308,8 @@ addEventListener('blur', () => { if (G.screen === 'combat' && !G.paused) pauseGa
 loadSave();
 recomputeBuild();
 initInput();
+initTouch();
+// 설치형 웹앱(PWA): http(s)로 열렸을 때만 서비스 워커 등록
+if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => { });
 showTitle();
 requestAnimationFrame(frame);

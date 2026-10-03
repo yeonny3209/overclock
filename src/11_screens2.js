@@ -166,9 +166,12 @@ function showSettings(back) {
       <span>코인 자동 회수</span><span><button class="btn sm ${s.autoCoin ? 'on' : ''}" onclick="${cb(() => { s.autoCoin = !s.autoCoin; saveGame(); render(); })}">${s.autoCoin ? '켜짐' : '꺼짐'}</button></span>
       <span>무전 건너뛰기</span><span><button class="btn sm ${s.skipRadio ? 'on' : ''}" onclick="${cb(() => { s.skipRadio = !s.skipRadio; saveGame(); render(); })}">${s.skipRadio ? '켜짐' : '꺼짐'}</button></span>
       <span>미니맵</span><span><button class="btn sm ${s.minimap ? 'on' : ''}" onclick="${cb(() => { s.minimap = !s.minimap; saveGame(); render(); })}">${s.minimap ? '켜짐' : '꺼짐'}</button></span>
+      <span>터치 자동 사격</span><span><button class="btn sm ${s.touchAutoFire !== false ? 'on' : ''}" onclick="${cb(() => { s.touchAutoFire = s.touchAutoFire === false; saveGame(); render(); })}">${s.touchAutoFire !== false ? '켜짐' : '꺼짐'}</button></span>
       <span>피해 숫자</span><span><button class="btn sm ${s.dmgNum ? 'on' : ''}" onclick="${cb(() => { s.dmgNum = !s.dmgNum; saveGame(); render(); })}">${s.dmgNum ? '켜짐' : '꺼짐'}</button></span>
       <span>음량</span><span><input type="range" min="0" max="1" step="0.05" value="${s.vol}" oninput="SAVE.settings.vol=+this.value;SFX.setVol(+this.value)" onchange="saveGame();SFX.play('coin')"></span>
     </div></div>
+    <div class="panel" style="width:min(520px,94vw)"><b>저장 백업</b> <span class="muted small">다른 기기나 앱으로 진행 상황 옮기기</span>
+      <div class="row" style="margin-top:8px;gap:6px"><button class="btn sm" onclick="${cb(() => showSaveCode(render))}">저장 코드 보기</button><button class="btn sm" onclick="${cb(() => showSaveImport(render))}">저장 코드 불러오기</button></div></div>
     <div class="row"><button class="btn" onclick="${cb(back)}">돌아가기</button>
     <button class="btn rd sm" onclick="${cb(() => confirmBox('모든 진행 상황을 지울까요?', () => { const st = SAVE.settings; SAVE = defaultSave(); SAVE.settings = st; saveGame(); clearAllRuns(); showTitle(); }, render))}">저장 데이터 초기화</button></div>`);
   };
@@ -230,4 +233,30 @@ function fuseWeapons(i) {
   SFX.play('win'); toast(`융합 완료: <span style="color:${TAG_COLOR[t]}">${esc(weaponName(base))}</span>`);
   SAVE.stats.fusions = (SAVE.stats.fusions || 0) + 1;
   showMap();
+}
+
+// ================= 저장 백업 (코드 복사 / 붙여넣기) =================
+function saveCode() {
+  const data = { v: 1, save: SAVE, runs: {} };
+  for (const m of ['campaign', 'daily']) { const r = peekRun(m); if (r) data.runs[m] = r; }
+  return btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+}
+function showSaveCode(back) {
+  const code = saveCode();
+  scr(`<h2>저장 코드</h2><div class="sub">아래 코드를 복사해 두었다가 다른 기기의 '저장 코드 불러오기'에 붙여넣으면 진행 상황이 옮겨진다.</div>
+    <textarea id="savecode" readonly style="width:min(620px,92vw);height:160px;background:#0c0a1a;color:#cfd6e6;border:1px solid #2e2a55;padding:8px;font-size:11px;word-break:break-all">${code}</textarea>
+    <div class="row" style="margin-top:8px"><button class="btn ye" onclick="${cb(() => { const t = $('savecode'); t.select(); (navigator.clipboard ? navigator.clipboard.writeText(code) : Promise.reject()).then(() => toast('복사했습니다'), () => { try { document.execCommand('copy'); toast('복사했습니다'); } catch (e) { toast('직접 선택해서 복사하세요'); } }); })}">복사</button><button class="btn" onclick="${cb(back)}">돌아가기</button></div>`);
+}
+function showSaveImport(back) {
+  scr(`<h2>저장 코드 불러오기</h2><div class="sub">지금 기기의 진행 상황을 덮어쓴다.</div>
+    <textarea id="saveimport" style="width:min(620px,92vw);height:160px;background:#0c0a1a;color:#cfd6e6;border:1px solid #2e2a55;padding:8px;font-size:11px"></textarea>
+    <div class="row" style="margin-top:8px"><button class="btn rd" onclick="${cb(() => {
+      try {
+        const data = JSON.parse(decodeURIComponent(escape(atob($('saveimport').value.trim()))));
+        if (!data || !data.save) throw new Error('bad');
+        localStorage.setItem(SAVE_KEY, JSON.stringify(data.save)); loadSave();
+        clearAllRuns(); for (const m in (data.runs || {})) localStorage.setItem(runKey(m), JSON.stringify(data.runs[m]));
+        saveGame(); toast('불러왔습니다'); showTitle();
+      } catch (e) { toast('코드가 올바르지 않습니다'); }
+    })}">불러오기</button><button class="btn" onclick="${cb(back)}">취소</button></div>`);
 }

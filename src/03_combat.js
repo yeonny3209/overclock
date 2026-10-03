@@ -180,7 +180,7 @@ function dynDmg() {
   return m;
 }
 function mouseWorld() {
-  if (Input.usingPad) return { x: P.x + Math.cos(P.ang) * 280, y: P.y + Math.sin(P.ang) * 280 };
+  if (Input.usingPad || Input.touch) return { x: P.x + Math.cos(P.ang) * 280, y: P.y + Math.sin(P.ang) * 280 };
   return { x: Input.mx + cam.x, y: Input.my + cam.y };
 }
 

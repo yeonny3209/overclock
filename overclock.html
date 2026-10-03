@@ -2,7 +2,13 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#07060d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>오버클럭</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,7 +17,8 @@
 :root{color-scheme:dark;--bg:#07060d;--cy:#29f0ff;--mg:#ff3df0;--ye:#ffe14d;--or:#ff8a2a;--rd:#ff2d55;--tx:#e8ecff;--mu:#8a90b0;--pn:rgba(14,12,30,.94);--bd:#2e2a55}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',sans-serif;user-select:none;-webkit-user-select:none}
-canvas#cv{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:none}
+canvas#cv{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:none;touch-action:none}
+html,body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
 #ui{position:fixed;inset:0;pointer-events:none;z-index:5}
 .scr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;padding:70px 16px 24px;overflow-y:auto;background:rgba(5,4,12,.74);cursor:default}
 .scr.top{justify-content:flex-start}
@@ -137,7 +144,7 @@ function defaultSave() {
     stats: { dodged: 0, runs: 0, clears: 0, zone2: false, sniperBoss: false, kills: 0, bestZone: 0, reactions: 0 },
     codex: { weapon: {}, enemy: {}, boss: {}, reaction: {}, event: {} },
     ocMax: 0, arenaBest: 0, daily: {},
-    settings: { shake: !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches), particles: 2, vol: 0.5, dmgNum: true, aimAssist: false, autoFire: false, autoCoin: true, skipRadio: false, minimap: true }
+    settings: { shake: !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches), particles: 2, vol: 0.5, dmgNum: true, aimAssist: false, autoFire: false, autoCoin: true, skipRadio: false, minimap: true, touchAutoFire: true }
   };
 }
 let SAVE = defaultSave();
@@ -173,6 +180,7 @@ function resize() {
   canvas.width = Math.floor(VW * DPR); canvas.height = Math.floor(VH * DPR);
 }
 addEventListener('resize', resize);
+addEventListener('orientationchange', () => setTimeout(resize, 200));
 resize();
 const FONT = "'Black Han Sans','Noto Sans KR','Malgun Gothic',sans-serif";
 const FONT2 = "'Noto Sans KR','Malgun Gothic',sans-serif";
@@ -953,7 +961,7 @@ function dynDmg() {
   return m;
 }
 function mouseWorld() {
-  if (Input.usingPad) return { x: P.x + Math.cos(P.ang) * 280, y: P.y + Math.sin(P.ang) * 280 };
+  if (Input.usingPad || Input.touch) return { x: P.x + Math.cos(P.ang) * 280, y: P.y + Math.sin(P.ang) * 280 };
   return { x: Input.mx + cam.x, y: Input.my + cam.y };
 }
 
@@ -1872,13 +1880,14 @@ function updatePlayer(dt) {
   if (Input.keys.KeyA || Input.keys.ArrowLeft) mx -= 1;
   if (Input.keys.KeyD || Input.keys.ArrowRight) mx += 1;
   if (gp) { mx += gp.lx; my += gp.ly; }
+  if (Input.touch) { mx += Input.tmx; my += Input.tmy; }
   if (G.glitchT > 0) mx = -mx; // 마더보드 글리치: 좌우 반전
   const ml = Math.hypot(mx, my); if (ml > 1) { mx /= ml; my /= ml; }
   // 조준
   if (Input.usingPad && gp) {
     if (gp.rx || gp.ry) P.ang = Math.atan2(gp.ry, gp.rx);
     else if (ml > 0.2) P.ang = Math.atan2(my, mx);
-  } else { const mw = mouseWorld(); P.ang = angTo(P.x, P.y, mw.x, mw.y); }
+  } else if (!Input.touch) { const mw = mouseWorld(); P.ang = angTo(P.x, P.y, mw.x, mw.y); }
   if (SAVE.settings.aimAssist && !Input.touch) { const t = assistTarget(P.ang, 0.3); if (t) P.ang = angTo(P.x, P.y, t.x, t.y); }
 
   const hz = playerHazards();
@@ -4425,24 +4434,25 @@ function drawHUD() {
   // 무기 슬롯 (우하단)
   for (let i = 0; i < 2; i++) {
     const w = run.weapons[i];
-    const bw = 210, bh = 58, bx = VW - pad - bw, by = VH - pad - bh - (1 - i) * 0 - (i === 0 ? bh + 8 : 0);
+    const T = Input.touch, bw = T ? 170 : 210, bh = T ? 40 : 58, bx = VW - pad - bw, by = T ? pad + 80 + i * 46 : VH - pad - bh - (i === 0 ? bh + 8 : 0);
     const cur = i === run.cur;
     panel(bx, by, bw, bh, cur ? '#29f0ff' : 'rgba(80,80,120,0.5)');
     if (!w) { hudText('빈 슬롯', bx + 12, by + 34, 13, '#5a6080'); continue; }
     const s = wStats(w);
     ctx.globalAlpha = cur ? 1 : 0.55;
-    hudText(w.grade === 2 ? LEGEND[w.id].name : WEAPONS[w.id].name, bx + 12, by + 22, 16, GRADES[w.grade].color);
-    ctx.fillStyle = TAG_COLOR[s.tag]; ctx.fillRect(bx + 12, by + 30, 30, 4);
-    hudText(TAG_NAME[s.tag], bx + 46, by + 35, 10, TAG_COLOR[s.tag]);
-    for (let m = 0; m < w.mods.length; m++) { ctx.fillStyle = w.mods[m] ? '#29f0ff' : '#2a3050'; ctx.fillRect(bx + 12 + m * 12, by + 42, 9, 9); }
+    hudText(w.grade === 2 ? LEGEND[w.id].name : WEAPONS[w.id].name, bx + 12, by + (T ? 17 : 22), T ? 13 : 16, GRADES[w.grade].color);
+    ctx.fillStyle = TAG_COLOR[s.tag]; ctx.fillRect(bx + 12, by + (T ? 24 : 30), 30, 4);
+    if (s.tag2) { ctx.fillStyle = TAG_COLOR[s.tag2]; ctx.fillRect(bx + 44, by + (T ? 24 : 30), 18, 4); }
+    hudText(TAG_NAME[s.tag] + (s.tag2 ? '+' + TAG_NAME[s.tag2] : ''), bx + (T ? 12 : 66), by + (T ? 36 : 35), 10, TAG_COLOR[s.tag]);
+    if (!T) for (let m = 0; m < w.mods.length; m++) { ctx.fillStyle = w.mods[m] ? '#29f0ff' : '#2a3050'; ctx.fillRect(bx + 12 + m * 12, by + 42, 9, 9); }
     const ammo = s.mag === Infinity ? '∞' : w.reloadT > 0 ? '재장전' : `${w.ammo}/${s.mag}`;
-    hudText(ammo, bx + bw - 12, by + 42, w.reloadT > 0 ? 15 : 22, w.ammo <= 0 && s.mag !== Infinity ? '#ff4d6d' : '#fff', 'right');
+    hudText(ammo, bx + bw - 10, by + (T ? 30 : 42), w.reloadT > 0 ? 13 : T ? 17 : 22, w.ammo <= 0 && s.mag !== Infinity ? '#ff4d6d' : '#fff', 'right');
     if (cur && w.reloadT > 0) { ctx.fillStyle = '#29f0ff'; ctx.fillRect(bx, by + bh - 3, bw * (1 - w.reloadT / (w.reloadMax || 1)), 3); }
-    hudText(i === run.cur ? '' : 'Q', bx + bw - 12, by + 18, 11, '#8a90b0', 'right');
+    if (!T) hudText(i === run.cur ? '' : 'Q', bx + bw - 12, by + 18, 11, '#8a90b0', 'right');
     ctx.globalAlpha = 1;
   }
   // 태그 (좌하단, 폭이 모자라면 줄바꿈)
-  const maxX = VW - pad - 230;
+  const maxX = Input.touch ? VW * 0.5 : VW - pad - 230;
   const chips = [];
   for (const t of SET_TAGS) {
     const n = run.tags[t]; if (!n) continue;
@@ -4453,7 +4463,7 @@ function drawHUD() {
   let rows = [[]], rw = 0;
   for (const c of chips) { if (rw + c.w > maxX - pad && rows[rows.length - 1].length) { rows.push([]); rw = 0; } rows[rows.length - 1].push(c); rw += c.w + 6; }
   rows = rows.filter(r => r.length);
-  let ty = VH - pad - 6 - (rows.length - 1) * 26;
+  let ty = Input.touch ? pad + 146 : VH - pad - 6 - (rows.length - 1) * 26;
   for (const r of rows) {
     let tx = pad;
     for (const c of r) {
@@ -4464,11 +4474,11 @@ function drawHUD() {
     }
     ty += 26;
   }
-  const topY = VH - pad - 6 - rows.length * 26 - (rows.length ? 0 : -20);
+  const topY = Input.touch ? ty + 18 : VH - pad - 6 - rows.length * 26 - (rows.length ? 0 : -20);
   if (BS.awakened.length) hudText('◆ 각성: ' + BS.awakened.map(t => SETS[t][3].split(':')[0]).join(' · '), pad, topY - 4, 13, `hsl(${(G.time * 120) % 360},100%,72%)`);
-  hudText('ESC 일시정지', pad, topY - (BS.awakened.length ? 22 : 4), 11, '#5a6080');
+  if (!Input.touch) hudText('ESC 일시정지', pad, topY - (BS.awakened.length ? 22 : 4), 11, '#5a6080');
 
-  if (SAVE.settings.minimap) drawMinimap();
+  if (SAVE.settings.minimap && (!Input.touch || VH >= 640)) drawMinimap();
   drawBossBar();
   drawOffscreenArrows();
 
@@ -4515,6 +4525,7 @@ function drawHUD() {
     ctx.globalAlpha = 1;
   }
   if (P.dead) hudText('요원 신호 소실...', VW / 2, VH / 2, 40, '#ff4d6d', 'center');
+  drawTouchControls();
   drawCrosshair();
 }
 
@@ -4577,7 +4588,7 @@ function drawOffscreenArrows() {
 }
 
 function drawCrosshair() {
-  if (Input.usingPad) return;
+  if (Input.usingPad || Input.touch) return;
   const x = Input.mx, y = Input.my, w = curW();
   const s = wStats(w);
   const spread = 8 + s.spread * 60;
@@ -4630,7 +4641,7 @@ function hudTopY() { return VW < 1060 ? 130 : 16; }
 
 function drawMinimap() {
   const mw = Math.min(170, VW * 0.2), k = mw / room.w, mh = room.h * k;
-  const x0 = VW - 16 - mw, y0 = 16 + 80;
+  const x0 = VW - 16 - mw, y0 = Input.touch ? 16 + 80 + 94 : 16 + 80;
   ctx.fillStyle = 'rgba(6,5,16,0.7)'; ctx.fillRect(x0, y0, mw, mh);
   ctx.strokeStyle = 'rgba(41,240,255,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(x0 + 0.5, y0 + 0.5, mw - 1, mh - 1);
   ctx.fillStyle = 'rgba(160,160,200,0.35)';
@@ -5142,9 +5153,12 @@ function showSettings(back) {
       <span>코인 자동 회수</span><span><button class="btn sm ${s.autoCoin ? 'on' : ''}" onclick="${cb(() => { s.autoCoin = !s.autoCoin; saveGame(); render(); })}">${s.autoCoin ? '켜짐' : '꺼짐'}</button></span>
       <span>무전 건너뛰기</span><span><button class="btn sm ${s.skipRadio ? 'on' : ''}" onclick="${cb(() => { s.skipRadio = !s.skipRadio; saveGame(); render(); })}">${s.skipRadio ? '켜짐' : '꺼짐'}</button></span>
       <span>미니맵</span><span><button class="btn sm ${s.minimap ? 'on' : ''}" onclick="${cb(() => { s.minimap = !s.minimap; saveGame(); render(); })}">${s.minimap ? '켜짐' : '꺼짐'}</button></span>
+      <span>터치 자동 사격</span><span><button class="btn sm ${s.touchAutoFire !== false ? 'on' : ''}" onclick="${cb(() => { s.touchAutoFire = s.touchAutoFire === false; saveGame(); render(); })}">${s.touchAutoFire !== false ? '켜짐' : '꺼짐'}</button></span>
       <span>피해 숫자</span><span><button class="btn sm ${s.dmgNum ? 'on' : ''}" onclick="${cb(() => { s.dmgNum = !s.dmgNum; saveGame(); render(); })}">${s.dmgNum ? '켜짐' : '꺼짐'}</button></span>
       <span>음량</span><span><input type="range" min="0" max="1" step="0.05" value="${s.vol}" oninput="SAVE.settings.vol=+this.value;SFX.setVol(+this.value)" onchange="saveGame();SFX.play('coin')"></span>
     </div></div>
+    <div class="panel" style="width:min(520px,94vw)"><b>저장 백업</b> <span class="muted small">다른 기기나 앱으로 진행 상황 옮기기</span>
+      <div class="row" style="margin-top:8px;gap:6px"><button class="btn sm" onclick="${cb(() => showSaveCode(render))}">저장 코드 보기</button><button class="btn sm" onclick="${cb(() => showSaveImport(render))}">저장 코드 불러오기</button></div></div>
     <div class="row"><button class="btn" onclick="${cb(back)}">돌아가기</button>
     <button class="btn rd sm" onclick="${cb(() => confirmBox('모든 진행 상황을 지울까요?', () => { const st = SAVE.settings; SAVE = defaultSave(); SAVE.settings = st; saveGame(); clearAllRuns(); showTitle(); }, render))}">저장 데이터 초기화</button></div>`);
   };
@@ -5206,6 +5220,145 @@ function fuseWeapons(i) {
   SFX.play('win'); toast(`융합 완료: <span style="color:${TAG_COLOR[t]}">${esc(weaponName(base))}</span>`);
   SAVE.stats.fusions = (SAVE.stats.fusions || 0) + 1;
   showMap();
+}
+
+// ================= 저장 백업 (코드 복사 / 붙여넣기) =================
+function saveCode() {
+  const data = { v: 1, save: SAVE, runs: {} };
+  for (const m of ['campaign', 'daily']) { const r = peekRun(m); if (r) data.runs[m] = r; }
+  return btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+}
+function showSaveCode(back) {
+  const code = saveCode();
+  scr(`<h2>저장 코드</h2><div class="sub">아래 코드를 복사해 두었다가 다른 기기의 '저장 코드 불러오기'에 붙여넣으면 진행 상황이 옮겨진다.</div>
+    <textarea id="savecode" readonly style="width:min(620px,92vw);height:160px;background:#0c0a1a;color:#cfd6e6;border:1px solid #2e2a55;padding:8px;font-size:11px;word-break:break-all">${code}</textarea>
+    <div class="row" style="margin-top:8px"><button class="btn ye" onclick="${cb(() => { const t = $('savecode'); t.select(); (navigator.clipboard ? navigator.clipboard.writeText(code) : Promise.reject()).then(() => toast('복사했습니다'), () => { try { document.execCommand('copy'); toast('복사했습니다'); } catch (e) { toast('직접 선택해서 복사하세요'); } }); })}">복사</button><button class="btn" onclick="${cb(back)}">돌아가기</button></div>`);
+}
+function showSaveImport(back) {
+  scr(`<h2>저장 코드 불러오기</h2><div class="sub">지금 기기의 진행 상황을 덮어쓴다.</div>
+    <textarea id="saveimport" style="width:min(620px,92vw);height:160px;background:#0c0a1a;color:#cfd6e6;border:1px solid #2e2a55;padding:8px;font-size:11px"></textarea>
+    <div class="row" style="margin-top:8px"><button class="btn rd" onclick="${cb(() => {
+      try {
+        const data = JSON.parse(decodeURIComponent(escape(atob($('saveimport').value.trim()))));
+        if (!data || !data.save) throw new Error('bad');
+        localStorage.setItem(SAVE_KEY, JSON.stringify(data.save)); loadSave();
+        clearAllRuns(); for (const m in (data.runs || {})) localStorage.setItem(runKey(m), JSON.stringify(data.runs[m]));
+        saveGame(); toast('불러왔습니다'); showTitle();
+      } catch (e) { toast('코드가 올바르지 않습니다'); }
+    })}">불러오기</button><button class="btn" onclick="${cb(back)}">취소</button></div>`);
+}
+// ================= 터치 조작 (휴대폰 / 태블릿) =================
+// 왼쪽: 이동 스틱 · 오른쪽: 조준 스틱(당기면 사격) · 화면 버튼: 구르기, 스킬, 오버클럭, 교체, 상호작용, 재장전, 일시정지
+// 조준 스틱을 놓고 있으면 가장 가까운 적을 자동 조준하고 자동 사격한다 (설정에서 끌 수 있음).
+const TouchCtl = { move: null, aim: null, held: {} };
+Input.tmx = 0; Input.tmy = 0; Input.touch = false; Input.touchFire = false; Input.touchAuto = false;
+
+function touchButtons() {
+  const R = clamp(Math.min(VW, VH) * 0.085, 30, 52);
+  const rx = VW - R * 1.35 - 8, by = VH - R * 1.35 - 8;
+  return [
+    { id: 'skill', label: '스킬', x: rx, y: by, r: R * 1.1, mp: 2 },
+    { id: 'roll', label: '구르기', x: rx - R * 2.5, y: by + R * 0.15, r: R, key: 'Space' },
+    { id: 'od', label: 'OC', x: rx - R * 0.2, y: by - R * 2.4, r: R * 0.8, key: 'KeyF' },
+    { id: 'use', label: 'E', x: rx - R * 4.6, y: by + R * 0.35, r: R * 0.72, key: 'KeyE' },
+    { id: 'swap', label: '교체', x: rx - R * 2.4, y: by - R * 2.2, r: R * 0.72, key: 'KeyQ' },
+    { id: 'reload', label: 'R', x: rx - R * 4.4, y: by - R * 1.7, r: R * 0.6, key: 'KeyR' },
+    { id: 'pause', label: 'Ⅱ', x: 330, y: 30, r: 22 }
+  ];
+}
+function touchHit(x, y) { return touchButtons().find(b => d2(x, y, b.x, b.y) < (b.r + 6) ** 2); }
+function touchActive() { return G.screen === 'combat' && !G.paused && room && P; }
+
+function initTouch() {
+  const opts = { passive: false };
+  canvas.addEventListener('touchstart', e => {
+    SFX.init();
+    Input.touch = true; Input.usingPad = false;
+    if (!touchActive()) return;
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      const x = t.clientX, y = t.clientY, b = touchHit(x, y);
+      if (b) {
+        TouchCtl.held[t.identifier] = b.id;
+        if (b.id === 'pause') { pauseGame(); continue; }
+        if (b.key) Input.pressed[b.key] = 1;
+        if (b.mp) Input.mp[b.mp] = 1;
+        continue;
+      }
+      if (x < VW * 0.45 && !TouchCtl.move) TouchCtl.move = { id: t.identifier, ox: x, oy: y, x, y };
+      else if (!TouchCtl.aim) TouchCtl.aim = { id: t.identifier, ox: x, oy: y, x, y };
+    }
+  }, opts);
+  canvas.addEventListener('touchmove', e => {
+    if (!touchActive()) return;
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (TouchCtl.move && TouchCtl.move.id === t.identifier) { TouchCtl.move.x = t.clientX; TouchCtl.move.y = t.clientY; }
+      if (TouchCtl.aim && TouchCtl.aim.id === t.identifier) { TouchCtl.aim.x = t.clientX; TouchCtl.aim.y = t.clientY; }
+    }
+  }, opts);
+  const end = e => {
+    for (const t of e.changedTouches) {
+      if (TouchCtl.move && TouchCtl.move.id === t.identifier) TouchCtl.move = null;
+      if (TouchCtl.aim && TouchCtl.aim.id === t.identifier) TouchCtl.aim = null;
+      delete TouchCtl.held[t.identifier];
+    }
+  };
+  canvas.addEventListener('touchend', end, opts);
+  canvas.addEventListener('touchcancel', end, opts);
+}
+
+// 매 프레임: 스틱 값을 입력으로 변환 (updatePlayer 전에 호출)
+function updateTouchInput() {
+  Input.tmx = 0; Input.tmy = 0; Input.touchFire = false; Input.touchAuto = false;
+  if (!Input.touch || !touchActive()) { TouchCtl.move = TouchCtl.move && touchActive() ? TouchCtl.move : null; return; }
+  const R = 60;
+  if (TouchCtl.move) {
+    let dx = TouchCtl.move.x - TouchCtl.move.ox, dy = TouchCtl.move.y - TouchCtl.move.oy;
+    const l = Math.hypot(dx, dy);
+    if (l > R) { TouchCtl.move.ox = TouchCtl.move.x - dx / l * R; TouchCtl.move.oy = TouchCtl.move.y - dy / l * R; dx = dx / l * R; dy = dy / l * R; }
+    if (l > 8) { Input.tmx = dx / R; Input.tmy = dy / R; }
+  }
+  if (TouchCtl.aim) {
+    const dx = TouchCtl.aim.x - TouchCtl.aim.ox, dy = TouchCtl.aim.y - TouchCtl.aim.oy;
+    if (Math.hypot(dx, dy) > 14) { P.ang = Math.atan2(dy, dx); Input.touchFire = true; }
+  } else {
+    // 자동 조준: 조준 스틱을 쓰지 않으면 가장 가까운 적
+    const t = assistTarget(P.ang, Math.PI, 700);
+    if (t) { P.ang = angTo(P.x, P.y, t.x, t.y); Input.touchAuto = SAVE.settings.touchAutoFire !== false; }
+    else if (Math.hypot(Input.tmx, Input.tmy) > 0.2) P.ang = Math.atan2(Input.tmy, Input.tmx);
+  }
+}
+
+function drawTouchControls() {
+  if (!Input.touch || !touchActive()) return;
+  ctx.save();
+  const stick = (s, col) => {
+    if (!s) return;
+    circlePath(s.ox, s.oy, 60); ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fill(); ctx.strokeStyle = col; ctx.globalAlpha = 0.5; ctx.lineWidth = 2; ctx.stroke(); ctx.globalAlpha = 1;
+    const dx = s.x - s.ox, dy = s.y - s.oy, l = Math.hypot(dx, dy), k = l > 60 ? 60 / l : 1;
+    circlePath(s.ox + dx * k, s.oy + dy * k, 26); ctx.fillStyle = col; ctx.globalAlpha = 0.45; ctx.fill(); ctx.globalAlpha = 1;
+  };
+  stick(TouchCtl.move, '#29f0ff');
+  stick(TouchCtl.aim, '#ff3df0');
+  if (!TouchCtl.move) { ctx.globalAlpha = 0.18; circlePath(110, VH - 120, 60); ctx.strokeStyle = '#29f0ff'; ctx.lineWidth = 2; ctx.stroke(); ctx.globalAlpha = 1; hudText('이동', 110, VH - 115, 13, 'rgba(41,240,255,0.5)', 'center'); }
+  const held = new Set(Object.values(TouchCtl.held));
+  for (const b of touchButtons()) {
+    let col = '#29f0ff', ready = true, label = b.label;
+    if (b.id === 'skill') { ready = P.skillCd <= 0; col = CHARS[run.char].color; if (!ready) label = Math.ceil(P.skillCd) + ''; }
+    if (b.id === 'od') { ready = (run.od || 0) >= 100 || P.odT > 0; col = '#ff3df0'; if (!ready) label = Math.floor(run.od || 0) + '%'; }
+    if (b.id === 'roll') ready = P.rollCharges > 0;
+    if (b.id === 'use') { ready = !!P.prompt; col = '#ffe14d'; }
+    if (b.id === 'swap') ready = run.weapons.length > 1;
+    circlePath(b.x, b.y, b.r);
+    ctx.fillStyle = held.has(b.id) ? 'rgba(255,255,255,0.28)' : 'rgba(6,5,16,0.55)'; ctx.fill();
+    ctx.strokeStyle = col; ctx.globalAlpha = ready ? 0.95 : 0.35; ctx.lineWidth = ready ? 3 : 2; ctx.stroke();
+    if (b.id === 'skill' && !ready) { ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.arc(b.x, b.y, b.r, -Math.PI / 2, -Math.PI / 2 + TAU * (P.skillCd / P.skillMax)); ctx.closePath(); ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fill(); }
+    hudText(label, b.x, b.y + 5, Math.max(11, b.r * 0.42), ready ? col : '#8a90b0', 'center');
+    ctx.globalAlpha = 1;
+  }
+  if (VH > VW) hudText('가로 화면을 권장합니다', VW / 2, VH - 20, 12, '#8a90b0', 'center');
+  ctx.restore();
 }
 // ================= 런 시작 =================
 function newRun(mode, charId, oc, seed, hard) {
@@ -5457,6 +5610,7 @@ function update(dt, rdt) {
   if (G.bossIntro) { G.bossIntro.t -= rdt; if (G.bossIntro.t <= 0) G.bossIntro = null; }
   if (G.objBanner) G.objBanner.t -= rdt;
   if (G.banner) { G.banner.t -= rdt; if (G.banner.t <= 0) G.banner = null; }
+  updateTouchInput();
   updatePlayer(dt);
   updateAllies(dt);
   if (!G.bossIntro) { updateEnemies(dt); updateHacked(dt); }
@@ -5516,6 +5670,9 @@ addEventListener('blur', () => { if (G.screen === 'combat' && !G.paused) pauseGa
 loadSave();
 recomputeBuild();
 initInput();
+initTouch();
+// 설치형 웹앱(PWA): http(s)로 열렸을 때만 서비스 워커 등록
+if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => { });
 showTitle();
 requestAnimationFrame(frame);
 </script>

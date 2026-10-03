@@ -22,13 +22,14 @@ function updatePlayer(dt) {
   if (Input.keys.KeyA || Input.keys.ArrowLeft) mx -= 1;
   if (Input.keys.KeyD || Input.keys.ArrowRight) mx += 1;
   if (gp) { mx += gp.lx; my += gp.ly; }
+  if (Input.touch) { mx += Input.tmx; my += Input.tmy; }
   if (G.glitchT > 0) mx = -mx; // 마더보드 글리치: 좌우 반전
   const ml = Math.hypot(mx, my); if (ml > 1) { mx /= ml; my /= ml; }
   // 조준
   if (Input.usingPad && gp) {
     if (gp.rx || gp.ry) P.ang = Math.atan2(gp.ry, gp.rx);
     else if (ml > 0.2) P.ang = Math.atan2(my, mx);
-  } else { const mw = mouseWorld(); P.ang = angTo(P.x, P.y, mw.x, mw.y); }
+  } else if (!Input.touch) { const mw = mouseWorld(); P.ang = angTo(P.x, P.y, mw.x, mw.y); }
   if (SAVE.settings.aimAssist && !Input.touch) { const t = assistTarget(P.ang, 0.3); if (t) P.ang = angTo(P.x, P.y, t.x, t.y); }
 
   const hz = playerHazards();
