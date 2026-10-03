@@ -319,6 +319,7 @@ function spawnEnemy(type, x, y, o = {}) {
     contact: def.contact || 0, t: 0, st: '', cd: rand(0.8, 1.8), ang: 0, mang: 0, flash: 0, dead: false, muts: null, elite: null,
     burnT: 0, burnDps: 0, burnStacks: 0, burnTick: 0, shockT: 0, chill: 0, chillT: 0, frozenT: 0,
     shred: 0, shredT: 0, blindT: 0, dazzleT: 0, corrode: 0, corrodeT: 0, soakT: 0, gustT: 0, gustDmg: 0,
+    poison: 0, poisonT: 0, poisonTick: 0, echoT: 0, echoAcc: 0, resT: 0, stasisT: 0,
     alert: 0, heavy: !!def.heavy, boss: !!def.boss, spawning: !o.instant, spawnT: o.instant ? 0 : 0.75,
     atkMult: 1, sm: 1, heldCoins: 0, noReward: !!o.noReward, hzT: 0, objHitT: 0, clone: !!o.clone, objTarget: !!o.objTarget, flying: !!def.flying
   };
@@ -370,9 +371,17 @@ function updateEnemies(dt) {
     if (e.dead) continue;
     e.sm = ((e.chill > 0 || e.chillT > 0) ? 1 - BS.chillSlow : 1) * hzSlow;
     if (e.muts) { if (e.muts.includes('haste')) e.sm *= 2; updateElite(e, edt); }
-    e.atkMult = (e.muts && e.muts.includes('rage') && e.hp < e.maxHp * 0.5 ? 2 : 1) * (e.dazzleT > 0 ? 0.6 : 1);
-    if (e.frozenT > 0) {
-      e.frozenT -= edt;
+    if (e.poisonT > 0) {
+      e.poisonT -= edt; e.poisonTick -= edt;
+      if (e.poisonTick <= 0) { e.poisonTick = 0.5; poisonTick(e); if (e.dead) continue; }
+      if (e.poisonT <= 0) e.poison = 0;
+    }
+    if (e.echoT > 0) { e.echoT -= edt; if (e.echoT <= 0) { echoBurst(e); if (e.dead) continue; } }
+    if (e.resT > 0) e.resT -= edt;
+    e.atkMult = (e.muts && e.muts.includes('rage') && e.hp < e.maxHp * 0.5 ? 2 : 1) * (e.dazzleT > 0 ? 0.6 : 1) * (e.poisonT > 0 && BS.neuro ? 0.7 : 1);
+    if (e.frozenT > 0 || e.stasisT > 0) {
+      if (e.frozenT > 0) e.frozenT -= edt;
+      if (e.stasisT > 0) e.stasisT -= edt;
     } else if (e.blindT > 0 && !e.boss) {
       // 실명: 공격하지 못하고 헤맨다
       e.t += edt; moveDir(e, Math.sin(e.t * 1.3 + e.y * 0.01) * TAU, e.spd * 0.45 * e.sm, edt);
@@ -455,6 +464,7 @@ function enemyHazards(e, dt) {
         break;
       case 'scald': if (tick) damageEnemy(e, h.dmg || 8, { quiet: true, dot: true }); break;
       case 'shadow': if (tick) applyStatus(e, 'dark', {}); break;
+      case 'venom': if (tick) applyStatus(e, 'poison', {}); break;
       case 'elecfloor': if (h.state === 'on' && tick) { damageEnemy(e, 15, { quiet: true, dot: true }); applyStatus(e, 'elec', { noChain: true }); } break;
       case 'laser': if (h.state === 'on' && tick) damageEnemy(e, 20, { quiet: true, dot: true }); break;
       case 'steam': if (h.on && tick) applyStatus(e, 'ice', {}); break;

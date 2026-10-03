@@ -334,10 +334,10 @@ function peekRun(mode = 'campaign') {
 }
 // ================= 게임 데이터 =================
 // 속성(태그) 체계: 원소 8종은 각자 고유한 상태 이상을 가진다. 폭발/탄환/생존은 원소가 아닌 전투 스타일 태그.
-const TAG_NAME = { fire: '불', elec: '전기', ice: '얼음', metal: '금속', light: '빛', dark: '어둠', wind: '바람', water: '물', exp: '폭발', bullet: '탄환', surv: '생존', none: '없음' };
-const TAG_COLOR = { fire: '#ff7a2a', elec: '#ffe14d', ice: '#8fe8ff', metal: '#a9b8cc', light: '#fffbe6', dark: '#9b6bff', wind: '#7dffb8', water: '#3d8bff', exp: '#ff4d6d', bullet: '#e6c78a', surv: '#ff8fd0', none: '#b0a8d0' };
-const ELEM_TAGS = ['fire', 'elec', 'ice', 'metal', 'light', 'dark', 'wind', 'water'];
-const SET_TAGS = ['fire', 'elec', 'ice', 'metal', 'light', 'dark', 'wind', 'water', 'exp', 'bullet', 'surv'];
+const TAG_NAME = { fire: '불', elec: '전기', ice: '얼음', metal: '금속', light: '빛', dark: '어둠', wind: '바람', water: '물', poison: '독', time: '시간', sonic: '음파', exp: '폭발', bullet: '탄환', surv: '생존', none: '없음' };
+const TAG_COLOR = { fire: '#ff7a2a', elec: '#ffe14d', ice: '#8fe8ff', metal: '#a9b8cc', light: '#fffbe6', dark: '#9b6bff', wind: '#7dffb8', water: '#3d8bff', poison: '#b6ff3d', time: '#d8c8ff', sonic: '#e03dff', exp: '#ff4d6d', bullet: '#e6c78a', surv: '#ff8fd0', none: '#b0a8d0' };
+const ELEM_TAGS = ['fire', 'elec', 'ice', 'metal', 'light', 'dark', 'wind', 'water', 'poison', 'time', 'sonic'];
+const SET_TAGS = ['fire', 'elec', 'ice', 'metal', 'light', 'dark', 'wind', 'water', 'poison', 'time', 'sonic', 'exp', 'bullet', 'surv'];
 function tagHTML(t) { return `<span class="tag" style="background:${TAG_COLOR[t] || '#888'}">${TAG_NAME[t] || t}</span>`; }
 
 // 원소별 고유 상태 이상 (서로 겹치는 동작이 없도록 설계)
@@ -350,6 +350,9 @@ const STATUS_INFO = {
   dark: { name: '침식', core: '처형. 중첩에 비례한 체력 이하가 되면 즉시 죽는다.' },
   wind: { name: '돌풍', core: '밀어내기. 밀려난 적이 벽에 부딪히면 충돌 피해를 받는다.' },
   water: { name: '젖음', core: '촉매. 젖은 적에게 거는 다른 상태 이상이 증폭된다.' },
+  poison: { name: '중독', core: '쇠약. 최대 체력 비례 피해를 입히고, 중독된 적이 주는 피해가 줄어든다.' },
+  time: { name: '메아리', core: '지연 반복. 표식 동안 받은 피해의 일부가 잠시 뒤 한 번 더 들어간다.' },
+  sonic: { name: '공명', core: '울림. 공명하는 적이 받은 피해가 같은 종류의 적들에게 퍼진다.' },
   exp: { name: '폭발', core: '범위 피해. 폭발 계열 효과는 이 태그만 가진다.' },
   bullet: { name: '탄환', core: '총기 성능. 피해, 연사, 관통, 치명타.' },
   surv: { name: '생존', core: '체력, 보호막, 회복, 피해 감소.' }
@@ -385,6 +388,9 @@ const WEAPONS = {
   tesla: { name: '테슬라 코일', dmg: 15, rate: 2, mag: 12, reload: 1.5, spd: 0, spread: 0, pellets: 1, life: 0, tag: 'elec', pierce: 0, r: 0, shake: 2, sfx: 'tesla', color: '#fff04d', type: 'tesla', range: 400, chain: 3, knock: 0, desc: '가까운 적 3명에게 연쇄 번개.' },
   cryo: { name: '냉각포', dmg: 9, rate: 5, mag: 20, reload: 1.4, spd: 720, spread: 0.05, pellets: 1, life: 0.8, tag: 'ice', pierce: 0, r: 5, shake: 1, sfx: 'cryo', color: '#8fe8ff', knock: 10, desc: '둔화를 부여하는 냉기탄.' },
   lightbeam: { name: '광선총', dmg: 16, rate: 2.5, mag: 15, reload: 1.6, spd: 0, spread: 0, pellets: 1, life: 0, tag: 'light', pierce: 99, r: 0, shake: 2, sfx: 'laser', color: '#fffbe6', type: 'beam', range: 900, knock: 0, desc: '벽까지 닿는 관통 광선. 실명 부여.' },
+  needler: { name: '독침총', dmg: 6, rate: 8, mag: 40, reload: 1.4, spd: 1000, spread: 0.05, pellets: 1, life: 0.6, tag: 'poison', pierce: 0, r: 3, shake: 0.6, sfx: 'smg', color: '#b6ff3d', knock: 0, desc: '빠른 독침 연사. 중독 부여.' },
+  chrono: { name: '시간포', dmg: 24, rate: 1.6, mag: 8, reload: 1.6, spd: 520, spread: 0, pellets: 1, life: 1.2, tag: 'time', pierce: 1, r: 7, shake: 2, sfx: 'cryo', color: '#d8c8ff', knock: 0, desc: '느리고 묵직한 시간탄. 메아리 표식.' },
+  sonicgun: { name: '음파포', dmg: 7, rate: 2.2, mag: 12, reload: 1.5, spd: 700, spread: 0.55, pellets: 5, life: 0.4, tag: 'sonic', pierce: 99, r: 6, shake: 3, sfx: 'shotgun', color: '#e03dff', knock: 0, desc: '적을 꿰뚫는 음파 부채꼴. 공명 부여.' },
   hydro: { name: '물대포', dmg: 4, rate: 14, mag: 80, reload: 1.8, spd: 620, spread: 0.12, pellets: 1, life: 0.55, tag: 'water', pierce: 2, r: 6, shake: 0.4, sfx: 'water', color: '#5aa0ff', type: 'stream', knock: 0, desc: '물줄기로 적을 적신다. 젖음 부여.' },
   boomerang: { name: '부메랑 원반', dmg: 20, rate: 1.5, mag: Infinity, reload: 0, spd: 720, spread: 0, pellets: 1, life: 0.5, tag: 'wind', pierce: 99, r: 11, shake: 1.5, sfx: 'boomer', color: '#7dffb8', type: 'boomerang', knock: 0, desc: '날아갔다 돌아오며 두 번 타격. 돌풍 부여.', locked: true },
   blackhole: { name: '블랙홀 발사기', dmg: 5, rate: 0.3, mag: 2, reload: 2.5, spd: 400, spread: 0, pellets: 1, life: 0.9, tag: 'dark', pierce: 0, r: 9, shake: 4, sfx: 'bhole', color: '#9b6bff', type: 'blackhole', knock: 0, desc: '적을 빨아들이는 중력장. 침식 부여.', locked: true }
@@ -411,6 +417,9 @@ const LEGEND = {
   cryo: { name: '절대영도', desc: '빙결된 적 명중 시 얼음 파편 확산' },
   lightbeam: { name: '여명의 창', desc: '광선 3줄기 동시 발사' },
   hydro: { name: '해일포', desc: '관통 +3, 젖음 지속시간 2배' },
+  needler: { name: '맹독', desc: '명중 시 중독 2중첩' },
+  chrono: { name: '영원의 시계', desc: '관통 +3, 탄이 2배 오래 남음' },
+  sonicgun: { name: '파쇄음', desc: '음파 +3갈래' },
   boomerang: { name: '삼중륜', desc: '원반 3개를 부채꼴로 투척' },
   blackhole: { name: '사건의 지평선', desc: '중력장 지속 2배, 빨려든 적의 침식 중첩 증가' }
 };
@@ -429,7 +438,10 @@ const MODS = {
   conv_light: { name: '속성 변환기: 빛', desc: '무기 속성을 빛으로 변경', conv: 'light' },
   conv_dark: { name: '속성 변환기: 어둠', desc: '무기 속성을 어둠으로 변경', conv: 'dark' },
   conv_wind: { name: '속성 변환기: 바람', desc: '무기 속성을 바람으로 변경', conv: 'wind' },
-  conv_water: { name: '속성 변환기: 물', desc: '무기 속성을 물로 변경', conv: 'water' }
+  conv_water: { name: '속성 변환기: 물', desc: '무기 속성을 물로 변경', conv: 'water' },
+  conv_poison: { name: '속성 변환기: 독', desc: '무기 속성을 독으로 변경', conv: 'poison' },
+  conv_time: { name: '속성 변환기: 시간', desc: '무기 속성을 시간으로 변경', conv: 'time' },
+  conv_sonic: { name: '속성 변환기: 음파', desc: '무기 속성을 음파로 변경', conv: 'sonic' }
 };
 const MOD_IDS = Object.keys(MODS);
 
@@ -494,6 +506,28 @@ const UPGRADES = [
   { id: 'spray', name: '물보라 구르기', tag: 'water', desc: '구르기 경로에 물웅덩이를 남김' },
   { id: 'pressure', name: '수압', tag: 'water', desc: '젖은 적이 받는 반응 피해 +50%' },
   { id: 'riptide', name: '이안류', tag: 'water', desc: '젖은 적이 피해를 받으면 다른 젖은 적도 20% 피해', rare: 1 },
+  // 독: 중독 (최대 체력 비례 피해 + 쇠약)
+  { id: 'venomtip', name: '독침 탄두', tag: 'poison', desc: '탄환이 25% 확률로 중독 1중첩', max: 2 },
+  { id: 'toxin', name: '독소 농축', tag: 'poison', desc: '중독 피해 +50%', max: 2 },
+  { id: 'wither', name: '쇠약', tag: 'poison', desc: '중독된 적이 주는 피해 감소 25% → 40% (2중첩 55%)', max: 2 },
+  { id: 'plague', name: '역병 구름', tag: 'poison', desc: '중독된 적이 죽으면 독 구름이 남음', rare: 1 },
+  { id: 'neurotoxin', name: '신경독', tag: 'poison', desc: '중독된 적의 공격 속도 -30%' },
+  { id: 'virulence', name: '독성', tag: 'poison', desc: '중독 지속시간 +3초' },
+  // 시간: 메아리 (지연 반복 피해)
+  { id: 'chronotip', name: '시간 탄두', tag: 'time', desc: '탄환이 20% 확률로 메아리 표식', max: 2 },
+  { id: 'echoamp', name: '메아리 증폭', tag: 'time', desc: '메아리 피해 +20%', max: 2 },
+  { id: 'quickecho', name: '단축', tag: 'time', desc: '메아리 대기 2초 → 1.4초' },
+  { id: 'stasis', name: '정지장', tag: 'time', desc: '메아리가 울리면 적이 0.6초 멈춤' },
+  { id: 'paradox', name: '역설', tag: 'time', desc: '메아리 피해의 50%가 주변 적에게도 들어감', rare: 1 },
+  { id: 'accelerate', name: '시간 가속', tag: 'time', desc: '연사 속도 +8%', max: 2 },
+  // 음파: 공명 (같은 종류에게 피해 전파)
+  { id: 'sonictip', name: '음파 탄두', tag: 'sonic', desc: '탄환이 20% 확률로 공명 부여', max: 2 },
+  { id: 'amplify', name: '증폭기', tag: 'sonic', desc: '공명 전달 피해 +10%', max: 2 },
+  { id: 'chorus', name: '합창', tag: 'sonic', desc: '공명 범위 +200' },
+  { id: 'stagger', name: '경직', tag: 'sonic', desc: '공명이 걸린 적의 공격 준비가 0.5초 늦어짐' },
+  { id: 'bassdrop', name: '저음 충격', tag: 'sonic', desc: '구르기가 끝날 때 주변 적에게 음파 (공명 + 피해 20)' },
+  { id: 'feedback', name: '피드백', tag: 'sonic', desc: '공명 피해가 다른 종류의 가까운 적 1명에게도 튐', rare: 1 },
+  { id: 'tempo', name: '템포', tag: 'sonic', desc: '공명 지속시간 +2초' },
   // 폭발: 범위
   { id: 'chaindet', name: '연쇄 기폭', tag: 'exp', desc: '폭발에 맞은 적이 죽으면 다시 폭발 (2중첩 시 더 크게)', rare: 1, max: 2 },
   { id: 'hiexp', name: '고폭 화약', tag: 'exp', desc: '폭발 피해 +30%', max: 2 },
@@ -545,6 +579,9 @@ const SETS = {
   light: ['실명 지속시간 +1초', '실명된 적에게 주는 피해는 항상 치명타', '4번 공격할 때마다 관통 광선 발사', '성광: 모든 공격이 실명, 6초마다 섬광이 터져 화면 안의 적 실명 + 적 탄 소멸'],
   dark: ['처형된 적의 영혼이 다른 적을 쫓아가 침식', '처형 기준 2배 (중첩당 3% → 6%)', '처형할 때마다 스킬 대기시간 1초 감소', '공허: 모든 공격이 침식 2중첩, 침식 최대 +5, 처형한 자리에 공허 균열이 생겨 적을 빨아들임'],
   wind: ['벽 충돌 피해 2배', '이동 속도 +20%, 구르기 충전 40% 빨라짐', '밀려난 적이 다른 적과 부딪히면 둘 다 충돌 피해', '폭풍의 눈: 모든 공격이 돌풍, 몸 주위 바람 장벽이 적 탄을 되돌려 보냄, 3초마다 주변 적을 날려버림'],
+  poison: ['중독 최대 8중첩', '보스·엘리트에게도 중독 피해 감소 없음', '중독된 적이 죽으면 중독이 가장 가까운 적에게 옮겨감', '역병: 모든 공격이 중독, 몸 주위 220 안의 적이 계속 중독, 중독 피해 2배'],
+  time: ['메아리 피해 40% → 60%', '메아리가 두 번 울림 (두 번째는 절반)', '메아리 피해가 치명타로 들어감', '시간 붕괴: 모든 공격이 메아리 표식, 메아리 +40%, 6초마다 화면 안의 적 1.5초 정지'],
+  sonic: ['공명이 다른 종류의 적에게도 절반만큼 전해짐', '공명 전달 대상 최대 6 → 12', '공명 전달 피해 2배', '대공명: 모든 공격이 공명, 4초마다 화면 안의 적에게 음파 폭풍'],
   water: ['젖은 적이 죽으면 물웅덩이가 생김 (웅덩이는 적을 적심)', '젖은 적에게 거는 상태 이상 증폭 1.5배 → 2배', '모든 속성 반응 피해 2배', '해일: 모든 공격이 젖음, 5초마다 해일이 퍼져 주변 적을 적시고 모든 상태 이상 지속시간을 초기화'],
   exp: ['폭발 범위 +45%', '적 처치 시 35% 확률로 소형 폭발', '폭발 피해 +50%, 폭발마다 연쇄 소폭발 3개', '핵융합: 모든 명중이 소형 폭발, 자신의 폭발에 피해 없음'],
   bullet: ['탄 속도 +60%, 피해 +10%', '3발마다 관통탄', '모든 탄 관통 +2, 피해 +25%', '탄막: 탄 2발 추가 발사, 치명타 +25%, 재장전 없음'],
@@ -609,6 +646,9 @@ const REACTIONS = {
   magnet: { name: '전자석', color: '#c8d8ff', desc: '파쇄 3중첩 이상 + 감전: 주변 적을 대상 쪽으로 끌어당기고 파쇄 중첩만큼 피해.' },
   rust: { name: '부식', color: '#d08a50', desc: '젖음 + 파쇄: 젖음이 사라지며 파쇄 3중첩 추가.' },
   eclipse: { name: '일식', color: '#d9b8ff', desc: '실명 + 침식: 두 상태가 사라지며 최대 체력 비례 피해 (보스는 감소).' },
+  venomburn: { name: '독소 연소', color: '#d8ff6a', desc: '중독 + 화상: 남은 중독이 한꺼번에 타올라 큰 피해.' },
+  eternity: { name: '영겁', color: '#e8dcff', desc: '메아리 + 둔화: 메아리가 울릴 때 적이 그대로 얼어붙는다.' },
+  sonicshatter: { name: '공명 파쇄', color: '#ff9cf5', desc: '공명 + 얼어붙음: 얼음이 울려 깨지며 주변에 음파 피해.' },
   tornado: { name: '불꽃 회오리', color: '#ffb86b', desc: '화상 + 돌풍: 회오리가 불을 감아올려 주변 적에게 화상을 퍼뜨린다.' }
 };
 
@@ -756,7 +796,7 @@ function recomputeBuild() {
   BS = {
     tags, aw, awakened, awakenElems: awakened.filter(t => ELEM_TAGS.includes(t)),
     dmgMult: (1 + 0.15 * u('sharp')) * (u('bigcal') ? 1.1 : 1) * (c.glass ? 1.5 : 1) * (set('bullet', 3) ? 1.1 : 1) * (set('bullet', 7) ? 1.25 : 1) * (awakened.length ? 1.5 : 1),
-    rateMult: (1 + 0.15 * u('rapid')) * (c.frenzy ? 1.4 : 1),
+    rateMult: (1 + 0.15 * u('rapid')) * (c.frenzy ? 1.4 : 1) * (1 + 0.08 * u('accelerate')),
     reloadMult: 1 / (1 + 0.3 * u('quickhand')),
     crit: 0.1 * u('critup') + (aw.bullet ? 0.25 : 0),
     pierce: u('pierce') + (set('bullet', 7) ? 2 : 0),
@@ -764,7 +804,7 @@ function recomputeBuild() {
     bulletSize: u('bigcal') ? 1.4 : 1,
     spreadMult: c.frenzy ? 2.5 : 1, spreadAdd: c.frenzy ? 0.08 : 0, twin: u('twin') > 0,
     extraShots: aw.bullet, infAmmo: aw.bullet, pierceEvery: set('bullet', 5) ? 3 : 0,
-    onHit: { fire: 0.2 * u('ignite'), elec: 0.15 * u('conductor'), ice: 0.2 * u('frosttip'), metal: 0.25 * u('shrapnel'), light: 0.15 * u('flashround'), dark: 0.2 * u('hex'), wind: 0.2 * u('gale'), water: 0.25 * u('splash') },
+    onHit: { fire: 0.2 * u('ignite'), elec: 0.15 * u('conductor'), ice: 0.2 * u('frosttip'), metal: 0.25 * u('shrapnel'), light: 0.15 * u('flashround'), dark: 0.2 * u('hex'), wind: 0.2 * u('gale'), water: 0.25 * u('splash'), poison: 0.25 * u('venomtip'), time: 0.2 * u('chronotip'), sonic: 0.2 * u('sonictip') },
     burstChance: 0.1 * u('burst'),
     // 불
     burnDmg: (1 + 0.5 * u('kindling')) * (set('fire', 7) ? 2 : 1), burnDur: 3 + 2 * u('heat'), burnTick: u('spreadfire') ? 0.35 : 0.5,
@@ -792,6 +832,15 @@ function recomputeBuild() {
     // 물
     soakDur: 4 + 2 * u('deluge'), soakAmp: (set('water', 5) ? 2 : 1.5) + 0.25 * u('catalyst'), spray: u('spray') > 0, pressure: u('pressure') > 0, riptide: u('riptide') > 0,
     puddleOnDeath: set('water', 3), reactAmp: set('water', 7) ? 2 : 1,
+    // 독
+    poisonMax: (set('poison', 3) ? 8 : 5) + (aw.poison ? 4 : 0), poisonPct: 0.006 * (1 + 0.5 * u('toxin')) * (aw.poison ? 2 : 1), poisonDur: 5 + 3 * u('virulence'),
+    weaken: Math.min(0.7, 0.25 + 0.15 * u('wither')), poisonBoss: set('poison', 5) ? 1 : 0.3, neuro: u('neurotoxin') > 0, plague: u('plague') > 0, poisonTransfer: set('poison', 7),
+    // 시간
+    echoPct: (set('time', 3) ? 0.6 : 0.4) + 0.2 * u('echoamp') + (aw.time ? 0.4 : 0), echoDelay: u('quickecho') ? 1.4 : 2, echoTwice: set('time', 5), echoCrit: set('time', 7),
+    stasis: u('stasis') > 0, paradox: u('paradox') > 0,
+    // 음파
+    resPct: (0.3 + 0.1 * u('amplify')) * (set('sonic', 7) ? 2 : 1) * (aw.sonic ? 1.5 : 1), resRange: 500 + 200 * u('chorus'), resN: set('sonic', 5) ? 12 : 6, resAll: set('sonic', 3),
+    resDur: 3 + 2 * u('tempo'), stagger: u('stagger') > 0, bassdrop: u('bassdrop') > 0, feedback: u('feedback') > 0,
     // 폭발
     chaindet: u('chaindet'), expDmg: (1 + 0.3 * u('hiexp')) * (set('exp', 7) ? 1.5 : 1), expRadius: (1 + 0.15 * u('shockwave')) * (set('exp', 3) ? 1.45 : 1),
     blastroll: u('blastroll') > 0, safety: u('safety') > 0 || aw.exp, exp5: set('exp', 5), exp7: set('exp', 7),
@@ -885,6 +934,9 @@ function wStats(w) {
     if (w.id === 'smg') s.rate *= 1 + 0.6 * (w.spin || 0);
     if (w.id === 'flamer') { s.life *= 1.5; s.stacks = 2; }
     if (w.id === 'hydro') s.pierce += 3;
+    if (w.id === 'needler') s.stacks = 2;
+    if (w.id === 'chrono') { s.pierce += 3; s.life *= 2; }
+    if (w.id === 'sonicgun') s.pellets += 3;
   }
   if (run && run.char === 'sera') s.crit += 0.2;
   if (w.fuse) { s.tag2 = w.fuse; s.dmg *= 1.15; }
@@ -1363,6 +1415,10 @@ function damageEnemy(e, dmg, o = {}) {
   if (o.knock && !e.heavy && !e.boss) { const k = o.knock * (e.muts ? 0.5 : 1); e.kx += Math.cos(o.ang) * k; e.ky += Math.sin(o.ang) * k; }
   if (!o.dot) { if (crit) { hitstop(0.02); SFX.play('crit'); } else SFX.play('hit'); }
   if (dmg >= 60 && !o.dot) hitstop(0.04);
+  // 시간: 메아리 표식 동안 받은 피해 누적
+  if (e.echoT > 0 && !o.echo) e.echoAcc = (e.echoAcc || 0) + dmg;
+  // 음파: 공명 전파
+  if (e.resT > 0 && !o.res && !o.dot) resonate(e, dmg);
   // 이안류: 젖은 적끼리 피해 공유
   if (BS.riptide && e.soakT > 0 && !o.riptide && !o.dot) {
     for (const t of room.enemies) if (t !== e && !t.dead && !t.spawning && t.soakT > 0 && d2(t.x, t.y, e.x, e.y) < 300 * 300) damageEnemy(t, dmg * 0.2, { riptide: true, quiet: true, dot: true });
@@ -1387,6 +1443,7 @@ function applyStatus(e, tag, o = {}) {
   switch (tag) {
     case 'fire': // 화상: 지속 피해
       if (e.frozenT > 0 || e.chill > 0) { thermal(e); return; }
+      if (e.poison > 0) venomburn(e);
       if (e.soakT > 0) scald(e);
       e.burnT = BS.burnDur * (amp > 1 ? 1.5 : 1);
       e.burnStacks = Math.min(BS.burnMax, (e.burnStacks || 0) + st);
@@ -1443,6 +1500,19 @@ function applyStatus(e, tag, o = {}) {
     }
     case 'water': // 젖음: 다른 상태 이상 증폭
       e.soakT = BS.soakDur * (o.long ? 2 : 1);
+      break;
+    case 'poison': // 중독: 최대 체력 비례 피해 + 쇠약
+      if (e.burnT > 0) { venomburn(e); }
+      e.poison = Math.min(BS.poisonMax, (e.poison || 0) + st);
+      e.poisonT = BS.poisonDur * (amp > 1 ? 1.5 : 1);
+      break;
+    case 'time': // 메아리: 표식 동안의 피해를 잠시 뒤 다시
+      if (!(e.echoT > 0)) { e.echoT = BS.echoDelay; e.echoAcc = 0; e.echoN = BS.echoTwice ? 2 : 1; e.echoMul = amp; }
+      break;
+    case 'sonic': // 공명: 같은 종류에게 피해 전파
+      if (e.frozenT > 0) { sonicShatter(e); return; }
+      e.resT = BS.resDur * (amp > 1 ? 1.5 : 1);
+      if (BS.stagger && !e.boss) e.cd = (e.cd || 0) + 0.5;
       break;
   }
 }
@@ -1605,6 +1675,10 @@ function killEnemy(e, o = {}) {
     if (BS.shards) spawnShards(e.x, e.y, 6, 12, e);
     if (BS.aw.ice) for (const t of near(150)) if (!t.boss) freezeNow(t);
   }
+  if (e.poison > 0) {
+    if (BS.plague && room.hazards.length < 130) addHazard({ type: 'venom', x: e.x, y: e.y, r: 80, life: 4 });
+    if (BS.poisonTransfer) { const t = near(300).sort((a, b) => d2(a.x, a.y, e.x, e.y) - d2(b.x, b.y, e.x, e.y))[0]; if (t) applyStatus(t, 'poison', { stacks: e.poison }); }
+  }
   if (e.soakT > 0 && BS.puddleOnDeath && room.hazards.length < 130) addHazard({ type: 'water', x: e.x, y: e.y, r: 52, life: 8 });
   if (e.corrode > 0 && BS.curseblood && room.hazards.length < 130) addHazard({ type: 'shadow', x: e.x, y: e.y, r: 60, life: 5 });
   if (e.blindT > 0 && BS.refract) {
@@ -1637,6 +1711,7 @@ function damagePlayer(dmg, src) {
     return;
   }
   dmg *= G.eDmgMult * BS.takenMult * (P.fortT > 0 ? 0.2 : 1);
+  if (src && src.poisonT > 0) dmg *= 1 - BS.weaken;
   if (P.fortT > 0 && src && !src.dead && src.type && !src.ally) applyStatus(src, 'metal', { stacks: 3 });
   run.hp -= dmg; P.iframe = 0.75; P.hurtT = 0.25;
   breakCombo();
@@ -1720,6 +1795,59 @@ function hackEnemy(e, dur = 15) {
   addCombo(); addOd(5);
   SAVE.stats.hacks = (SAVE.stats.hacks || 0) + 1;
 }
+
+// ================= 독 / 시간 / 음파 =================
+function poisonTick(e) {
+  const mult = e.boss || e.muts ? BS.poisonBoss : 1;
+  const dmg = Math.max(1, e.maxHp * BS.poisonPct * e.poison * 0.5 * mult);
+  damageEnemy(e, dmg, { quiet: true, dot: true });
+  if (Math.random() < 0.5) part({ x: e.x + rand(-e.r, e.r), y: e.y + rand(-e.r, e.r), vx: 0, vy: -30, life: 0.5, size: 3, color: '#b6ff3d', kind: 'dot' });
+}
+function echoBurst(e) {
+  let dmg = (e.echoAcc || 0) * BS.echoPct * (e.echoMul || 1) * (e.echoN === 1 && BS.echoTwice && e.echoSecond ? 0.5 : 1);
+  part({ x: e.x, y: e.y, life: 0.35, size: e.r * 2.4, color: TAG_COLOR.time, kind: 'ring' });
+  if (dmg > 0.5) {
+    floatText(e.x, e.y - e.r - 26, '메아리', TAG_COLOR.time, 13);
+    damageEnemy(e, dmg, { echo: true, noStatus: true, crit: BS.echoCrit, dot: true });
+    if (BS.paradox) for (const t of room.enemies) if (t !== e && !t.dead && !t.spawning && d2(t.x, t.y, e.x, e.y) < 150 * 150) damageEnemy(t, dmg * 0.5, { echo: true, noStatus: true, quiet: true, dot: true });
+  }
+  if (e.dead) return;
+  if (BS.stasis && !e.boss) e.stasisT = 0.6;
+  if ((e.chill > 0 || e.chillT > 0) && !e.boss) { reaction('eternity', e.x, e.y); freezeNow(e); }
+  if (e.echoN > 1) { e.echoN--; e.echoSecond = true; e.echoT = BS.echoDelay * 0.6; }
+  else { e.echoT = 0; e.echoAcc = 0; e.echoSecond = false; }
+}
+function resonate(e, dmg) {
+  let n = 0;
+  for (const t of room.enemies) {
+    if (n >= BS.resN) break;
+    if (t === e || t.dead || t.spawning) continue;
+    const same = t.type === e.type;
+    if (!same && !BS.resAll) continue;
+    if (d2(t.x, t.y, e.x, e.y) > BS.resRange * BS.resRange) continue;
+    damageEnemy(t, dmg * BS.resPct * (same ? 1 : 0.5), { res: true, quiet: true, dot: true });
+    if (n < 3) part({ x: t.x, y: t.y, life: 0.25, size: t.r * 1.8, color: TAG_COLOR.sonic, kind: 'ring' });
+    n++;
+  }
+  if (BS.feedback) {
+    const t = room.enemies.find(q => q !== e && !q.dead && !q.spawning && q.type !== e.type && d2(q.x, q.y, e.x, e.y) < 260 * 260);
+    if (t) { addBolt(e.x, e.y, t.x, t.y, TAG_COLOR.sonic, 0.1); damageEnemy(t, dmg * BS.resPct * 0.5, { res: true, quiet: true, dot: true }); }
+  }
+}
+function venomburn(e) {
+  const stacks = e.poison || 0; if (!stacks) return;
+  e.poison = 0; e.poisonT = 0;
+  reaction('venomburn', e.x, e.y);
+  burst(e.x, e.y, '#d8ff6a', 14, 220, 0.4, 3);
+  damageEnemy(e, e.maxHp * 0.025 * stacks * (e.boss || e.muts ? 0.25 : 1) + reactDmg(8 * stacks), { noStatus: true, reaction: true });
+}
+function sonicShatter(e) {
+  e.frozenT = 0; e.chill = 0;
+  reaction('sonicshatter', e.x, e.y);
+  part({ x: e.x, y: e.y, life: 0.35, size: 150, color: TAG_COLOR.sonic, kind: 'ring' });
+  damageEnemy(e, reactDmg(30), { noStatus: true, reaction: true });
+  for (const t of room.enemies) if (t !== e && !t.dead && !t.spawning && d2(t.x, t.y, e.x, e.y) < 150 * 150) damageEnemy(t, reactDmg(14), { noStatus: true, reaction: true, quiet: true });
+}
 // ================= 플레이어 =================
 function rollMax() { return run.char === 'kai' ? 2 : 1; }
 function createPlayer(x, y) {
@@ -1773,6 +1901,7 @@ function updatePlayer(dt) {
       if (BS.blastroll) explode(P.x, P.y, 90, 28, { noSelf: true });
       if (BS.updraft) { for (const e of room.enemies) if (!e.dead && !e.spawning && d2(e.x, e.y, P.x, P.y) < 150 * 150) applyStatus(e, 'wind', { ang: angTo(P.x, P.y, e.x, e.y), dmg: 15 }); part({ x: P.x, y: P.y, life: 0.3, size: 150, color: TAG_COLOR.wind, kind: 'ring' }); }
       if (BS.static) P.staticShots = 3;
+      if (BS.bassdrop) { for (const e of liveNear(170)) { applyStatus(e, 'sonic', {}); damageEnemy(e, 20 * BS.dmgMult, { noStatus: true }); } part({ x: P.x, y: P.y, life: 0.3, size: 170, color: TAG_COLOR.sonic, kind: 'ring' }); }
       if (run.char === 'kai') P.momT = 1.5;
     }
   } else {
@@ -2009,6 +2138,18 @@ function updateAwaken(dt) {
       for (const e of liveNear(240)) applyStatus(e, 'wind', { ang: angTo(P.x, P.y, e.x, e.y), dmg: 25 });
       part({ x: P.x, y: P.y, life: 0.35, size: 240, color: TAG_COLOR.wind, kind: 'ring' }); SFX.play('roll');
     }
+  }
+  if (aw.poison && awTimer('poison', dt, 0.5)) {
+    for (const e of liveNear(220)) applyStatus(e, 'poison', {});
+    for (let i = 0; i < 4; i++) { const a = rand(0, TAU), d = rand(60, 220); part({ x: P.x + Math.cos(a) * d, y: P.y + Math.sin(a) * d, vx: 0, vy: -20, life: 0.8, size: rand(8, 14), color: 'rgba(182,255,61,0.18)', kind: 'smoke' }); }
+  }
+  if (aw.time && awTimer('time', dt, 6)) {
+    floatText(P.x, P.y - 50, '시간 정지!', TAG_COLOR.time, 22); G.flash = 0.3; G.flashColor = '216,200,255'; SFX.play('glitch');
+    for (const e of room.enemies) if (!e.dead && !e.spawning && onScreen(e.x, e.y, 60)) e.stasisT = 1.5;
+  }
+  if (aw.sonic && awTimer('sonic', dt, 4)) {
+    SFX.play('slash'); shake(5);
+    for (const e of room.enemies) if (!e.dead && !e.spawning && onScreen(e.x, e.y, 60)) { applyStatus(e, 'sonic', {}); damageEnemy(e, 30 * BS.dmgMult * dynDmg(), { noStatus: true, quiet: true }); part({ x: e.x, y: e.y, life: 0.3, size: e.r * 2, color: TAG_COLOR.sonic, kind: 'ring' }); }
   }
   if (aw.water && awTimer('water', dt, 5)) {
     floatText(P.x, P.y - 50, '해일!', TAG_COLOR.water, 22);
@@ -2498,6 +2639,7 @@ function spawnEnemy(type, x, y, o = {}) {
     contact: def.contact || 0, t: 0, st: '', cd: rand(0.8, 1.8), ang: 0, mang: 0, flash: 0, dead: false, muts: null, elite: null,
     burnT: 0, burnDps: 0, burnStacks: 0, burnTick: 0, shockT: 0, chill: 0, chillT: 0, frozenT: 0,
     shred: 0, shredT: 0, blindT: 0, dazzleT: 0, corrode: 0, corrodeT: 0, soakT: 0, gustT: 0, gustDmg: 0,
+    poison: 0, poisonT: 0, poisonTick: 0, echoT: 0, echoAcc: 0, resT: 0, stasisT: 0,
     alert: 0, heavy: !!def.heavy, boss: !!def.boss, spawning: !o.instant, spawnT: o.instant ? 0 : 0.75,
     atkMult: 1, sm: 1, heldCoins: 0, noReward: !!o.noReward, hzT: 0, objHitT: 0, clone: !!o.clone, objTarget: !!o.objTarget, flying: !!def.flying
   };
@@ -2549,9 +2691,17 @@ function updateEnemies(dt) {
     if (e.dead) continue;
     e.sm = ((e.chill > 0 || e.chillT > 0) ? 1 - BS.chillSlow : 1) * hzSlow;
     if (e.muts) { if (e.muts.includes('haste')) e.sm *= 2; updateElite(e, edt); }
-    e.atkMult = (e.muts && e.muts.includes('rage') && e.hp < e.maxHp * 0.5 ? 2 : 1) * (e.dazzleT > 0 ? 0.6 : 1);
-    if (e.frozenT > 0) {
-      e.frozenT -= edt;
+    if (e.poisonT > 0) {
+      e.poisonT -= edt; e.poisonTick -= edt;
+      if (e.poisonTick <= 0) { e.poisonTick = 0.5; poisonTick(e); if (e.dead) continue; }
+      if (e.poisonT <= 0) e.poison = 0;
+    }
+    if (e.echoT > 0) { e.echoT -= edt; if (e.echoT <= 0) { echoBurst(e); if (e.dead) continue; } }
+    if (e.resT > 0) e.resT -= edt;
+    e.atkMult = (e.muts && e.muts.includes('rage') && e.hp < e.maxHp * 0.5 ? 2 : 1) * (e.dazzleT > 0 ? 0.6 : 1) * (e.poisonT > 0 && BS.neuro ? 0.7 : 1);
+    if (e.frozenT > 0 || e.stasisT > 0) {
+      if (e.frozenT > 0) e.frozenT -= edt;
+      if (e.stasisT > 0) e.stasisT -= edt;
     } else if (e.blindT > 0 && !e.boss) {
       // 실명: 공격하지 못하고 헤맨다
       e.t += edt; moveDir(e, Math.sin(e.t * 1.3 + e.y * 0.01) * TAU, e.spd * 0.45 * e.sm, edt);
@@ -2634,6 +2784,7 @@ function enemyHazards(e, dt) {
         break;
       case 'scald': if (tick) damageEnemy(e, h.dmg || 8, { quiet: true, dot: true }); break;
       case 'shadow': if (tick) applyStatus(e, 'dark', {}); break;
+      case 'venom': if (tick) applyStatus(e, 'poison', {}); break;
       case 'elecfloor': if (h.state === 'on' && tick) { damageEnemy(e, 15, { quiet: true, dot: true }); applyStatus(e, 'elec', { noChain: true }); } break;
       case 'laser': if (h.state === 'on' && tick) damageEnemy(e, 20, { quiet: true, dot: true }); break;
       case 'steam': if (h.on && tick) applyStatus(e, 'ice', {}); break;
@@ -3791,6 +3942,9 @@ function drawHazards() {
         circlePath(h.x, h.y, h.r); ctx.fillStyle = `rgba(255,210,180,${0.12 + Math.sin(G.time * 8 + h.x) * 0.05})`; ctx.fill();
         if (Math.random() < 0.3) part({ x: h.x + rand(-h.r, h.r) * 0.6, y: h.y + rand(-h.r, h.r) * 0.6, vx: 0, vy: -30, life: 0.7, size: rand(8, 14), color: 'rgba(255,230,210,0.22)', kind: 'smoke' });
         break;
+      case 'venom':
+        circlePath(h.x, h.y, h.r); ctx.fillStyle = `rgba(150,230,40,${0.16 + Math.sin(G.time * 5 + h.x) * 0.04})`; ctx.fill();
+        break;
       case 'shadow':
         circlePath(h.x, h.y, h.r); ctx.fillStyle = 'rgba(70,30,130,0.45)'; ctx.fill(); ctx.strokeStyle = 'rgba(155,107,255,0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
         break;
@@ -4002,6 +4156,10 @@ function drawEnemy(e) {
     if (!e.boss) { const w = Math.max(30, e.r * 2.2); ctx.fillStyle = 'rgba(155,107,255,0.85)'; ctx.fillRect(e.x - w / 2, e.y + e.r + 8, w * thr, 3); }
     for (let i = 0; i < Math.min(e.corrode, 10); i++) { ctx.fillStyle = '#9b6bff'; ctx.fillRect(e.x - 14 + (i % 5) * 6, e.y + e.r + 12 + Math.floor(i / 5) * 5, 4, 4); }
   }
+  if (e.poison > 0) { for (let i = 0; i < Math.min(e.poison, 10); i++) { ctx.fillStyle = '#b6ff3d'; circlePath(e.x - 12 + (i % 5) * 6, e.y - e.r - 10 - Math.floor(i / 5) * 6, 2.2); ctx.fill(); } }
+  if (e.echoT > 0) { ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 9, -Math.PI / 2, -Math.PI / 2 + TAU * clamp(e.echoT / BS.echoDelay, 0, 1)); ctx.strokeStyle = TAG_COLOR.time; ctx.lineWidth = 2; ctx.stroke(); }
+  if (e.resT > 0) { const k = (G.time * 2 + e.x * 0.01) % 1; circlePath(e.x, e.y, e.r + 4 + k * 14); ctx.strokeStyle = `rgba(224,61,255,${0.6 * (1 - k)})`; ctx.lineWidth = 1.5; ctx.stroke(); }
+  if (e.stasisT > 0) { polyPath(e.x, e.y, e.r + 6, 4, 0); ctx.strokeStyle = '#d8c8ff'; ctx.lineWidth = 2; ctx.stroke(); }
   if (e.soakT > 0) { circlePath(e.x, e.y + e.r * 0.3, e.r * 0.9); ctx.fillStyle = 'rgba(61,139,255,0.22)'; ctx.fill(); }
   if (e.gustT > 0) { ctx.strokeStyle = 'rgba(125,255,184,0.7)'; ctx.lineWidth = 2; const a = Math.atan2(e.ky, e.kx); for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(e.x - Math.cos(a) * (e.r + 6) + Math.sin(a) * i * 7, e.y - Math.sin(a) * (e.r + 6) - Math.cos(a) * i * 7); ctx.lineTo(e.x - Math.cos(a) * (e.r + 20) + Math.sin(a) * i * 7, e.y - Math.sin(a) * (e.r + 20) - Math.cos(a) * i * 7); ctx.stroke(); } }
   if (e.reflectOn) { polyPath(e.x, e.y, e.r + 12, 6, G.time * 2); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.stroke(); }

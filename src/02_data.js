@@ -1,9 +1,9 @@
 // ================= 게임 데이터 =================
 // 속성(태그) 체계: 원소 8종은 각자 고유한 상태 이상을 가진다. 폭발/탄환/생존은 원소가 아닌 전투 스타일 태그.
-const TAG_NAME = { fire: '불', elec: '전기', ice: '얼음', metal: '금속', light: '빛', dark: '어둠', wind: '바람', water: '물', exp: '폭발', bullet: '탄환', surv: '생존', none: '없음' };
-const TAG_COLOR = { fire: '#ff7a2a', elec: '#ffe14d', ice: '#8fe8ff', metal: '#a9b8cc', light: '#fffbe6', dark: '#9b6bff', wind: '#7dffb8', water: '#3d8bff', exp: '#ff4d6d', bullet: '#e6c78a', surv: '#ff8fd0', none: '#b0a8d0' };
-const ELEM_TAGS = ['fire', 'elec', 'ice', 'metal', 'light', 'dark', 'wind', 'water'];
-const SET_TAGS = ['fire', 'elec', 'ice', 'metal', 'light', 'dark', 'wind', 'water', 'exp', 'bullet', 'surv'];
+const TAG_NAME = { fire: '불', elec: '전기', ice: '얼음', metal: '금속', light: '빛', dark: '어둠', wind: '바람', water: '물', poison: '독', time: '시간', sonic: '음파', exp: '폭발', bullet: '탄환', surv: '생존', none: '없음' };
+const TAG_COLOR = { fire: '#ff7a2a', elec: '#ffe14d', ice: '#8fe8ff', metal: '#a9b8cc', light: '#fffbe6', dark: '#9b6bff', wind: '#7dffb8', water: '#3d8bff', poison: '#b6ff3d', time: '#d8c8ff', sonic: '#e03dff', exp: '#ff4d6d', bullet: '#e6c78a', surv: '#ff8fd0', none: '#b0a8d0' };
+const ELEM_TAGS = ['fire', 'elec', 'ice', 'metal', 'light', 'dark', 'wind', 'water', 'poison', 'time', 'sonic'];
+const SET_TAGS = ['fire', 'elec', 'ice', 'metal', 'light', 'dark', 'wind', 'water', 'poison', 'time', 'sonic', 'exp', 'bullet', 'surv'];
 function tagHTML(t) { return `<span class="tag" style="background:${TAG_COLOR[t] || '#888'}">${TAG_NAME[t] || t}</span>`; }
 
 // 원소별 고유 상태 이상 (서로 겹치는 동작이 없도록 설계)
@@ -16,6 +16,9 @@ const STATUS_INFO = {
   dark: { name: '침식', core: '처형. 중첩에 비례한 체력 이하가 되면 즉시 죽는다.' },
   wind: { name: '돌풍', core: '밀어내기. 밀려난 적이 벽에 부딪히면 충돌 피해를 받는다.' },
   water: { name: '젖음', core: '촉매. 젖은 적에게 거는 다른 상태 이상이 증폭된다.' },
+  poison: { name: '중독', core: '쇠약. 최대 체력 비례 피해를 입히고, 중독된 적이 주는 피해가 줄어든다.' },
+  time: { name: '메아리', core: '지연 반복. 표식 동안 받은 피해의 일부가 잠시 뒤 한 번 더 들어간다.' },
+  sonic: { name: '공명', core: '울림. 공명하는 적이 받은 피해가 같은 종류의 적들에게 퍼진다.' },
   exp: { name: '폭발', core: '범위 피해. 폭발 계열 효과는 이 태그만 가진다.' },
   bullet: { name: '탄환', core: '총기 성능. 피해, 연사, 관통, 치명타.' },
   surv: { name: '생존', core: '체력, 보호막, 회복, 피해 감소.' }
@@ -51,6 +54,9 @@ const WEAPONS = {
   tesla: { name: '테슬라 코일', dmg: 15, rate: 2, mag: 12, reload: 1.5, spd: 0, spread: 0, pellets: 1, life: 0, tag: 'elec', pierce: 0, r: 0, shake: 2, sfx: 'tesla', color: '#fff04d', type: 'tesla', range: 400, chain: 3, knock: 0, desc: '가까운 적 3명에게 연쇄 번개.' },
   cryo: { name: '냉각포', dmg: 9, rate: 5, mag: 20, reload: 1.4, spd: 720, spread: 0.05, pellets: 1, life: 0.8, tag: 'ice', pierce: 0, r: 5, shake: 1, sfx: 'cryo', color: '#8fe8ff', knock: 10, desc: '둔화를 부여하는 냉기탄.' },
   lightbeam: { name: '광선총', dmg: 16, rate: 2.5, mag: 15, reload: 1.6, spd: 0, spread: 0, pellets: 1, life: 0, tag: 'light', pierce: 99, r: 0, shake: 2, sfx: 'laser', color: '#fffbe6', type: 'beam', range: 900, knock: 0, desc: '벽까지 닿는 관통 광선. 실명 부여.' },
+  needler: { name: '독침총', dmg: 6, rate: 8, mag: 40, reload: 1.4, spd: 1000, spread: 0.05, pellets: 1, life: 0.6, tag: 'poison', pierce: 0, r: 3, shake: 0.6, sfx: 'smg', color: '#b6ff3d', knock: 0, desc: '빠른 독침 연사. 중독 부여.' },
+  chrono: { name: '시간포', dmg: 24, rate: 1.6, mag: 8, reload: 1.6, spd: 520, spread: 0, pellets: 1, life: 1.2, tag: 'time', pierce: 1, r: 7, shake: 2, sfx: 'cryo', color: '#d8c8ff', knock: 0, desc: '느리고 묵직한 시간탄. 메아리 표식.' },
+  sonicgun: { name: '음파포', dmg: 7, rate: 2.2, mag: 12, reload: 1.5, spd: 700, spread: 0.55, pellets: 5, life: 0.4, tag: 'sonic', pierce: 99, r: 6, shake: 3, sfx: 'shotgun', color: '#e03dff', knock: 0, desc: '적을 꿰뚫는 음파 부채꼴. 공명 부여.' },
   hydro: { name: '물대포', dmg: 4, rate: 14, mag: 80, reload: 1.8, spd: 620, spread: 0.12, pellets: 1, life: 0.55, tag: 'water', pierce: 2, r: 6, shake: 0.4, sfx: 'water', color: '#5aa0ff', type: 'stream', knock: 0, desc: '물줄기로 적을 적신다. 젖음 부여.' },
   boomerang: { name: '부메랑 원반', dmg: 20, rate: 1.5, mag: Infinity, reload: 0, spd: 720, spread: 0, pellets: 1, life: 0.5, tag: 'wind', pierce: 99, r: 11, shake: 1.5, sfx: 'boomer', color: '#7dffb8', type: 'boomerang', knock: 0, desc: '날아갔다 돌아오며 두 번 타격. 돌풍 부여.', locked: true },
   blackhole: { name: '블랙홀 발사기', dmg: 5, rate: 0.3, mag: 2, reload: 2.5, spd: 400, spread: 0, pellets: 1, life: 0.9, tag: 'dark', pierce: 0, r: 9, shake: 4, sfx: 'bhole', color: '#9b6bff', type: 'blackhole', knock: 0, desc: '적을 빨아들이는 중력장. 침식 부여.', locked: true }
@@ -77,6 +83,9 @@ const LEGEND = {
   cryo: { name: '절대영도', desc: '빙결된 적 명중 시 얼음 파편 확산' },
   lightbeam: { name: '여명의 창', desc: '광선 3줄기 동시 발사' },
   hydro: { name: '해일포', desc: '관통 +3, 젖음 지속시간 2배' },
+  needler: { name: '맹독', desc: '명중 시 중독 2중첩' },
+  chrono: { name: '영원의 시계', desc: '관통 +3, 탄이 2배 오래 남음' },
+  sonicgun: { name: '파쇄음', desc: '음파 +3갈래' },
   boomerang: { name: '삼중륜', desc: '원반 3개를 부채꼴로 투척' },
   blackhole: { name: '사건의 지평선', desc: '중력장 지속 2배, 빨려든 적의 침식 중첩 증가' }
 };
@@ -95,7 +104,10 @@ const MODS = {
   conv_light: { name: '속성 변환기: 빛', desc: '무기 속성을 빛으로 변경', conv: 'light' },
   conv_dark: { name: '속성 변환기: 어둠', desc: '무기 속성을 어둠으로 변경', conv: 'dark' },
   conv_wind: { name: '속성 변환기: 바람', desc: '무기 속성을 바람으로 변경', conv: 'wind' },
-  conv_water: { name: '속성 변환기: 물', desc: '무기 속성을 물로 변경', conv: 'water' }
+  conv_water: { name: '속성 변환기: 물', desc: '무기 속성을 물로 변경', conv: 'water' },
+  conv_poison: { name: '속성 변환기: 독', desc: '무기 속성을 독으로 변경', conv: 'poison' },
+  conv_time: { name: '속성 변환기: 시간', desc: '무기 속성을 시간으로 변경', conv: 'time' },
+  conv_sonic: { name: '속성 변환기: 음파', desc: '무기 속성을 음파로 변경', conv: 'sonic' }
 };
 const MOD_IDS = Object.keys(MODS);
 
@@ -160,6 +172,28 @@ const UPGRADES = [
   { id: 'spray', name: '물보라 구르기', tag: 'water', desc: '구르기 경로에 물웅덩이를 남김' },
   { id: 'pressure', name: '수압', tag: 'water', desc: '젖은 적이 받는 반응 피해 +50%' },
   { id: 'riptide', name: '이안류', tag: 'water', desc: '젖은 적이 피해를 받으면 다른 젖은 적도 20% 피해', rare: 1 },
+  // 독: 중독 (최대 체력 비례 피해 + 쇠약)
+  { id: 'venomtip', name: '독침 탄두', tag: 'poison', desc: '탄환이 25% 확률로 중독 1중첩', max: 2 },
+  { id: 'toxin', name: '독소 농축', tag: 'poison', desc: '중독 피해 +50%', max: 2 },
+  { id: 'wither', name: '쇠약', tag: 'poison', desc: '중독된 적이 주는 피해 감소 25% → 40% (2중첩 55%)', max: 2 },
+  { id: 'plague', name: '역병 구름', tag: 'poison', desc: '중독된 적이 죽으면 독 구름이 남음', rare: 1 },
+  { id: 'neurotoxin', name: '신경독', tag: 'poison', desc: '중독된 적의 공격 속도 -30%' },
+  { id: 'virulence', name: '독성', tag: 'poison', desc: '중독 지속시간 +3초' },
+  // 시간: 메아리 (지연 반복 피해)
+  { id: 'chronotip', name: '시간 탄두', tag: 'time', desc: '탄환이 20% 확률로 메아리 표식', max: 2 },
+  { id: 'echoamp', name: '메아리 증폭', tag: 'time', desc: '메아리 피해 +20%', max: 2 },
+  { id: 'quickecho', name: '단축', tag: 'time', desc: '메아리 대기 2초 → 1.4초' },
+  { id: 'stasis', name: '정지장', tag: 'time', desc: '메아리가 울리면 적이 0.6초 멈춤' },
+  { id: 'paradox', name: '역설', tag: 'time', desc: '메아리 피해의 50%가 주변 적에게도 들어감', rare: 1 },
+  { id: 'accelerate', name: '시간 가속', tag: 'time', desc: '연사 속도 +8%', max: 2 },
+  // 음파: 공명 (같은 종류에게 피해 전파)
+  { id: 'sonictip', name: '음파 탄두', tag: 'sonic', desc: '탄환이 20% 확률로 공명 부여', max: 2 },
+  { id: 'amplify', name: '증폭기', tag: 'sonic', desc: '공명 전달 피해 +10%', max: 2 },
+  { id: 'chorus', name: '합창', tag: 'sonic', desc: '공명 범위 +200' },
+  { id: 'stagger', name: '경직', tag: 'sonic', desc: '공명이 걸린 적의 공격 준비가 0.5초 늦어짐' },
+  { id: 'bassdrop', name: '저음 충격', tag: 'sonic', desc: '구르기가 끝날 때 주변 적에게 음파 (공명 + 피해 20)' },
+  { id: 'feedback', name: '피드백', tag: 'sonic', desc: '공명 피해가 다른 종류의 가까운 적 1명에게도 튐', rare: 1 },
+  { id: 'tempo', name: '템포', tag: 'sonic', desc: '공명 지속시간 +2초' },
   // 폭발: 범위
   { id: 'chaindet', name: '연쇄 기폭', tag: 'exp', desc: '폭발에 맞은 적이 죽으면 다시 폭발 (2중첩 시 더 크게)', rare: 1, max: 2 },
   { id: 'hiexp', name: '고폭 화약', tag: 'exp', desc: '폭발 피해 +30%', max: 2 },
@@ -211,6 +245,9 @@ const SETS = {
   light: ['실명 지속시간 +1초', '실명된 적에게 주는 피해는 항상 치명타', '4번 공격할 때마다 관통 광선 발사', '성광: 모든 공격이 실명, 6초마다 섬광이 터져 화면 안의 적 실명 + 적 탄 소멸'],
   dark: ['처형된 적의 영혼이 다른 적을 쫓아가 침식', '처형 기준 2배 (중첩당 3% → 6%)', '처형할 때마다 스킬 대기시간 1초 감소', '공허: 모든 공격이 침식 2중첩, 침식 최대 +5, 처형한 자리에 공허 균열이 생겨 적을 빨아들임'],
   wind: ['벽 충돌 피해 2배', '이동 속도 +20%, 구르기 충전 40% 빨라짐', '밀려난 적이 다른 적과 부딪히면 둘 다 충돌 피해', '폭풍의 눈: 모든 공격이 돌풍, 몸 주위 바람 장벽이 적 탄을 되돌려 보냄, 3초마다 주변 적을 날려버림'],
+  poison: ['중독 최대 8중첩', '보스·엘리트에게도 중독 피해 감소 없음', '중독된 적이 죽으면 중독이 가장 가까운 적에게 옮겨감', '역병: 모든 공격이 중독, 몸 주위 220 안의 적이 계속 중독, 중독 피해 2배'],
+  time: ['메아리 피해 40% → 60%', '메아리가 두 번 울림 (두 번째는 절반)', '메아리 피해가 치명타로 들어감', '시간 붕괴: 모든 공격이 메아리 표식, 메아리 +40%, 6초마다 화면 안의 적 1.5초 정지'],
+  sonic: ['공명이 다른 종류의 적에게도 절반만큼 전해짐', '공명 전달 대상 최대 6 → 12', '공명 전달 피해 2배', '대공명: 모든 공격이 공명, 4초마다 화면 안의 적에게 음파 폭풍'],
   water: ['젖은 적이 죽으면 물웅덩이가 생김 (웅덩이는 적을 적심)', '젖은 적에게 거는 상태 이상 증폭 1.5배 → 2배', '모든 속성 반응 피해 2배', '해일: 모든 공격이 젖음, 5초마다 해일이 퍼져 주변 적을 적시고 모든 상태 이상 지속시간을 초기화'],
   exp: ['폭발 범위 +45%', '적 처치 시 35% 확률로 소형 폭발', '폭발 피해 +50%, 폭발마다 연쇄 소폭발 3개', '핵융합: 모든 명중이 소형 폭발, 자신의 폭발에 피해 없음'],
   bullet: ['탄 속도 +60%, 피해 +10%', '3발마다 관통탄', '모든 탄 관통 +2, 피해 +25%', '탄막: 탄 2발 추가 발사, 치명타 +25%, 재장전 없음'],
@@ -275,6 +312,9 @@ const REACTIONS = {
   magnet: { name: '전자석', color: '#c8d8ff', desc: '파쇄 3중첩 이상 + 감전: 주변 적을 대상 쪽으로 끌어당기고 파쇄 중첩만큼 피해.' },
   rust: { name: '부식', color: '#d08a50', desc: '젖음 + 파쇄: 젖음이 사라지며 파쇄 3중첩 추가.' },
   eclipse: { name: '일식', color: '#d9b8ff', desc: '실명 + 침식: 두 상태가 사라지며 최대 체력 비례 피해 (보스는 감소).' },
+  venomburn: { name: '독소 연소', color: '#d8ff6a', desc: '중독 + 화상: 남은 중독이 한꺼번에 타올라 큰 피해.' },
+  eternity: { name: '영겁', color: '#e8dcff', desc: '메아리 + 둔화: 메아리가 울릴 때 적이 그대로 얼어붙는다.' },
+  sonicshatter: { name: '공명 파쇄', color: '#ff9cf5', desc: '공명 + 얼어붙음: 얼음이 울려 깨지며 주변에 음파 피해.' },
   tornado: { name: '불꽃 회오리', color: '#ffb86b', desc: '화상 + 돌풍: 회오리가 불을 감아올려 주변 적에게 화상을 퍼뜨린다.' }
 };
 

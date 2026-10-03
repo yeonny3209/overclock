@@ -51,6 +51,7 @@ function updatePlayer(dt) {
       if (BS.blastroll) explode(P.x, P.y, 90, 28, { noSelf: true });
       if (BS.updraft) { for (const e of room.enemies) if (!e.dead && !e.spawning && d2(e.x, e.y, P.x, P.y) < 150 * 150) applyStatus(e, 'wind', { ang: angTo(P.x, P.y, e.x, e.y), dmg: 15 }); part({ x: P.x, y: P.y, life: 0.3, size: 150, color: TAG_COLOR.wind, kind: 'ring' }); }
       if (BS.static) P.staticShots = 3;
+      if (BS.bassdrop) { for (const e of liveNear(170)) { applyStatus(e, 'sonic', {}); damageEnemy(e, 20 * BS.dmgMult, { noStatus: true }); } part({ x: P.x, y: P.y, life: 0.3, size: 170, color: TAG_COLOR.sonic, kind: 'ring' }); }
       if (run.char === 'kai') P.momT = 1.5;
     }
   } else {
@@ -287,6 +288,18 @@ function updateAwaken(dt) {
       for (const e of liveNear(240)) applyStatus(e, 'wind', { ang: angTo(P.x, P.y, e.x, e.y), dmg: 25 });
       part({ x: P.x, y: P.y, life: 0.35, size: 240, color: TAG_COLOR.wind, kind: 'ring' }); SFX.play('roll');
     }
+  }
+  if (aw.poison && awTimer('poison', dt, 0.5)) {
+    for (const e of liveNear(220)) applyStatus(e, 'poison', {});
+    for (let i = 0; i < 4; i++) { const a = rand(0, TAU), d = rand(60, 220); part({ x: P.x + Math.cos(a) * d, y: P.y + Math.sin(a) * d, vx: 0, vy: -20, life: 0.8, size: rand(8, 14), color: 'rgba(182,255,61,0.18)', kind: 'smoke' }); }
+  }
+  if (aw.time && awTimer('time', dt, 6)) {
+    floatText(P.x, P.y - 50, '시간 정지!', TAG_COLOR.time, 22); G.flash = 0.3; G.flashColor = '216,200,255'; SFX.play('glitch');
+    for (const e of room.enemies) if (!e.dead && !e.spawning && onScreen(e.x, e.y, 60)) e.stasisT = 1.5;
+  }
+  if (aw.sonic && awTimer('sonic', dt, 4)) {
+    SFX.play('slash'); shake(5);
+    for (const e of room.enemies) if (!e.dead && !e.spawning && onScreen(e.x, e.y, 60)) { applyStatus(e, 'sonic', {}); damageEnemy(e, 30 * BS.dmgMult * dynDmg(), { noStatus: true, quiet: true }); part({ x: e.x, y: e.y, life: 0.3, size: e.r * 2, color: TAG_COLOR.sonic, kind: 'ring' }); }
   }
   if (aw.water && awTimer('water', dt, 5)) {
     floatText(P.x, P.y - 50, '해일!', TAG_COLOR.water, 22);

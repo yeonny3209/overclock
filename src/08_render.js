@@ -197,6 +197,9 @@ function drawHazards() {
         circlePath(h.x, h.y, h.r); ctx.fillStyle = `rgba(255,210,180,${0.12 + Math.sin(G.time * 8 + h.x) * 0.05})`; ctx.fill();
         if (Math.random() < 0.3) part({ x: h.x + rand(-h.r, h.r) * 0.6, y: h.y + rand(-h.r, h.r) * 0.6, vx: 0, vy: -30, life: 0.7, size: rand(8, 14), color: 'rgba(255,230,210,0.22)', kind: 'smoke' });
         break;
+      case 'venom':
+        circlePath(h.x, h.y, h.r); ctx.fillStyle = `rgba(150,230,40,${0.16 + Math.sin(G.time * 5 + h.x) * 0.04})`; ctx.fill();
+        break;
       case 'shadow':
         circlePath(h.x, h.y, h.r); ctx.fillStyle = 'rgba(70,30,130,0.45)'; ctx.fill(); ctx.strokeStyle = 'rgba(155,107,255,0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
         break;
@@ -408,6 +411,10 @@ function drawEnemy(e) {
     if (!e.boss) { const w = Math.max(30, e.r * 2.2); ctx.fillStyle = 'rgba(155,107,255,0.85)'; ctx.fillRect(e.x - w / 2, e.y + e.r + 8, w * thr, 3); }
     for (let i = 0; i < Math.min(e.corrode, 10); i++) { ctx.fillStyle = '#9b6bff'; ctx.fillRect(e.x - 14 + (i % 5) * 6, e.y + e.r + 12 + Math.floor(i / 5) * 5, 4, 4); }
   }
+  if (e.poison > 0) { for (let i = 0; i < Math.min(e.poison, 10); i++) { ctx.fillStyle = '#b6ff3d'; circlePath(e.x - 12 + (i % 5) * 6, e.y - e.r - 10 - Math.floor(i / 5) * 6, 2.2); ctx.fill(); } }
+  if (e.echoT > 0) { ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 9, -Math.PI / 2, -Math.PI / 2 + TAU * clamp(e.echoT / BS.echoDelay, 0, 1)); ctx.strokeStyle = TAG_COLOR.time; ctx.lineWidth = 2; ctx.stroke(); }
+  if (e.resT > 0) { const k = (G.time * 2 + e.x * 0.01) % 1; circlePath(e.x, e.y, e.r + 4 + k * 14); ctx.strokeStyle = `rgba(224,61,255,${0.6 * (1 - k)})`; ctx.lineWidth = 1.5; ctx.stroke(); }
+  if (e.stasisT > 0) { polyPath(e.x, e.y, e.r + 6, 4, 0); ctx.strokeStyle = '#d8c8ff'; ctx.lineWidth = 2; ctx.stroke(); }
   if (e.soakT > 0) { circlePath(e.x, e.y + e.r * 0.3, e.r * 0.9); ctx.fillStyle = 'rgba(61,139,255,0.22)'; ctx.fill(); }
   if (e.gustT > 0) { ctx.strokeStyle = 'rgba(125,255,184,0.7)'; ctx.lineWidth = 2; const a = Math.atan2(e.ky, e.kx); for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(e.x - Math.cos(a) * (e.r + 6) + Math.sin(a) * i * 7, e.y - Math.sin(a) * (e.r + 6) - Math.cos(a) * i * 7); ctx.lineTo(e.x - Math.cos(a) * (e.r + 20) + Math.sin(a) * i * 7, e.y - Math.sin(a) * (e.r + 20) - Math.cos(a) * i * 7); ctx.stroke(); } }
   if (e.reflectOn) { polyPath(e.x, e.y, e.r + 12, 6, G.time * 2); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.stroke(); }

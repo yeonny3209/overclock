@@ -23,7 +23,7 @@ function recomputeBuild() {
   BS = {
     tags, aw, awakened, awakenElems: awakened.filter(t => ELEM_TAGS.includes(t)),
     dmgMult: (1 + 0.15 * u('sharp')) * (u('bigcal') ? 1.1 : 1) * (c.glass ? 1.5 : 1) * (set('bullet', 3) ? 1.1 : 1) * (set('bullet', 7) ? 1.25 : 1) * (awakened.length ? 1.5 : 1),
-    rateMult: (1 + 0.15 * u('rapid')) * (c.frenzy ? 1.4 : 1),
+    rateMult: (1 + 0.15 * u('rapid')) * (c.frenzy ? 1.4 : 1) * (1 + 0.08 * u('accelerate')),
     reloadMult: 1 / (1 + 0.3 * u('quickhand')),
     crit: 0.1 * u('critup') + (aw.bullet ? 0.25 : 0),
     pierce: u('pierce') + (set('bullet', 7) ? 2 : 0),
@@ -31,7 +31,7 @@ function recomputeBuild() {
     bulletSize: u('bigcal') ? 1.4 : 1,
     spreadMult: c.frenzy ? 2.5 : 1, spreadAdd: c.frenzy ? 0.08 : 0, twin: u('twin') > 0,
     extraShots: aw.bullet, infAmmo: aw.bullet, pierceEvery: set('bullet', 5) ? 3 : 0,
-    onHit: { fire: 0.2 * u('ignite'), elec: 0.15 * u('conductor'), ice: 0.2 * u('frosttip'), metal: 0.25 * u('shrapnel'), light: 0.15 * u('flashround'), dark: 0.2 * u('hex'), wind: 0.2 * u('gale'), water: 0.25 * u('splash') },
+    onHit: { fire: 0.2 * u('ignite'), elec: 0.15 * u('conductor'), ice: 0.2 * u('frosttip'), metal: 0.25 * u('shrapnel'), light: 0.15 * u('flashround'), dark: 0.2 * u('hex'), wind: 0.2 * u('gale'), water: 0.25 * u('splash'), poison: 0.25 * u('venomtip'), time: 0.2 * u('chronotip'), sonic: 0.2 * u('sonictip') },
     burstChance: 0.1 * u('burst'),
     // 불
     burnDmg: (1 + 0.5 * u('kindling')) * (set('fire', 7) ? 2 : 1), burnDur: 3 + 2 * u('heat'), burnTick: u('spreadfire') ? 0.35 : 0.5,
@@ -59,6 +59,15 @@ function recomputeBuild() {
     // 물
     soakDur: 4 + 2 * u('deluge'), soakAmp: (set('water', 5) ? 2 : 1.5) + 0.25 * u('catalyst'), spray: u('spray') > 0, pressure: u('pressure') > 0, riptide: u('riptide') > 0,
     puddleOnDeath: set('water', 3), reactAmp: set('water', 7) ? 2 : 1,
+    // 독
+    poisonMax: (set('poison', 3) ? 8 : 5) + (aw.poison ? 4 : 0), poisonPct: 0.006 * (1 + 0.5 * u('toxin')) * (aw.poison ? 2 : 1), poisonDur: 5 + 3 * u('virulence'),
+    weaken: Math.min(0.7, 0.25 + 0.15 * u('wither')), poisonBoss: set('poison', 5) ? 1 : 0.3, neuro: u('neurotoxin') > 0, plague: u('plague') > 0, poisonTransfer: set('poison', 7),
+    // 시간
+    echoPct: (set('time', 3) ? 0.6 : 0.4) + 0.2 * u('echoamp') + (aw.time ? 0.4 : 0), echoDelay: u('quickecho') ? 1.4 : 2, echoTwice: set('time', 5), echoCrit: set('time', 7),
+    stasis: u('stasis') > 0, paradox: u('paradox') > 0,
+    // 음파
+    resPct: (0.3 + 0.1 * u('amplify')) * (set('sonic', 7) ? 2 : 1) * (aw.sonic ? 1.5 : 1), resRange: 500 + 200 * u('chorus'), resN: set('sonic', 5) ? 12 : 6, resAll: set('sonic', 3),
+    resDur: 3 + 2 * u('tempo'), stagger: u('stagger') > 0, bassdrop: u('bassdrop') > 0, feedback: u('feedback') > 0,
     // 폭발
     chaindet: u('chaindet'), expDmg: (1 + 0.3 * u('hiexp')) * (set('exp', 7) ? 1.5 : 1), expRadius: (1 + 0.15 * u('shockwave')) * (set('exp', 3) ? 1.45 : 1),
     blastroll: u('blastroll') > 0, safety: u('safety') > 0 || aw.exp, exp5: set('exp', 5), exp7: set('exp', 7),
@@ -152,6 +161,9 @@ function wStats(w) {
     if (w.id === 'smg') s.rate *= 1 + 0.6 * (w.spin || 0);
     if (w.id === 'flamer') { s.life *= 1.5; s.stacks = 2; }
     if (w.id === 'hydro') s.pierce += 3;
+    if (w.id === 'needler') s.stacks = 2;
+    if (w.id === 'chrono') { s.pierce += 3; s.life *= 2; }
+    if (w.id === 'sonicgun') s.pellets += 3;
   }
   if (run && run.char === 'sera') s.crit += 0.2;
   if (w.fuse) { s.tag2 = w.fuse; s.dmg *= 1.15; }
@@ -630,6 +642,10 @@ function damageEnemy(e, dmg, o = {}) {
   if (o.knock && !e.heavy && !e.boss) { const k = o.knock * (e.muts ? 0.5 : 1); e.kx += Math.cos(o.ang) * k; e.ky += Math.sin(o.ang) * k; }
   if (!o.dot) { if (crit) { hitstop(0.02); SFX.play('crit'); } else SFX.play('hit'); }
   if (dmg >= 60 && !o.dot) hitstop(0.04);
+  // 시간: 메아리 표식 동안 받은 피해 누적
+  if (e.echoT > 0 && !o.echo) e.echoAcc = (e.echoAcc || 0) + dmg;
+  // 음파: 공명 전파
+  if (e.resT > 0 && !o.res && !o.dot) resonate(e, dmg);
   // 이안류: 젖은 적끼리 피해 공유
   if (BS.riptide && e.soakT > 0 && !o.riptide && !o.dot) {
     for (const t of room.enemies) if (t !== e && !t.dead && !t.spawning && t.soakT > 0 && d2(t.x, t.y, e.x, e.y) < 300 * 300) damageEnemy(t, dmg * 0.2, { riptide: true, quiet: true, dot: true });
@@ -654,6 +670,7 @@ function applyStatus(e, tag, o = {}) {
   switch (tag) {
     case 'fire': // 화상: 지속 피해
       if (e.frozenT > 0 || e.chill > 0) { thermal(e); return; }
+      if (e.poison > 0) venomburn(e);
       if (e.soakT > 0) scald(e);
       e.burnT = BS.burnDur * (amp > 1 ? 1.5 : 1);
       e.burnStacks = Math.min(BS.burnMax, (e.burnStacks || 0) + st);
@@ -710,6 +727,19 @@ function applyStatus(e, tag, o = {}) {
     }
     case 'water': // 젖음: 다른 상태 이상 증폭
       e.soakT = BS.soakDur * (o.long ? 2 : 1);
+      break;
+    case 'poison': // 중독: 최대 체력 비례 피해 + 쇠약
+      if (e.burnT > 0) { venomburn(e); }
+      e.poison = Math.min(BS.poisonMax, (e.poison || 0) + st);
+      e.poisonT = BS.poisonDur * (amp > 1 ? 1.5 : 1);
+      break;
+    case 'time': // 메아리: 표식 동안의 피해를 잠시 뒤 다시
+      if (!(e.echoT > 0)) { e.echoT = BS.echoDelay; e.echoAcc = 0; e.echoN = BS.echoTwice ? 2 : 1; e.echoMul = amp; }
+      break;
+    case 'sonic': // 공명: 같은 종류에게 피해 전파
+      if (e.frozenT > 0) { sonicShatter(e); return; }
+      e.resT = BS.resDur * (amp > 1 ? 1.5 : 1);
+      if (BS.stagger && !e.boss) e.cd = (e.cd || 0) + 0.5;
       break;
   }
 }
@@ -872,6 +902,10 @@ function killEnemy(e, o = {}) {
     if (BS.shards) spawnShards(e.x, e.y, 6, 12, e);
     if (BS.aw.ice) for (const t of near(150)) if (!t.boss) freezeNow(t);
   }
+  if (e.poison > 0) {
+    if (BS.plague && room.hazards.length < 130) addHazard({ type: 'venom', x: e.x, y: e.y, r: 80, life: 4 });
+    if (BS.poisonTransfer) { const t = near(300).sort((a, b) => d2(a.x, a.y, e.x, e.y) - d2(b.x, b.y, e.x, e.y))[0]; if (t) applyStatus(t, 'poison', { stacks: e.poison }); }
+  }
   if (e.soakT > 0 && BS.puddleOnDeath && room.hazards.length < 130) addHazard({ type: 'water', x: e.x, y: e.y, r: 52, life: 8 });
   if (e.corrode > 0 && BS.curseblood && room.hazards.length < 130) addHazard({ type: 'shadow', x: e.x, y: e.y, r: 60, life: 5 });
   if (e.blindT > 0 && BS.refract) {
@@ -904,6 +938,7 @@ function damagePlayer(dmg, src) {
     return;
   }
   dmg *= G.eDmgMult * BS.takenMult * (P.fortT > 0 ? 0.2 : 1);
+  if (src && src.poisonT > 0) dmg *= 1 - BS.weaken;
   if (P.fortT > 0 && src && !src.dead && src.type && !src.ally) applyStatus(src, 'metal', { stacks: 3 });
   run.hp -= dmg; P.iframe = 0.75; P.hurtT = 0.25;
   breakCombo();
@@ -986,4 +1021,57 @@ function hackEnemy(e, dur = 15) {
   floatText(e.x, e.y - e.r - 16, '해킹 성공', '#29f0ff', 18);
   addCombo(); addOd(5);
   SAVE.stats.hacks = (SAVE.stats.hacks || 0) + 1;
+}
+
+// ================= 독 / 시간 / 음파 =================
+function poisonTick(e) {
+  const mult = e.boss || e.muts ? BS.poisonBoss : 1;
+  const dmg = Math.max(1, e.maxHp * BS.poisonPct * e.poison * 0.5 * mult);
+  damageEnemy(e, dmg, { quiet: true, dot: true });
+  if (Math.random() < 0.5) part({ x: e.x + rand(-e.r, e.r), y: e.y + rand(-e.r, e.r), vx: 0, vy: -30, life: 0.5, size: 3, color: '#b6ff3d', kind: 'dot' });
+}
+function echoBurst(e) {
+  let dmg = (e.echoAcc || 0) * BS.echoPct * (e.echoMul || 1) * (e.echoN === 1 && BS.echoTwice && e.echoSecond ? 0.5 : 1);
+  part({ x: e.x, y: e.y, life: 0.35, size: e.r * 2.4, color: TAG_COLOR.time, kind: 'ring' });
+  if (dmg > 0.5) {
+    floatText(e.x, e.y - e.r - 26, '메아리', TAG_COLOR.time, 13);
+    damageEnemy(e, dmg, { echo: true, noStatus: true, crit: BS.echoCrit, dot: true });
+    if (BS.paradox) for (const t of room.enemies) if (t !== e && !t.dead && !t.spawning && d2(t.x, t.y, e.x, e.y) < 150 * 150) damageEnemy(t, dmg * 0.5, { echo: true, noStatus: true, quiet: true, dot: true });
+  }
+  if (e.dead) return;
+  if (BS.stasis && !e.boss) e.stasisT = 0.6;
+  if ((e.chill > 0 || e.chillT > 0) && !e.boss) { reaction('eternity', e.x, e.y); freezeNow(e); }
+  if (e.echoN > 1) { e.echoN--; e.echoSecond = true; e.echoT = BS.echoDelay * 0.6; }
+  else { e.echoT = 0; e.echoAcc = 0; e.echoSecond = false; }
+}
+function resonate(e, dmg) {
+  let n = 0;
+  for (const t of room.enemies) {
+    if (n >= BS.resN) break;
+    if (t === e || t.dead || t.spawning) continue;
+    const same = t.type === e.type;
+    if (!same && !BS.resAll) continue;
+    if (d2(t.x, t.y, e.x, e.y) > BS.resRange * BS.resRange) continue;
+    damageEnemy(t, dmg * BS.resPct * (same ? 1 : 0.5), { res: true, quiet: true, dot: true });
+    if (n < 3) part({ x: t.x, y: t.y, life: 0.25, size: t.r * 1.8, color: TAG_COLOR.sonic, kind: 'ring' });
+    n++;
+  }
+  if (BS.feedback) {
+    const t = room.enemies.find(q => q !== e && !q.dead && !q.spawning && q.type !== e.type && d2(q.x, q.y, e.x, e.y) < 260 * 260);
+    if (t) { addBolt(e.x, e.y, t.x, t.y, TAG_COLOR.sonic, 0.1); damageEnemy(t, dmg * BS.resPct * 0.5, { res: true, quiet: true, dot: true }); }
+  }
+}
+function venomburn(e) {
+  const stacks = e.poison || 0; if (!stacks) return;
+  e.poison = 0; e.poisonT = 0;
+  reaction('venomburn', e.x, e.y);
+  burst(e.x, e.y, '#d8ff6a', 14, 220, 0.4, 3);
+  damageEnemy(e, e.maxHp * 0.025 * stacks * (e.boss || e.muts ? 0.25 : 1) + reactDmg(8 * stacks), { noStatus: true, reaction: true });
+}
+function sonicShatter(e) {
+  e.frozenT = 0; e.chill = 0;
+  reaction('sonicshatter', e.x, e.y);
+  part({ x: e.x, y: e.y, life: 0.35, size: 150, color: TAG_COLOR.sonic, kind: 'ring' });
+  damageEnemy(e, reactDmg(30), { noStatus: true, reaction: true });
+  for (const t of room.enemies) if (t !== e && !t.dead && !t.spawning && d2(t.x, t.y, e.x, e.y) < 150 * 150) damageEnemy(t, reactDmg(14), { noStatus: true, reaction: true, quiet: true });
 }
