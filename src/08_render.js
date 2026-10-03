@@ -408,8 +408,9 @@ function drawPlayer() {
   if (BS.prism) {
     ctx.globalCompositeOperation = 'lighter';
     for (const o of prismOrbs()) {
-      circlePath(o.x, o.y, 16); ctx.fillStyle = `hsla(${o.hue},100%,60%,0.25)`; ctx.fill();
-      polyPath(o.x, o.y, 9, 4, G.time * 6); ctx.fillStyle = `hsl(${o.hue},100%,70%)`; ctx.fill();
+      circlePath(o.x, o.y, 17); ctx.globalAlpha = 0.28; ctx.fillStyle = o.color; ctx.fill(); ctx.globalAlpha = 1;
+      if (o.tag === 'fire') circlePath(o.x, o.y, 8 + Math.sin(G.time * 20) * 2); else if (o.tag === 'elec') polyPath(o.x, o.y, 11, 3, G.time * 9); else polyPath(o.x, o.y, 10, 6, G.time * 3);
+      ctx.fillStyle = o.color; ctx.fill();
     }
     circlePath(P.x, P.y, P.r + 12 + Math.sin(G.time * 6) * 2); ctx.strokeStyle = `hsla(${(G.time * 200) % 360},100%,65%,0.6)`; ctx.lineWidth = 2; ctx.stroke();
     ctx.globalCompositeOperation = 'source-over';

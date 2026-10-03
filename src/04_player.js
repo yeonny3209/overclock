@@ -302,52 +302,63 @@ function updateCamera(dt, snap) {
 }
 
 // ================= 프리즘 세트 =================
+// 속성마다 다른 동작: 불=화상+불길, 전기=연쇄 번개, 얼음=빙결, 폭발=폭발, 탄환=관통 탄막, 생존=회복+보호막
 const PRISM_TAGS = ['fire', 'elec', 'ice'];
+const PRISM_ORB = ['fire', 'elec', 'ice'];
 function prismOrbs() {
   const out = [];
-  for (let i = 0; i < 3; i++) { const a = P.prismA + i * TAU / 3; out.push({ x: P.x + Math.cos(a) * 72, y: P.y + Math.sin(a) * 72, hue: (G.time * 120 + i * 120) % 360 }); }
+  for (let i = 0; i < 3; i++) { const a = P.prismA + i * TAU / 3; out.push({ x: P.x + Math.cos(a) * 72, y: P.y + Math.sin(a) * 72, tag: PRISM_ORB[i], color: TAG_COLOR[PRISM_ORB[i]] }); }
   return out;
+}
+function prismOrbHit(o, e) {
+  const dmg = 22 * dynDmg() * BS.dmgMult;
+  const ang = angTo(P.x, P.y, e.x, e.y);
+  if (o.tag === 'fire') {
+    damageEnemy(e, dmg, { tag: 'fire', knock: 80, ang, quiet: true });
+    if (room.hazards.length < 120) addHazard({ type: 'fire', x: e.x, y: e.y, r: 28, life: 2.5, player: true });
+  } else if (o.tag === 'elec') {
+    damageEnemy(e, dmg, { tag: 'elec', knock: 80, ang, quiet: true });
+    const ts = room.enemies.filter(t => t !== e && !t.dead && !t.spawning && d2(t.x, t.y, e.x, e.y) < 200 * 200).slice(0, 2);
+    for (const t of ts) { addBolt(e.x, e.y, t.x, t.y, '#fff04d'); damageEnemy(t, dmg * 0.6, { tag: 'elec', noChain: true, quiet: true }); }
+  } else {
+    damageEnemy(e, dmg, { tag: 'ice', knock: 40, ang, quiet: true });
+    if (!e.dead) { applyStatus(e, 'ice', { dmg }); applyStatus(e, 'ice', { dmg }); }
+  }
+  burst(e.x, e.y, o.color, 6, 170, 0.3, 3);
 }
 function updatePrism(dt) {
   P.prismA = (P.prismA || 0) + dt * 3.2;
   if (run.prismT === undefined || run.prismT === null) run.prismT = 3;
-  // 회전 조각: 적 베기 + 적 탄 지우기
-  const orbs = prismOrbs();
-  for (const o of orbs) {
+  for (const o of prismOrbs()) {
     for (const e of room.enemies) {
       if (e.dead || e.spawning || e.invuln) continue;
-      if (d2(o.x, o.y, e.x, e.y) < (e.r + 12) ** 2 && (e.prismCd || 0) <= G.time) {
-        e.prismCd = G.time + 0.3;
-        damageEnemy(e, 22 * dynDmg() * BS.dmgMult, { tag: pick(PRISM_TAGS), knock: 120, ang: angTo(P.x, P.y, e.x, e.y), quiet: true });
-        burst(e.x, e.y, `hsl(${o.hue},100%,65%)`, 5, 160, 0.3, 3);
-      }
+      if (d2(o.x, o.y, e.x, e.y) < (e.r + 12) ** 2 && (e.prismCd || 0) <= G.time) { e.prismCd = G.time + 0.3; prismOrbHit(o, e); }
     }
     for (const b of BULLETS) {
       if (b.team !== 'e' || b.type === 'lob' || b.dead) continue;
-      if (d2(o.x, o.y, b.x, b.y) < (b.r + 14) ** 2) { b.dead = true; burst(b.x, b.y, `hsl(${o.hue},100%,65%)`, 4, 120, 0.25, 2); }
+      if (d2(o.x, o.y, b.x, b.y) < (b.r + 14) ** 2) { b.dead = true; burst(b.x, b.y, o.color, 4, 120, 0.25, 2); }
     }
   }
-  // 프리즘 폭발
   run.prismT -= dt;
-  if (run.prismT <= 0 && room.enemies.some(e => !e.dead && !e.spawning)) {
-    run.prismT = 6;
-    prismNova();
-  }
+  if (run.prismT <= 0 && room.enemies.some(e => !e.dead && !e.spawning)) { run.prismT = 8; prismNova(); }
 }
 function prismNova() {
-  const R = 380 * BS.expRadius / 1.3;
+  const R = 380;
+  const live = () => room.enemies.filter(e => !e.dead && !e.spawning && !e.invuln);
+  const near = () => live().filter(e => dist(P.x, P.y, e.x, e.y) < R + e.r);
+  const base = 55 * BS.dmgMult * dynDmg();
   SFX.play('reaction'); SFX.play('explode', 0.6);
-  floatText(P.x, P.y - 50, '프리즘 폭발!', `hsl(${(G.time * 300) % 360},100%,70%)`, 24);
-  for (let i = 0; i < 4; i++) part({ x: P.x, y: P.y, life: 0.5 + i * 0.1, size: R * (0.6 + i * 0.13), color: `hsl(${i * 90 + (G.time * 200) % 360},100%,65%)`, kind: 'ring' });
-  burst(P.x, P.y, '#ffffff', 30, 520, 0.6, 4);
-  shake(10); G.flash = 0.25; G.flashColor = '255,255,255';
-  for (const e of room.enemies.slice()) {
-    if (e.dead || e.spawning || e.invuln) continue;
-    if (dist(P.x, P.y, e.x, e.y) < R + e.r) {
-      const tg = pick(PRISM_TAGS);
-      damageEnemy(e, 80 * BS.dmgMult / 1.8 * 1.8 * dynDmg(), { tag: tg, knock: 260, ang: angTo(P.x, P.y, e.x, e.y), statusDmg: 40 });
-      if (!e.dead) applyStatus(e, pick(PRISM_TAGS), { dmg: 40 });
-    }
-  }
+  floatText(P.x, P.y - 50, '프리즘 폭발!', '#ffffff', 26);
+  shake(10); G.flash = 0.2; G.flashColor = '255,255,255';
+  const ring = (c, sz) => part({ x: P.x, y: P.y, life: 0.6, size: sz, color: c, kind: 'ring' });
+  const steps = [
+    ['fire', () => { ring(TAG_COLOR.fire, R); for (const e of near()) { applyStatus(e, 'fire', { dmg: base }); damageEnemy(e, base * 0.8, { tag: 'fire', quiet: true }); } for (const h of room.hazards) if (h.type === 'oil' && d2(h.x, h.y, P.x, P.y) < (R + h.r) ** 2) ignite(h, true); for (let i = 0; i < 4; i++) addHazard({ type: 'fire', x: P.x + Math.cos(i * 1.57) * 120, y: P.y + Math.sin(i * 1.57) * 120, r: 45, life: 3, player: true }); }],
+    ['elec', () => { ring(TAG_COLOR.elec, R * 0.85); for (const e of near().slice(0, 8)) { strike(e.x, e.y); addBolt(P.x, P.y, e.x, e.y, '#fff04d'); damageEnemy(e, base, { tag: 'elec', quiet: true }); } for (const h of room.hazards) if (h.type === 'water') electrify(h, true); }],
+    ['ice', () => { ring(TAG_COLOR.ice, R); for (const e of near()) { for (let k = 0; k < 3; k++) applyStatus(e, 'ice', { dmg: base }); damageEnemy(e, base * 0.5, { tag: 'ice', quiet: true }); } }],
+    ['exp', () => { ring(TAG_COLOR.exp, R * 0.7); const ts = near().sort(() => Math.random() - 0.5).slice(0, 4); for (const e of ts) explode(e.x, e.y, 90, base * 0.9, { noSelf: true }); }],
+    ['bullet', () => { ring(TAG_COLOR.bullet, R * 0.6); for (let i = 0; i < 16; i++) { const a = i / 16 * TAU; spawnBullet({ x: P.x, y: P.y, vx: Math.cos(a) * 900, vy: Math.sin(a) * 900, r: 5, dmg: base * 0.7, team: 'p', life: 0.7, pierce: 99, color: '#ffffff', wid: 'prism' }); } }],
+    ['surv', () => { ring(TAG_COLOR.surv, 80); healRun(10, true); if (P.shield < 1) P.shield = 1; floatText(P.x, P.y - 70, '+보호막', '#6dff8a', 16); }]
+  ];
+  steps.forEach(([tag, fn], i) => room.timers.push({ t: i * 0.12, fn: () => { if (!P.dead && room) { fn(); SFX.play(tag === 'elec' ? 'zap' : tag === 'ice' ? 'freeze' : tag === 'fire' ? 'ignite' : 'hit'); } } }));
   for (const b of BULLETS) if (b.team === 'e' && b.type !== 'lob' && d2(P.x, P.y, b.x, b.y) < R * R) b.dead = true;
 }

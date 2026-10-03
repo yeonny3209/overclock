@@ -289,7 +289,10 @@ function bulletHitEnemy(b, e) {
   if (BS.chillChance && b.tag !== 'ice' && Math.random() < BS.chillChance) applyStatus(e, 'ice', { dmg });
   if (BS.burstChance && Math.random() < BS.burstChance) explode(b.x, b.y, 55, 12, { small: true });
   if (BS.elec7 && Math.random() < 0.25 && !e.dead) { strike(e.x, e.y); damageEnemy(e, 25 * dynDmg(), { tag: 'elec', noChain: true, quiet: true }); }
-  if (BS.prism && Math.random() < 0.5 && !e.dead) applyStatus(e, pick(['fire', 'elec', 'ice']), { dmg });
+  if (BS.prism && Math.random() < 0.5 && !e.dead) {
+    const pt = pick(['fire', 'elec', 'ice', 'exp']);
+    if (pt === 'exp') explode(e.x, e.y, 50, 10, { small: true, noSelf: true }); else applyStatus(e, pt, { dmg });
+  }
   if (b.explosive) explode(b.x, b.y, 65, 22, { small: true, wid: b.wid });
   if (b.split && !b.small) for (const s of [-0.55, 0.55]) {
     const a = ang + s, sp = Math.hypot(b.vx, b.vy) * 0.8;
