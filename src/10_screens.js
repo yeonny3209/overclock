@@ -31,6 +31,7 @@ function showTitle() {
     </div>
     <div class="hint">WASD 이동 · 마우스 조준 · 좌클릭 사격 · 우클릭 스킬 · 스페이스 구르기<br>R 재장전 · Q/휠 무기 교체 · E 상호작용 · ESC 일시정지 · 게임패드 지원</div>
     <div class="hint small">도시 관리 AI "마더보드"가 폭주했다. 네 개 구역을 돌파해 중앙 서버를 꺼라.</div>
+    ${/^https?:/.test(location.protocol) ? `<div class="hint small"><a href="overclock.apk" download style="color:#29f0ff">안드로이드 앱(APK) 받기</a> · 아이폰/아이패드는 Safari 공유 → 홈 화면에 추가</div>` : ''}
   `);
 }
 

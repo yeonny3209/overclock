@@ -309,6 +309,21 @@ loadSave();
 recomputeBuild();
 initInput();
 initTouch();
+// 안드로이드 앱(WebView) 연동: 앱이 백그라운드로 가면 일시정지 + 저장, 뒤로 가기 버튼 처리
+window.androidPause = function () {
+  try { if (G.screen === 'combat' && !G.paused) pauseGame(); saveGame(); if (run && run.map && G.screen === 'menu') saveRun(); } catch (e) { }
+};
+window.androidBack = function () {
+  try {
+    if (radioState) { advanceRadio(); return true; }
+    if (G.screen === 'combat' || G.paused) { if (G.paused) resumeGame(); else pauseGame(); return true; }
+    if (G.screen === 'overlay') return true;
+    if (document.querySelector('#ui .logo')) return false; // 타이틀에서는 앱 종료
+    if (run && run.map && G.screen === 'menu') saveRun();
+    showTitle(); return true;
+  } catch (e) { return false; }
+};
+document.addEventListener('visibilitychange', () => { if (document.hidden) window.androidPause(); });
 // 설치형 웹앱(PWA): http(s)로 열렸을 때만 서비스 워커 등록
 if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => { });
 showTitle();
