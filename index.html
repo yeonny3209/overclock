@@ -315,6 +315,16 @@ const SFX = {
     } catch (e) { }
   }
 };
+
+// ================= 진행 중인 판 자동 저장 =================
+const RUN_KEY = 'overclock_run_v1';
+function saveRun() {
+  try { if (run && run.mode !== 'arena' && run.map) localStorage.setItem(RUN_KEY, JSON.stringify(run)); } catch (e) { }
+}
+function clearRun() { try { localStorage.removeItem(RUN_KEY); } catch (e) { } }
+function peekRun() {
+  try { const r = JSON.parse(localStorage.getItem(RUN_KEY)); return r && r.map && r.weapons ? r : null; } catch (e) { return null; }
+}
 // ================= 게임 데이터 =================
 const TAG_NAME = { fire: '불', elec: '전기', ice: '얼음', exp: '폭발', bullet: '탄환', surv: '생존', none: '없음', special: '특수' };
 const TAG_COLOR = { fire: '#ff7a2a', elec: '#ffe14d', ice: '#8fe8ff', exp: '#ff4d6d', bullet: '#d8dcf0', surv: '#6dff8a', none: '#b0a8d0', special: '#c77dff' };
@@ -3835,7 +3845,8 @@ function showTitle() {
     <div class="logo">오버클럭</div>
     <div class="logo-en">OVERCLOCK</div>
     <div class="col">
-      <button class="btn big" onclick="${cb(() => showCharSelect('campaign'))}">▶ 캠페인</button>
+      ${(() => { const r = peekRun(); return r ? `<button class="btn big ye" onclick="${cb(resumeRun)}">▶ 이어하기 <span class="muted small">${CHARS[r.char].name} · 구역 ${r.zone + 1} · ${r.mode === 'daily' ? '일일' : r.oc ? 'OC' + r.oc : '캠페인'}</span></button>` : ''; })()}
+      <button class="btn big" onclick="${cb(() => showCharSelect('campaign'))}">${peekRun() ? '새 캠페인' : '▶ 캠페인'}</button>
       <button class="btn" onclick="${cb(() => showCharSelect('arena'))}">무한 아레나 <span class="muted small">최고 ${SAVE.arenaBest}웨이브</span></button>
       <button class="btn" onclick="${cb(showDaily)}">일일 도전</button>
       <div class="row" style="gap:0">
@@ -3936,6 +3947,7 @@ function availableNodes() {
 }
 function showMap() {
   menuMode(); room = null;
+  saveRun(); saveGame();
   const Z = ZONES[run.zone];
   const avail = availableNodes();
   const nextRow = run.row + 1;
@@ -4307,7 +4319,15 @@ function newRun(mode, charId, oc, seed) {
   codex('weapon', CHARS[charId].weapon);
   SAVE.stats.runs++; saveGame();
 }
+function resumeRun() {
+  const r = peekRun(); if (!r) { showTitle(); return; }
+  run = r; G.mode = run.mode; reseed(run.seed + run.zone);
+  recomputeBuild(); run.hp = Math.min(run.hp, run.maxHp);
+  toast('저장된 판을 불러왔습니다');
+  showMap();
+}
 function startCampaign(charId, oc, mode, seed) {
+  clearRun();
   newRun(mode || 'campaign', charId, oc, seed);
   G.mode = run.mode;
   run.map = genMap(0);
@@ -4408,6 +4428,7 @@ function nextZone() {
 // ================= 런 종료 =================
 function endRun(victory) {
   if (!run) return;
+  clearRun();
   if (radioState) { clearInterval(radioState.timer); radioState = null; }
   let chips, extra = '';
   if (run.mode === 'arena') {

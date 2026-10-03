@@ -222,3 +222,13 @@ const SFX = {
     } catch (e) { }
   }
 };
+
+// ================= 진행 중인 판 자동 저장 =================
+const RUN_KEY = 'overclock_run_v1';
+function saveRun() {
+  try { if (run && run.mode !== 'arena' && run.map) localStorage.setItem(RUN_KEY, JSON.stringify(run)); } catch (e) { }
+}
+function clearRun() { try { localStorage.removeItem(RUN_KEY); } catch (e) { } }
+function peekRun() {
+  try { const r = JSON.parse(localStorage.getItem(RUN_KEY)); return r && r.map && r.weapons ? r : null; } catch (e) { return null; }
+}

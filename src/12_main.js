@@ -14,7 +14,15 @@ function newRun(mode, charId, oc, seed) {
   codex('weapon', CHARS[charId].weapon);
   SAVE.stats.runs++; saveGame();
 }
+function resumeRun() {
+  const r = peekRun(); if (!r) { showTitle(); return; }
+  run = r; G.mode = run.mode; reseed(run.seed + run.zone);
+  recomputeBuild(); run.hp = Math.min(run.hp, run.maxHp);
+  toast('저장된 판을 불러왔습니다');
+  showMap();
+}
 function startCampaign(charId, oc, mode, seed) {
+  clearRun();
   newRun(mode || 'campaign', charId, oc, seed);
   G.mode = run.mode;
   run.map = genMap(0);
@@ -115,6 +123,7 @@ function nextZone() {
 // ================= 런 종료 =================
 function endRun(victory) {
   if (!run) return;
+  clearRun();
   if (radioState) { clearInterval(radioState.timer); radioState = null; }
   let chips, extra = '';
   if (run.mode === 'arena') {

@@ -17,7 +17,8 @@ function showTitle() {
     <div class="logo">오버클럭</div>
     <div class="logo-en">OVERCLOCK</div>
     <div class="col">
-      <button class="btn big" onclick="${cb(() => showCharSelect('campaign'))}">▶ 캠페인</button>
+      ${(() => { const r = peekRun(); return r ? `<button class="btn big ye" onclick="${cb(resumeRun)}">▶ 이어하기 <span class="muted small">${CHARS[r.char].name} · 구역 ${r.zone + 1} · ${r.mode === 'daily' ? '일일' : r.oc ? 'OC' + r.oc : '캠페인'}</span></button>` : ''; })()}
+      <button class="btn big" onclick="${cb(() => showCharSelect('campaign'))}">${peekRun() ? '새 캠페인' : '▶ 캠페인'}</button>
       <button class="btn" onclick="${cb(() => showCharSelect('arena'))}">무한 아레나 <span class="muted small">최고 ${SAVE.arenaBest}웨이브</span></button>
       <button class="btn" onclick="${cb(showDaily)}">일일 도전</button>
       <div class="row" style="gap:0">
@@ -118,6 +119,7 @@ function availableNodes() {
 }
 function showMap() {
   menuMode(); room = null;
+  saveRun(); saveGame();
   const Z = ZONES[run.zone];
   const avail = availableNodes();
   const nextRow = run.row + 1;
