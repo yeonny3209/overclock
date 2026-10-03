@@ -395,24 +395,24 @@ const UPGRADES = [
   // 전기
   { id: 'static', name: '정전기', tag: 'elec', desc: '구르기 후 다음 3발이 감전 부여' },
   { id: 'conductor', name: '도체 탄두', tag: 'elec', desc: '탄환이 15% 확률로 감전 부여', max: 2 },
-  { id: 'highvolt', name: '고전압', tag: 'elec', desc: '감전 전이 피해 50% → 80%' },
-  { id: 'chargecoil', name: '충전 코일', tag: 'elec', desc: '재장전 시 주변 적 감전 + 피해 12' },
+  { id: 'highvolt', name: '고전압', tag: 'elec', desc: '감전 전이 피해 50% → 80% (2중첩 110%)', max: 2 },
+  { id: 'chargecoil', name: '충전 코일', tag: 'elec', desc: '재장전 시 주변 적 감전 + 피해 12 (중첩 시 피해 증가)', max: 2 },
   { id: 'overcurrent', name: '과전류', tag: 'elec', desc: '감전된 적이 받는 피해 +15%', max: 2 },
   { id: 'thunder', name: '번개 강타', tag: 'elec', desc: '치명타 시 대상에게 낙뢰 (피해 20)', rare: 1, pack: 'B' },
   { id: 'discharge', name: '방전', tag: 'elec', desc: '스킬 사용 시 주변 적 5명에게 번개', pack: 'A' },
   // 얼음
-  { id: 'frostbite', name: '동상', tag: 'ice', desc: '빙결 지속시간 +50%' },
+  { id: 'frostbite', name: '동상', tag: 'ice', desc: '빙결 지속시간 +50%', max: 2 },
   { id: 'frosttip', name: '서리 탄두', tag: 'ice', desc: '탄환이 20% 확률로 빙결 1중첩', max: 2 },
-  { id: 'chill', name: '한기', tag: 'ice', desc: '빙결 둔화 30% → 45%' },
+  { id: 'chill', name: '한기', tag: 'ice', desc: '빙결 둔화 30% → 45% (2중첩 60%)', max: 2 },
   { id: 'shards', name: '얼음 파편', tag: 'ice', desc: '얼어붙은 적이 죽으면 파편 6개가 튐', rare: 1 },
-  { id: 'permafrost', name: '영구 동토', tag: 'ice', desc: '얼어붙음 지속시간 +1초' },
+  { id: 'permafrost', name: '영구 동토', tag: 'ice', desc: '얼어붙음 지속시간 +1초', max: 2 },
   { id: 'frostarmor', name: '냉각 갑옷', tag: 'ice', desc: '피격 시 주변 적 빙결 2중첩', pack: 'B' },
   // 폭발
-  { id: 'chaindet', name: '연쇄 기폭', tag: 'exp', desc: '폭발에 맞은 적이 죽으면 다시 폭발', rare: 1 },
+  { id: 'chaindet', name: '연쇄 기폭', tag: 'exp', desc: '폭발에 맞은 적이 죽으면 다시 폭발 (2중첩 시 더 크게)', rare: 1, max: 2 },
   { id: 'hiexp', name: '고폭 화약', tag: 'exp', desc: '폭발 피해 +30%', max: 2 },
   { id: 'burst', name: '파열탄', tag: 'exp', desc: '탄환이 10% 확률로 소형 폭발', max: 2 },
   { id: 'blastroll', name: '폭발 구르기', tag: 'exp', desc: '구르기가 끝날 때 폭발 (자신은 피해 없음)' },
-  { id: 'shockwave', name: '충격파', tag: 'exp', desc: '폭발 범위 +15%, 넉백 +50%' },
+  { id: 'shockwave', name: '충격파', tag: 'exp', desc: '폭발 범위 +15%, 넉백 +50%', max: 2 },
   { id: 'safety', name: '안전 장치', tag: 'exp', desc: '자신의 폭발에 피해를 입지 않음', pack: 'B' },
   // 탄환
   { id: 'twin', name: '쌍발', tag: 'bullet', desc: '탄 2발 발사, 각 탄 피해 -35%', rare: 1 },
@@ -660,11 +660,11 @@ function recomputeBuild() {
     burnChance: 0.2 * u('ignite'), shockChance: 0.15 * u('conductor'), chillChance: 0.2 * u('frosttip'), burstChance: 0.1 * u('burst'),
     burnDmg: (1 + 0.5 * u('kindling')) * (set('fire', 7) ? 2 : 1), burnDur: 3 + 2 * u('heat'), incinerate: 0.2 * u('incinerate'),
     spreadfire: u('spreadfire') > 0, firetrail: u('firetrail') > 0, flamearmor: u('flamearmor') > 0,
-    static: u('static') > 0, transfer: u('highvolt') ? 0.8 : 0.5, chargecoil: u('chargecoil') > 0, overcurrent: 0.15 * u('overcurrent'),
+    static: u('static') > 0, transfer: 0.5 + 0.3 * u('highvolt'), chargecoil: u('chargecoil'), overcurrent: 0.15 * u('overcurrent'),
     thunder: u('thunder') > 0, discharge: u('discharge') > 0,
-    chillDur: u('frostbite') ? 1.5 : 1, chillSlow: u('chill') ? 0.45 : 0.3, shards: u('shards') > 0, permafrost: u('permafrost'), frostarmor: u('frostarmor') > 0,
-    chaindet: u('chaindet') > 0, expDmg: (1 + 0.3 * u('hiexp')) * (set('exp', 7) ? 1.5 : 1), expRadius: (1 + 0.15 * u('shockwave')) * (set('exp', 3) ? 1.45 : 1) * (prism ? 1.2 : 1),
-    expKnock: u('shockwave') ? 1.5 : 1, blastroll: u('blastroll') > 0, safety: u('safety') > 0,
+    chillDur: 1 + 0.5 * u('frostbite'), chillSlow: 0.3 + 0.15 * u('chill'), shards: u('shards') > 0, permafrost: u('permafrost'), frostarmor: u('frostarmor') > 0,
+    chaindet: u('chaindet'), expDmg: (1 + 0.3 * u('hiexp')) * (set('exp', 7) ? 1.5 : 1), expRadius: (1 + 0.15 * u('shockwave')) * (set('exp', 3) ? 1.45 : 1) * (prism ? 1.2 : 1),
+    expKnock: 1 + 0.5 * u('shockwave'), blastroll: u('blastroll') > 0, safety: u('safety') > 0,
     vamp: u('vamp'), regen: 8 * u('regen'), evasion: u('evasion') ? 1.5 : 1, medkit: u('medkit') > 0, plating: 0.1 * u('plating'),
     magnet: u('magnet') ? 2 : 1, afterimage: u('afterimage') > 0, cdMult: Math.pow(0.8, u('cooldown')), moveMult: (1 + 0.1 * u('swift')) * (prism ? 1.1 : 1),
     comboTime: 3 + 2 * u('combokeep'), invest: 8 * u('invest'), lucky: 0.2 * u('lucky'),
@@ -1055,7 +1055,7 @@ function startReload(w) {
   w.reloadT = s.reload; w.reloadMax = s.reload;
   SFX.play('reload');
   if (BS.chargecoil) {
-    for (const e of room.enemies) if (!e.dead && d2(e.x, e.y, P.x, P.y) < 180 * 180) { addBolt(P.x, P.y, e.x, e.y, '#fff04d'); damageEnemy(e, 12, { tag: 'elec' }); }
+    for (const e of room.enemies) if (!e.dead && d2(e.x, e.y, P.x, P.y) < 180 * 180) { addBolt(P.x, P.y, e.x, e.y, '#fff04d'); damageEnemy(e, 12 * BS.chargecoil, { tag: 'elec' }); }
     burst(P.x, P.y, '#fff04d', 12, 250, 0.3, 2);
   }
 }
@@ -1264,7 +1264,7 @@ function killEnemy(e, o = {}) {
     if (o.wid === 'flamer' && curW() && curW().id === 'flamer' && curW().grade === 2) explode(e.x, e.y, 70, 25, { tag: 'fire', small: true, noSelf: true });
   }
   if (e.frozenT > 0 && BS.shards) spawnShards(e.x, e.y, 6, 12, e);
-  if (o.isExp && BS.chaindet) explode(e.x, e.y, 65, 18, { small: true, noSelf: true });
+  if (o.isExp && BS.chaindet) explode(e.x, e.y, 65 + 20 * (BS.chaindet - 1), 18 * BS.chaindet, { small: true, noSelf: true });
   else if (BS.exp5 && Math.random() < 0.35) explode(e.x, e.y, 55, 14, { small: true, noSelf: true });
   if (o.wid === 'sniper') { const w = run.weapons.find(w => w.id === 'sniper' && w.grade === 2); if (w) w.ammo = Math.min(wStats(w).mag, w.ammo + 1); }
   if (BS.vamp) { run.vampCount++; if (run.vampCount >= 30) { run.vampCount = 0; healRun(5 * BS.vamp, true); } }

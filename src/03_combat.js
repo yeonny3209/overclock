@@ -32,11 +32,11 @@ function recomputeBuild() {
     burnChance: 0.2 * u('ignite'), shockChance: 0.15 * u('conductor'), chillChance: 0.2 * u('frosttip'), burstChance: 0.1 * u('burst'),
     burnDmg: (1 + 0.5 * u('kindling')) * (set('fire', 7) ? 2 : 1), burnDur: 3 + 2 * u('heat'), incinerate: 0.2 * u('incinerate'),
     spreadfire: u('spreadfire') > 0, firetrail: u('firetrail') > 0, flamearmor: u('flamearmor') > 0,
-    static: u('static') > 0, transfer: u('highvolt') ? 0.8 : 0.5, chargecoil: u('chargecoil') > 0, overcurrent: 0.15 * u('overcurrent'),
+    static: u('static') > 0, transfer: 0.5 + 0.3 * u('highvolt'), chargecoil: u('chargecoil'), overcurrent: 0.15 * u('overcurrent'),
     thunder: u('thunder') > 0, discharge: u('discharge') > 0,
-    chillDur: u('frostbite') ? 1.5 : 1, chillSlow: u('chill') ? 0.45 : 0.3, shards: u('shards') > 0, permafrost: u('permafrost'), frostarmor: u('frostarmor') > 0,
-    chaindet: u('chaindet') > 0, expDmg: (1 + 0.3 * u('hiexp')) * (set('exp', 7) ? 1.5 : 1), expRadius: (1 + 0.15 * u('shockwave')) * (set('exp', 3) ? 1.45 : 1) * (prism ? 1.2 : 1),
-    expKnock: u('shockwave') ? 1.5 : 1, blastroll: u('blastroll') > 0, safety: u('safety') > 0,
+    chillDur: 1 + 0.5 * u('frostbite'), chillSlow: 0.3 + 0.15 * u('chill'), shards: u('shards') > 0, permafrost: u('permafrost'), frostarmor: u('frostarmor') > 0,
+    chaindet: u('chaindet'), expDmg: (1 + 0.3 * u('hiexp')) * (set('exp', 7) ? 1.5 : 1), expRadius: (1 + 0.15 * u('shockwave')) * (set('exp', 3) ? 1.45 : 1) * (prism ? 1.2 : 1),
+    expKnock: 1 + 0.5 * u('shockwave'), blastroll: u('blastroll') > 0, safety: u('safety') > 0,
     vamp: u('vamp'), regen: 8 * u('regen'), evasion: u('evasion') ? 1.5 : 1, medkit: u('medkit') > 0, plating: 0.1 * u('plating'),
     magnet: u('magnet') ? 2 : 1, afterimage: u('afterimage') > 0, cdMult: Math.pow(0.8, u('cooldown')), moveMult: (1 + 0.1 * u('swift')) * (prism ? 1.1 : 1),
     comboTime: 3 + 2 * u('combokeep'), invest: 8 * u('invest'), lucky: 0.2 * u('lucky'),
@@ -427,7 +427,7 @@ function startReload(w) {
   w.reloadT = s.reload; w.reloadMax = s.reload;
   SFX.play('reload');
   if (BS.chargecoil) {
-    for (const e of room.enemies) if (!e.dead && d2(e.x, e.y, P.x, P.y) < 180 * 180) { addBolt(P.x, P.y, e.x, e.y, '#fff04d'); damageEnemy(e, 12, { tag: 'elec' }); }
+    for (const e of room.enemies) if (!e.dead && d2(e.x, e.y, P.x, P.y) < 180 * 180) { addBolt(P.x, P.y, e.x, e.y, '#fff04d'); damageEnemy(e, 12 * BS.chargecoil, { tag: 'elec' }); }
     burst(P.x, P.y, '#fff04d', 12, 250, 0.3, 2);
   }
 }
@@ -636,7 +636,7 @@ function killEnemy(e, o = {}) {
     if (o.wid === 'flamer' && curW() && curW().id === 'flamer' && curW().grade === 2) explode(e.x, e.y, 70, 25, { tag: 'fire', small: true, noSelf: true });
   }
   if (e.frozenT > 0 && BS.shards) spawnShards(e.x, e.y, 6, 12, e);
-  if (o.isExp && BS.chaindet) explode(e.x, e.y, 65, 18, { small: true, noSelf: true });
+  if (o.isExp && BS.chaindet) explode(e.x, e.y, 65 + 20 * (BS.chaindet - 1), 18 * BS.chaindet, { small: true, noSelf: true });
   else if (BS.exp5 && Math.random() < 0.35) explode(e.x, e.y, 55, 14, { small: true, noSelf: true });
   if (o.wid === 'sniper') { const w = run.weapons.find(w => w.id === 'sniper' && w.grade === 2); if (w) w.ammo = Math.min(wStats(w).mag, w.ammo + 1); }
   if (BS.vamp) { run.vampCount++; if (run.vampCount >= 30) { run.vampCount = 0; healRun(5 * BS.vamp, true); } }
