@@ -60,7 +60,7 @@ EN.boss_crusher = {
   boss: true, hp: 1, r: 44, spd: 70, color: '#ff8a2a', contact: 18, heavy: true,
   init(e) { e.hp = e.maxHp = 1500 * G.bossHp; e.st = 'walk'; e.t = 1.6; e.dmgTakenMult = 0.35; e.charges = 0; e.bossId = 'crusher'; e.name = '크러셔'; },
   update(e, dt) {
-    const ph2 = e.hp < e.maxHp * 0.5, oc5 = run.oc >= 5;
+    const ph2 = e.hp < e.maxHp * 0.5, oc5 = bossExtra();
     e.t -= dt;
     e.contact = e.st === 'charge' ? 26 : 18;
     switch (e.st) {
@@ -176,7 +176,7 @@ EN.boss_frost = {
     if (e.ring2 > 0) { e.ring2 -= dt; if (e.ring2 <= 0) eRing(e, 22, 170, 10, rand(0, TAU), { chill: true, color: '#9fe8ff' }); }
     e.t -= dt * sp;
     if (e.t <= 0) {
-      const pats = run.oc >= 5 ? 4 : 3;
+      const pats = bossExtra() ? 4 : 3;
       e.pat = (e.pat + 1) % pats;
       switch (e.pat) {
         case 0: eRing(e, 16, 140, 7, rand(0, TAU), { chill: true, color: '#9fe8ff' }); if (ph2) e.ring2 = 0.6; break;
@@ -224,7 +224,7 @@ EN.boss_twins = {
       // 레이저 선 피해
       if (!other.down && !other.dead) {
         if (segDist(P.x, P.y, e.x, e.y, other.x, other.y) < P.r + 6) damagePlayer(12, e);
-        if (run.oc >= 5) { room.sparkT = (room.sparkT || 0) - dt; if (room.sparkT <= 0) { room.sparkT = 0.6; const k = Math.random(); const sx = lerp(e.x, other.x, k), sy = lerp(e.y, other.y, k); const pa = angTo(e.x, e.y, other.x, other.y) + Math.PI / 2 * (Math.random() < 0.5 ? 1 : -1); spawnBullet({ x: sx, y: sy, vx: Math.cos(pa) * 200, vy: Math.sin(pa) * 200, r: 5, dmg: 8, team: 'e', life: 3, color: '#fff04d', owner: e }); } }
+        if (bossExtra()) { room.sparkT = (room.sparkT || 0) - dt; if (room.sparkT <= 0) { room.sparkT = 0.6; const k = Math.random(); const sx = lerp(e.x, other.x, k), sy = lerp(e.y, other.y, k); const pa = angTo(e.x, e.y, other.x, other.y) + Math.PI / 2 * (Math.random() < 0.5 ? 1 : -1); spawnBullet({ x: sx, y: sy, vx: Math.cos(pa) * 200, vy: Math.sin(pa) * 200, r: 5, dmg: 8, team: 'e', life: 3, color: '#fff04d', owner: e }); } }
       }
     }
     const R = room.twinR * (e.idx ? 1 : 1);
@@ -314,7 +314,7 @@ EN.boss_mother = {
         e.x = lerp(e.x, e.home.x + Math.sin(G.time * 0.7) * 120, Math.min(1, 2 * dt)); e.y = lerp(e.y, e.home.y, Math.min(1, 2 * dt));
         if (e.t <= 0) {
           const pats = e.phase === 1 ? ['dash', 'ring'] : e.phase === 2 ? ['dash', 'ring', 'spiral', 'fan'] : ['dash', 'ring', 'spiral', 'fan', 'lob'];
-          if (run.oc >= 5) pats.push('wall');
+          if (bossExtra()) pats.push('wall');
           const p = pats[e.pat++ % pats.length];
           if (p === 'dash') { e.st = 'windup'; e.t = 0.7; e.lockA = angTo(e.x, e.y, P.x, P.y); SFX.play('warn'); }
           else if (p === 'ring') { eRing(e, 20 + e.phase * 4, 200, 10, rand(0, TAU), { color: '#e28bff' }); e.t = 1.8; }
@@ -369,3 +369,5 @@ EN.boss_mother = {
     if (e.invuln) { circlePath(e.x, e.y, e.r + 26); ctx.strokeStyle = 'rgba(200,107,255,0.6)'; ctx.lineWidth = 2; ctx.setLineDash([6, 6]); ctx.stroke(); ctx.setLineDash([]); }
   }
 };
+
+function bossExtra() { return run && (run.oc >= 5 || run.hard); }

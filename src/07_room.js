@@ -208,6 +208,7 @@ function setScaling(zone, arenaWave) {
   G.eDmgMult = (1 + 0.12 * (arenaWave ? Math.min(4, arenaWave / 6) : zone)) * (oc >= 6 ? 1.25 : 1);
   G.eSpd = oc >= 7 ? 1.1 : 1;
   G.coinLife = oc >= 8 ? 3.5 : 5;
+  if (run.hard) { G.eHp *= 1.6; G.eDmgMult *= 1.4; G.eSpd *= 1.1; G.bossHp *= 1.5; }
 }
 
 function genLayout(objType) {
@@ -300,6 +301,7 @@ function startRoom(o) {
   if (run.char === 'momo') placeTurret(P.x + 40, P.y - 30);
   room.eliteChance = kind === 'elite' ? 0.22 : zone === 0 ? 0 : 0.03 + 0.035 * zone + ((o.row || 0) >= 4 ? 0.03 : 0);
   if (run.oc >= 2) room.eliteChance += 0.06;
+  if (run.hard) { room.eliteChance += 0.12; if (zone >= 1) room.muts2 = true; }
   room.muts2 = run.sealedNext || run.oc >= 10; run.sealedNext = false;
   room.extra = (run.alarmNext ? 1.3 : 1) * BS.enemyMult; run.alarmNext = false;
   room.row = o.row || 0;
@@ -413,13 +415,13 @@ function updateRoom(dt) {
     case 'exterminate': {
       ob.waveT -= dt;
       if (ob.wave < ob.waves && (ob.wave === 0 || alive <= 2 || ob.waveT <= 0)) {
-        if (ob.wave > 0) healRun(15, true);
+        if (ob.wave > 0) healRun(run.hard ? 5 : 15, true);
         ob.wave++; ob.waveT = 14;
         const n = ob.per + (ob.wave - 1);
         for (let i = 0; i < n; i++) spawnOne(null, { elite: room.kind === 'elite' && i < (ob.wave === 1 ? 2 : 1) });
         if (ob.wave > 1) G.banner = { text: `웨이브 ${ob.wave}/${ob.waves}`, t: 1, color: '#29f0ff' };
       }
-      if (ob.wave >= ob.waves && alive === 0) { healRun(15, true); completeRoom(true); }
+      if (ob.wave >= ob.waves && alive === 0) { healRun(run.hard ? 5 : 15, true); completeRoom(true); }
       break;
     }
     case 'survive':

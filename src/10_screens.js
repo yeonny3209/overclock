@@ -39,6 +39,7 @@ function showCharSelect(mode) {
   menuMode();
   let sel = CHAR_IDS.find(charUnlocked) || 'rain';
   let oc = Math.min(SAVE.ocMax, SAVE.lastOc || 0);
+  let hard = !!SAVE.lastHard;
   const render = () => {
     const cards = CHAR_IDS.map(id => {
       const c = CHARS[id], ok = charUnlocked(id);
@@ -51,6 +52,7 @@ function showCharSelect(mode) {
         ${ok ? '' : `<p style="margin-top:8px;color:#ff4d6d"><b>잠김</b> — ${c.unlock.cond}<br>또는 코어 칩 ◈${c.unlock.chips}로 해금</p>`}
       </div>`;
     }).join('');
+    const hardHtml = `<div class="ocsel"><button class="btn sm ${hard ? 'rd on' : 'rd'}" style="${hard ? 'background:#ff2d55;color:#fff' : ''}" onclick="${cb(() => { hard = !hard; render(); })}">하드 모드: ${hard ? '켜짐' : '꺼짐'}</button><span class="small muted">적 체력 +60% · 적 피해 +40% · 엘리트 증가 · 회복 감소 · 보스 추가 패턴 · 코어 칩 2배</span></div>`;
     const ocHtml = mode === 'campaign' ? `
       <div class="ocsel">
         <span>오버클럭 레벨</span>
@@ -63,9 +65,10 @@ function showCharSelect(mode) {
     scr(`<h2>${mode === 'campaign' ? '요원 선택' : '무한 아레나'}</h2>
       <div class="row">${cards}</div>
       ${ocHtml}
+      ${hardHtml}
       <div class="row" style="margin-top:10px">
         <button class="btn" onclick="${cb(showTitle)}">뒤로</button>
-        <button class="btn ye" onclick="${cb(() => { SAVE.lastOc = oc; saveGame(); mode === 'campaign' ? startCampaign(sel, oc, 'campaign') : startArena(sel); })}">출격 ▶</button>
+        <button class="btn ye" onclick="${cb(() => { SAVE.lastOc = oc; SAVE.lastHard = hard; saveGame(); mode === 'campaign' ? startCampaign(sel, oc, 'campaign', 0, hard) : startArena(sel, hard); })}">출격 ▶</button>
       </div>`, 'top');
   };
   render();
@@ -108,7 +111,7 @@ function topbar() {
   const tags = SET_TAGS.filter(t => run.tags[t]).map(t => `<span class="tag" style="background:${TAG_COLOR[t]}">${TAG_NAME[t]} ${run.tags[t]}</span>`).join('');
   return `<div class="topbar">
     <div><b>${CHARS[run.char].name}</b> <span class="hpbar"><i style="width:${run.hp / run.maxHp * 100}%"></i></span> ${Math.ceil(run.hp)}/${run.maxHp}
-      &nbsp; <span class="coin">◆ ${run.coins}</span> ${run.oc ? `&nbsp;<span style="color:#ff3df0">OC ${run.oc}</span>` : ''}</div>
+      &nbsp; <span class="coin">◆ ${run.coins}</span> ${run.oc ? `&nbsp;<span style="color:#ff3df0">OC ${run.oc}</span>` : ''}${run.hard ? '&nbsp;<b style="color:#ff2d55">HARD</b>' : ''}</div>
     <div class="small">${ws}</div>
     <div>${tags} ${Object.keys(run.curses).map(c => `<span class="tag" style="background:#ff2d55;color:#fff">${CURSE[c].name}</span>`).join('')}</div>
   </div>`;

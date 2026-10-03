@@ -2742,7 +2742,7 @@ EN.boss_crusher = {
   boss: true, hp: 1, r: 44, spd: 70, color: '#ff8a2a', contact: 18, heavy: true,
   init(e) { e.hp = e.maxHp = 1500 * G.bossHp; e.st = 'walk'; e.t = 1.6; e.dmgTakenMult = 0.35; e.charges = 0; e.bossId = 'crusher'; e.name = '크러셔'; },
   update(e, dt) {
-    const ph2 = e.hp < e.maxHp * 0.5, oc5 = run.oc >= 5;
+    const ph2 = e.hp < e.maxHp * 0.5, oc5 = bossExtra();
     e.t -= dt;
     e.contact = e.st === 'charge' ? 26 : 18;
     switch (e.st) {
@@ -2858,7 +2858,7 @@ EN.boss_frost = {
     if (e.ring2 > 0) { e.ring2 -= dt; if (e.ring2 <= 0) eRing(e, 22, 170, 10, rand(0, TAU), { chill: true, color: '#9fe8ff' }); }
     e.t -= dt * sp;
     if (e.t <= 0) {
-      const pats = run.oc >= 5 ? 4 : 3;
+      const pats = bossExtra() ? 4 : 3;
       e.pat = (e.pat + 1) % pats;
       switch (e.pat) {
         case 0: eRing(e, 16, 140, 7, rand(0, TAU), { chill: true, color: '#9fe8ff' }); if (ph2) e.ring2 = 0.6; break;
@@ -2906,7 +2906,7 @@ EN.boss_twins = {
       // 레이저 선 피해
       if (!other.down && !other.dead) {
         if (segDist(P.x, P.y, e.x, e.y, other.x, other.y) < P.r + 6) damagePlayer(12, e);
-        if (run.oc >= 5) { room.sparkT = (room.sparkT || 0) - dt; if (room.sparkT <= 0) { room.sparkT = 0.6; const k = Math.random(); const sx = lerp(e.x, other.x, k), sy = lerp(e.y, other.y, k); const pa = angTo(e.x, e.y, other.x, other.y) + Math.PI / 2 * (Math.random() < 0.5 ? 1 : -1); spawnBullet({ x: sx, y: sy, vx: Math.cos(pa) * 200, vy: Math.sin(pa) * 200, r: 5, dmg: 8, team: 'e', life: 3, color: '#fff04d', owner: e }); } }
+        if (bossExtra()) { room.sparkT = (room.sparkT || 0) - dt; if (room.sparkT <= 0) { room.sparkT = 0.6; const k = Math.random(); const sx = lerp(e.x, other.x, k), sy = lerp(e.y, other.y, k); const pa = angTo(e.x, e.y, other.x, other.y) + Math.PI / 2 * (Math.random() < 0.5 ? 1 : -1); spawnBullet({ x: sx, y: sy, vx: Math.cos(pa) * 200, vy: Math.sin(pa) * 200, r: 5, dmg: 8, team: 'e', life: 3, color: '#fff04d', owner: e }); } }
       }
     }
     const R = room.twinR * (e.idx ? 1 : 1);
@@ -2996,7 +2996,7 @@ EN.boss_mother = {
         e.x = lerp(e.x, e.home.x + Math.sin(G.time * 0.7) * 120, Math.min(1, 2 * dt)); e.y = lerp(e.y, e.home.y, Math.min(1, 2 * dt));
         if (e.t <= 0) {
           const pats = e.phase === 1 ? ['dash', 'ring'] : e.phase === 2 ? ['dash', 'ring', 'spiral', 'fan'] : ['dash', 'ring', 'spiral', 'fan', 'lob'];
-          if (run.oc >= 5) pats.push('wall');
+          if (bossExtra()) pats.push('wall');
           const p = pats[e.pat++ % pats.length];
           if (p === 'dash') { e.st = 'windup'; e.t = 0.7; e.lockA = angTo(e.x, e.y, P.x, P.y); SFX.play('warn'); }
           else if (p === 'ring') { eRing(e, 20 + e.phase * 4, 200, 10, rand(0, TAU), { color: '#e28bff' }); e.t = 1.8; }
@@ -3051,6 +3051,8 @@ EN.boss_mother = {
     if (e.invuln) { circlePath(e.x, e.y, e.r + 26); ctx.strokeStyle = 'rgba(200,107,255,0.6)'; ctx.lineWidth = 2; ctx.setLineDash([6, 6]); ctx.stroke(); ctx.setLineDash([]); }
   }
 };
+
+function bossExtra() { return run && (run.oc >= 5 || run.hard); }
 // ================= 벽 / 충돌 =================
 function wallAt(x, y) {
   if (x < 0 || y < 0 || x > room.w || y > room.h) return 'bound';
@@ -3261,6 +3263,7 @@ function setScaling(zone, arenaWave) {
   G.eDmgMult = (1 + 0.12 * (arenaWave ? Math.min(4, arenaWave / 6) : zone)) * (oc >= 6 ? 1.25 : 1);
   G.eSpd = oc >= 7 ? 1.1 : 1;
   G.coinLife = oc >= 8 ? 3.5 : 5;
+  if (run.hard) { G.eHp *= 1.6; G.eDmgMult *= 1.4; G.eSpd *= 1.1; G.bossHp *= 1.5; }
 }
 
 function genLayout(objType) {
@@ -3353,6 +3356,7 @@ function startRoom(o) {
   if (run.char === 'momo') placeTurret(P.x + 40, P.y - 30);
   room.eliteChance = kind === 'elite' ? 0.22 : zone === 0 ? 0 : 0.03 + 0.035 * zone + ((o.row || 0) >= 4 ? 0.03 : 0);
   if (run.oc >= 2) room.eliteChance += 0.06;
+  if (run.hard) { room.eliteChance += 0.12; if (zone >= 1) room.muts2 = true; }
   room.muts2 = run.sealedNext || run.oc >= 10; run.sealedNext = false;
   room.extra = (run.alarmNext ? 1.3 : 1) * BS.enemyMult; run.alarmNext = false;
   room.row = o.row || 0;
@@ -3466,13 +3470,13 @@ function updateRoom(dt) {
     case 'exterminate': {
       ob.waveT -= dt;
       if (ob.wave < ob.waves && (ob.wave === 0 || alive <= 2 || ob.waveT <= 0)) {
-        if (ob.wave > 0) healRun(15, true);
+        if (ob.wave > 0) healRun(run.hard ? 5 : 15, true);
         ob.wave++; ob.waveT = 14;
         const n = ob.per + (ob.wave - 1);
         for (let i = 0; i < n; i++) spawnOne(null, { elite: room.kind === 'elite' && i < (ob.wave === 1 ? 2 : 1) });
         if (ob.wave > 1) G.banner = { text: `웨이브 ${ob.wave}/${ob.waves}`, t: 1, color: '#29f0ff' };
       }
-      if (ob.wave >= ob.waves && alive === 0) { healRun(15, true); completeRoom(true); }
+      if (ob.wave >= ob.waves && alive === 0) { healRun(run.hard ? 5 : 15, true); completeRoom(true); }
       break;
     }
     case 'survive':
@@ -4250,7 +4254,7 @@ function drawHUD() {
   const rx = VW - pad;
   panel(rx - 200, pad, 200, 74);
   hudText(`◆ ${run.coins}`, rx - 14, pad + 26, 22, '#ffe14d', 'right');
-  const loc = G.mode === 'arena' ? `아레나 웨이브 ${room.obj.wave || 0}` : `${ZONES[run.zone].name} · ${Math.min(6, run.row + 1)}/7`;
+  const loc = (run.hard ? 'HARD · ' : '') + (G.mode === 'arena' ? `아레나 웨이브 ${room.obj.wave || 0}` : `${ZONES[run.zone].name} · ${Math.min(6, run.row + 1)}/7`);
   hudText(loc, rx - 188, pad + 26, 12, '#8a90b0');
   if (run.combo > 0) {
     const gr = comboGrade(run.combo);
@@ -4528,6 +4532,7 @@ function showCharSelect(mode) {
   menuMode();
   let sel = CHAR_IDS.find(charUnlocked) || 'rain';
   let oc = Math.min(SAVE.ocMax, SAVE.lastOc || 0);
+  let hard = !!SAVE.lastHard;
   const render = () => {
     const cards = CHAR_IDS.map(id => {
       const c = CHARS[id], ok = charUnlocked(id);
@@ -4540,6 +4545,7 @@ function showCharSelect(mode) {
         ${ok ? '' : `<p style="margin-top:8px;color:#ff4d6d"><b>잠김</b> — ${c.unlock.cond}<br>또는 코어 칩 ◈${c.unlock.chips}로 해금</p>`}
       </div>`;
     }).join('');
+    const hardHtml = `<div class="ocsel"><button class="btn sm ${hard ? 'rd on' : 'rd'}" style="${hard ? 'background:#ff2d55;color:#fff' : ''}" onclick="${cb(() => { hard = !hard; render(); })}">하드 모드: ${hard ? '켜짐' : '꺼짐'}</button><span class="small muted">적 체력 +60% · 적 피해 +40% · 엘리트 증가 · 회복 감소 · 보스 추가 패턴 · 코어 칩 2배</span></div>`;
     const ocHtml = mode === 'campaign' ? `
       <div class="ocsel">
         <span>오버클럭 레벨</span>
@@ -4552,9 +4558,10 @@ function showCharSelect(mode) {
     scr(`<h2>${mode === 'campaign' ? '요원 선택' : '무한 아레나'}</h2>
       <div class="row">${cards}</div>
       ${ocHtml}
+      ${hardHtml}
       <div class="row" style="margin-top:10px">
         <button class="btn" onclick="${cb(showTitle)}">뒤로</button>
-        <button class="btn ye" onclick="${cb(() => { SAVE.lastOc = oc; saveGame(); mode === 'campaign' ? startCampaign(sel, oc, 'campaign') : startArena(sel); })}">출격 ▶</button>
+        <button class="btn ye" onclick="${cb(() => { SAVE.lastOc = oc; SAVE.lastHard = hard; saveGame(); mode === 'campaign' ? startCampaign(sel, oc, 'campaign', 0, hard) : startArena(sel, hard); })}">출격 ▶</button>
       </div>`, 'top');
   };
   render();
@@ -4597,7 +4604,7 @@ function topbar() {
   const tags = SET_TAGS.filter(t => run.tags[t]).map(t => `<span class="tag" style="background:${TAG_COLOR[t]}">${TAG_NAME[t]} ${run.tags[t]}</span>`).join('');
   return `<div class="topbar">
     <div><b>${CHARS[run.char].name}</b> <span class="hpbar"><i style="width:${run.hp / run.maxHp * 100}%"></i></span> ${Math.ceil(run.hp)}/${run.maxHp}
-      &nbsp; <span class="coin">◆ ${run.coins}</span> ${run.oc ? `&nbsp;<span style="color:#ff3df0">OC ${run.oc}</span>` : ''}</div>
+      &nbsp; <span class="coin">◆ ${run.coins}</span> ${run.oc ? `&nbsp;<span style="color:#ff3df0">OC ${run.oc}</span>` : ''}${run.hard ? '&nbsp;<b style="color:#ff2d55">HARD</b>' : ''}</div>
     <div class="small">${ws}</div>
     <div>${tags} ${Object.keys(run.curses).map(c => `<span class="tag" style="background:#ff2d55;color:#fff">${CURSE[c].name}</span>`).join('')}</div>
   </div>`;
@@ -4885,7 +4892,7 @@ function showEvent() {
 // ================= 휴식 =================
 function showRest() {
   menuMode();
-  const pct = run.oc >= 4 ? 0.2 : 0.3;
+  const pct = (run.oc >= 4 ? 0.2 : 0.3) * (run.hard ? 0.5 : 1);
   const amt = Math.round(run.maxHp * pct);
   scr(`${topbar()}<div class="panel evbox"><div style="font-size:48px">⛺</div><h2>휴식</h2><div class="desc">버려진 정비 기지. 잠시 숨을 돌릴 수 있다.</div>
     <div class="row">
@@ -4900,7 +4907,7 @@ function showResults(victory, chips, extra) {
   const t = Math.floor(run.time), mm = Math.floor(t / 60), ss = String(t % 60).padStart(2, '0');
   const reached = run.mode === 'arena' ? `웨이브 ${run.arenaWave || 0}` : `구역 ${run.zone + 1} · ${ZONES[run.zone].name}`;
   scr(`<h2 style="font-size:46px;color:${victory ? '#6dff8a' : '#ff4d6d'}">${victory ? '서버 정지 — 작전 성공' : '작전 실패'}</h2>
-    <div class="sub">${CHARS[run.char].name} · ${run.mode === 'daily' ? '일일 도전' : run.mode === 'arena' ? '무한 아레나' : '캠페인'}${run.oc ? ` · 오버클럭 ${run.oc}` : ''}</div>
+    <div class="sub">${CHARS[run.char].name} · ${run.mode === 'daily' ? '일일 도전' : run.mode === 'arena' ? '무한 아레나' : '캠페인'}${run.oc ? ` · 오버클럭 ${run.oc}` : ''}${run.hard ? ' · <b style="color:#ff2d55">하드 모드</b>' : ''}</div>
     <div class="row">
       <div class="panel"><div class="kv">
         <span>도달</span><span>${reached}</span>
@@ -4917,7 +4924,7 @@ function showResults(victory, chips, extra) {
     </div>
     ${buildSummaryHTML()}
     <div class="row">
-      <button class="btn ye" onclick="${cb(() => run.mode === 'arena' ? startArena(run.char) : run.mode === 'daily' ? showDaily() : startCampaign(run.char, run.oc, 'campaign'))}">같은 요원으로 다시</button>
+      <button class="btn ye" onclick="${cb(() => run.mode === 'arena' ? startArena(run.char, run.hard) : run.mode === 'daily' ? showDaily() : startCampaign(run.char, run.oc, 'campaign', 0, run.hard))}">같은 요원으로 다시</button>
       <button class="btn" onclick="${cb(() => showCharSelect(run.mode === 'arena' ? 'arena' : 'campaign'))}">요원 선택</button>
       <button class="btn" onclick="${cb(showTitle)}">타이틀로</button>
     </div>`, 'top');
@@ -5043,10 +5050,10 @@ function fuseWeapons(i) {
   showMap();
 }
 // ================= 런 시작 =================
-function newRun(mode, charId, oc, seed) {
+function newRun(mode, charId, oc, seed, hard) {
   const hpBonus = ['hp1', 'hp2', 'hp3'].filter(k => SAVE.unlocks[k]).length * 10;
   run = {
-    mode, char: charId, oc: oc || 0, seed: seed || (Math.random() * 1e9) | 0, zone: 0, row: -1, col: -1, map: null,
+    mode, char: charId, oc: oc || 0, hard: !!hard, seed: seed || (Math.random() * 1e9) | 0, zone: 0, row: -1, col: -1, map: null,
     hp: 1, baseMaxHp: CHARS[charId].hp + hpBonus, maxHp: 0, coins: 0, coinsEarned: 0, weapons: [], cur: 0, bag: [], ups: {}, curses: {}, tags: {},
     kills: 0, combo: 0, comboT: 0, maxCombo: 0, bossesKilled: 0, vampCount: 0, berserk: 0, shotCounter: 0, lastWeapon: null,
     dodged: 0, reactions: 0, time: 0, helped: -1, allyNext: false, sealedNext: false, alarmNext: false, zonesCleared: 0, events: [], shop: null, arenaWave: 0
@@ -5075,9 +5082,9 @@ function resumeRun(mode = 'campaign') {
   toast('저장된 판을 불러왔습니다');
   showMap();
 }
-function startCampaign(charId, oc, mode, seed) {
+function startCampaign(charId, oc, mode, seed, hard) {
   clearRun(mode || 'campaign');
-  newRun(mode || 'campaign', charId, oc, seed);
+  newRun(mode || 'campaign', charId, oc, seed, hard);
   G.mode = run.mode;
   run.map = genMap(0);
   const go = () => { showMap(); radio(RADIO[0], () => { }); };
@@ -5183,12 +5190,14 @@ function endRun(victory) {
   if (run.mode === 'arena') {
     const wv = run.arenaWave || 0;
     chips = Math.max(1, Math.floor(wv * 1.5));
+    if (run.hard && wv > (SAVE.arenaBestHard || 0)) SAVE.arenaBestHard = wv;
     const best = wv > SAVE.arenaBest; if (best) SAVE.arenaBest = wv;
     extra = `<span>아레나 최고</span><span>${SAVE.arenaBest}웨이브${best ? ' <b style="color:#ffe14d">NEW!</b>' : ''}</span>`;
   } else {
     chips = Math.max(1, run.zonesCleared * 8 + run.bossesKilled * 6 + Math.floor(run.kills / 25) + (victory ? 20 + run.oc * 5 : 0));
     if (victory) {
       SAVE.stats.clears++;
+      if (run.hard) { SAVE.stats.hardClears = (SAVE.stats.hardClears || 0) + 1; extra += `<span>하드 모드</span><span style="color:#ff2d55">클리어!</span>`; }
       if (run.mode === 'campaign' && run.oc >= SAVE.ocMax && SAVE.ocMax < 10) { SAVE.ocMax = run.oc + 1; extra += `<span>오버클럭</span><span style="color:#ff3df0">레벨 ${SAVE.ocMax} 해금!</span>`; }
     }
     if (run.mode === 'daily') {
@@ -5198,6 +5207,7 @@ function endRun(victory) {
       extra += `<span>일일 점수</span><span class="coin">${fmt(score)}${nb ? ' <b>NEW!</b>' : ''}</span>`;
     }
   }
+  if (run.hard) chips *= 2;
   SAVE.chips += chips; SAVE.totalChips += chips;
   saveGame();
   SFX.play(victory ? 'win' : 'lose');
@@ -5209,8 +5219,8 @@ function endRun(victory) {
 }
 
 // ================= 무한 아레나 =================
-function startArena(charId) {
-  newRun('arena', charId, 0);
+function startArena(charId, hard) {
+  newRun('arena', charId, 0, 0, hard);
   G.mode = 'arena';
   newRoom('arena', 0, 1700, 1150);
   setScaling(0, 1);
@@ -5273,7 +5283,7 @@ function arenaWaveCleared() {
   G.banner = { text: `웨이브 ${ob.wave} 클리어`, t: 1.4, color: '#6dff8a' };
   for (const b of BULLETS) if (b.team === 'e') b.dead = true;
   if (BS.regen) healRun(BS.regen, true);
-  healRun(15, true);
+  healRun(run.hard ? 5 : 15, true);
   if (ob.wave % 5 === 0) {
     const s = freeSpot(18, 0, 60, (x, y) => d2(x, y, P.x, P.y) < 300 * 300) || { x: P.x + 60, y: P.y };
     room.props.push({ type: 'chest', x: s.x, y: s.y, r: 18, interact: '[E] 무기 상자 열기' });

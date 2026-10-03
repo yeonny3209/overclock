@@ -1,8 +1,8 @@
 // ================= 런 시작 =================
-function newRun(mode, charId, oc, seed) {
+function newRun(mode, charId, oc, seed, hard) {
   const hpBonus = ['hp1', 'hp2', 'hp3'].filter(k => SAVE.unlocks[k]).length * 10;
   run = {
-    mode, char: charId, oc: oc || 0, seed: seed || (Math.random() * 1e9) | 0, zone: 0, row: -1, col: -1, map: null,
+    mode, char: charId, oc: oc || 0, hard: !!hard, seed: seed || (Math.random() * 1e9) | 0, zone: 0, row: -1, col: -1, map: null,
     hp: 1, baseMaxHp: CHARS[charId].hp + hpBonus, maxHp: 0, coins: 0, coinsEarned: 0, weapons: [], cur: 0, bag: [], ups: {}, curses: {}, tags: {},
     kills: 0, combo: 0, comboT: 0, maxCombo: 0, bossesKilled: 0, vampCount: 0, berserk: 0, shotCounter: 0, lastWeapon: null,
     dodged: 0, reactions: 0, time: 0, helped: -1, allyNext: false, sealedNext: false, alarmNext: false, zonesCleared: 0, events: [], shop: null, arenaWave: 0
@@ -31,9 +31,9 @@ function resumeRun(mode = 'campaign') {
   toast('저장된 판을 불러왔습니다');
   showMap();
 }
-function startCampaign(charId, oc, mode, seed) {
+function startCampaign(charId, oc, mode, seed, hard) {
   clearRun(mode || 'campaign');
-  newRun(mode || 'campaign', charId, oc, seed);
+  newRun(mode || 'campaign', charId, oc, seed, hard);
   G.mode = run.mode;
   run.map = genMap(0);
   const go = () => { showMap(); radio(RADIO[0], () => { }); };
@@ -139,12 +139,14 @@ function endRun(victory) {
   if (run.mode === 'arena') {
     const wv = run.arenaWave || 0;
     chips = Math.max(1, Math.floor(wv * 1.5));
+    if (run.hard && wv > (SAVE.arenaBestHard || 0)) SAVE.arenaBestHard = wv;
     const best = wv > SAVE.arenaBest; if (best) SAVE.arenaBest = wv;
     extra = `<span>아레나 최고</span><span>${SAVE.arenaBest}웨이브${best ? ' <b style="color:#ffe14d">NEW!</b>' : ''}</span>`;
   } else {
     chips = Math.max(1, run.zonesCleared * 8 + run.bossesKilled * 6 + Math.floor(run.kills / 25) + (victory ? 20 + run.oc * 5 : 0));
     if (victory) {
       SAVE.stats.clears++;
+      if (run.hard) { SAVE.stats.hardClears = (SAVE.stats.hardClears || 0) + 1; extra += `<span>하드 모드</span><span style="color:#ff2d55">클리어!</span>`; }
       if (run.mode === 'campaign' && run.oc >= SAVE.ocMax && SAVE.ocMax < 10) { SAVE.ocMax = run.oc + 1; extra += `<span>오버클럭</span><span style="color:#ff3df0">레벨 ${SAVE.ocMax} 해금!</span>`; }
     }
     if (run.mode === 'daily') {
@@ -154,6 +156,7 @@ function endRun(victory) {
       extra += `<span>일일 점수</span><span class="coin">${fmt(score)}${nb ? ' <b>NEW!</b>' : ''}</span>`;
     }
   }
+  if (run.hard) chips *= 2;
   SAVE.chips += chips; SAVE.totalChips += chips;
   saveGame();
   SFX.play(victory ? 'win' : 'lose');
@@ -165,8 +168,8 @@ function endRun(victory) {
 }
 
 // ================= 무한 아레나 =================
-function startArena(charId) {
-  newRun('arena', charId, 0);
+function startArena(charId, hard) {
+  newRun('arena', charId, 0, 0, hard);
   G.mode = 'arena';
   newRoom('arena', 0, 1700, 1150);
   setScaling(0, 1);
@@ -229,7 +232,7 @@ function arenaWaveCleared() {
   G.banner = { text: `웨이브 ${ob.wave} 클리어`, t: 1.4, color: '#6dff8a' };
   for (const b of BULLETS) if (b.team === 'e') b.dead = true;
   if (BS.regen) healRun(BS.regen, true);
-  healRun(15, true);
+  healRun(run.hard ? 5 : 15, true);
   if (ob.wave % 5 === 0) {
     const s = freeSpot(18, 0, 60, (x, y) => d2(x, y, P.x, P.y) < 300 * 300) || { x: P.x + 60, y: P.y };
     room.props.push({ type: 'chest', x: s.x, y: s.y, r: 18, interact: '[E] 무기 상자 열기' });

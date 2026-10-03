@@ -103,7 +103,7 @@ function drawHUD() {
   const rx = VW - pad;
   panel(rx - 200, pad, 200, 74);
   hudText(`◆ ${run.coins}`, rx - 14, pad + 26, 22, '#ffe14d', 'right');
-  const loc = G.mode === 'arena' ? `아레나 웨이브 ${room.obj.wave || 0}` : `${ZONES[run.zone].name} · ${Math.min(6, run.row + 1)}/7`;
+  const loc = (run.hard ? 'HARD · ' : '') + (G.mode === 'arena' ? `아레나 웨이브 ${room.obj.wave || 0}` : `${ZONES[run.zone].name} · ${Math.min(6, run.row + 1)}/7`);
   hudText(loc, rx - 188, pad + 26, 12, '#8a90b0');
   if (run.combo > 0) {
     const gr = comboGrade(run.combo);
