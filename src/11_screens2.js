@@ -8,7 +8,7 @@ function genShop() {
   for (const m of mods) items.push({ kind: 'mod', id: m, price: Math.round(45 * pm) });
   items.push({ kind: 'heal', amt: 30, price: Math.round(35 * pm) });
   const ups = upgradePool().filter(u => (run.ups[u.id] || 0) < (u.max || 1));
-  if (ups.length) items.push({ kind: 'upgrade', id: rp(ups).id, price: Math.round(80 * pm) });
+  if (ups.length) items.push({ kind: 'upgrade', id: rweighted(ups, upgWeight).id, price: Math.round(80 * pm) });
   return items;
 }
 function showShop() {

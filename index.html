@@ -382,14 +382,17 @@ const CHARS = {
 };
 // 캐릭터 5~10
 Object.assign(CHARS, {
-  blaze: { name: '블레이즈', role: '화염술사', color: '#ff7a2a', hp: 160, weapon: 'flamer', startGrade: 1, skill: '용암 분출', skillDesc: '주변에 불길 고리를 깔고 가까운 적에게 화상 2중첩', cd: 10, passive: '화상 최대 중첩 +2, 화상 피해 +25%', unlock: { cond: '불 7세트 달성', chips: 50, check: () => SAVE.stats.set7_fire } },
-  volt: { name: '볼트', role: '전격술사', color: '#ffe14d', hp: 145, weapon: 'tesla', startGrade: 1, skill: '천둥 폭풍', skillDesc: '4초간 주변 적에게 낙뢰가 쏟아짐', cd: 12, passive: '감전 연쇄 대상 +1', unlock: { cond: '속성 반응 100회 발동', chips: 50, check: () => SAVE.stats.reactions >= 100 } },
-  nova: { name: '노바', role: '성기사', color: '#fff4b0', hp: 175, weapon: 'lightbeam', startGrade: 1, skill: '빛의 장막', skillDesc: '3초간 무적, 주변 적 실명, 체력 15 회복', cd: 13, passive: '받는 피해 -10%, 실명된 적에게 주는 피해 +20%', unlock: { cond: '보스 5회 처치', chips: 60, check: () => (SAVE.stats.bossKills || 0) >= 5 } },
-  grim: { name: '그림', role: '처형자', color: '#9b6bff', hp: 140, weapon: 'pistol', startGrade: 1, startMods: ['conv_dark'], skill: '그림자 걸음', skillDesc: '조준 방향으로 순간이동하며 지나친 적에게 피해와 침식 3중첩', cd: 6, passive: '피해 +20%, 처형 기준 +5%, 처형할 때 체력 2 회복', unlock: { cond: '처형 50회', chips: 70, check: () => (SAVE.stats.execs || 0) >= 50 } },
-  marin: { name: '마린', role: '조류술사', color: '#3d8bff', hp: 160, weapon: 'hydro', startGrade: 1, skill: '해일', skillDesc: '앞쪽으로 파도를 일으켜 피해와 젖음, 지나간 자리에 물웅덩이', cd: 10, passive: '피해 +10%, 젖은 적 상태 이상 증폭 +25%, 물웅덩이 위에서 이동 속도 +25%', unlock: { cond: '구역 3 도달', chips: 50, check: () => SAVE.stats.bestZone >= 2 } },
-  iron: { name: '아이언', role: '중장갑', color: '#a9b8cc', hp: 220, weapon: 'smg', startGrade: 1, startMods: ['conv_metal'], skill: '강철 요새', skillDesc: '4초간 받는 피해 -80%, 때린 적에게 파쇄 3중첩', cd: 12, passive: '체력이 높고 연사 +20%, 이동 속도 -10%, 보스·엘리트 피해 +15%', unlock: { cond: '누적 처치 1500', chips: 70, check: () => SAVE.stats.kills >= 1500 } }
+  blaze: { affinity: 'fire', name: '블레이즈', role: '화염술사', color: '#ff7a2a', hp: 160, weapon: 'flamer', startGrade: 1, skill: '용암 분출', skillDesc: '주변에 불길 고리를 깔고 가까운 적에게 화상 2중첩', cd: 10, passive: '화상 최대 중첩 +2, 화상 피해 +25%', unlock: { cond: '불 7세트 달성', chips: 50, check: () => SAVE.stats.set7_fire } },
+  volt: { affinity: 'elec', name: '볼트', role: '전격술사', color: '#ffe14d', hp: 145, weapon: 'tesla', startGrade: 1, skill: '천둥 폭풍', skillDesc: '4초간 주변 적에게 낙뢰가 쏟아짐', cd: 12, passive: '감전 연쇄 대상 +1', unlock: { cond: '속성 반응 100회 발동', chips: 50, check: () => SAVE.stats.reactions >= 100 } },
+  nova: { affinity: 'light', name: '노바', role: '성기사', color: '#fff4b0', hp: 175, weapon: 'lightbeam', startGrade: 1, skill: '빛의 장막', skillDesc: '3초간 무적, 주변 적 실명, 체력 15 회복', cd: 13, passive: '받는 피해 -10%, 실명된 적에게 주는 피해 +20%', unlock: { cond: '보스 5회 처치', chips: 60, check: () => (SAVE.stats.bossKills || 0) >= 5 } },
+  grim: { affinity: 'dark', name: '그림', role: '처형자', color: '#9b6bff', hp: 140, weapon: 'pistol', startGrade: 1, startMods: ['conv_dark'], skill: '그림자 걸음', skillDesc: '조준 방향으로 순간이동하며 지나친 적에게 피해와 침식 3중첩', cd: 6, passive: '피해 +20%, 처형 기준 +5%, 처형할 때 체력 2 회복', unlock: { cond: '처형 50회', chips: 70, check: () => (SAVE.stats.execs || 0) >= 50 } },
+  marin: { affinity: 'water', name: '마린', role: '조류술사', color: '#3d8bff', hp: 160, weapon: 'hydro', startGrade: 1, skill: '해일', skillDesc: '앞쪽으로 파도를 일으켜 피해와 젖음, 지나간 자리에 물웅덩이', cd: 10, passive: '피해 +10%, 젖은 적 상태 이상 증폭 +25%, 물웅덩이 위에서 이동 속도 +25%', unlock: { cond: '구역 3 도달', chips: 50, check: () => SAVE.stats.bestZone >= 2 } },
+  iron: { affinity: 'metal', name: '아이언', role: '중장갑', color: '#a9b8cc', hp: 220, weapon: 'smg', startGrade: 1, startMods: ['conv_metal'], skill: '강철 요새', skillDesc: '4초간 받는 피해 -80%, 때린 적에게 파쇄 3중첩', cd: 12, passive: '체력이 높고 연사 +20%, 이동 속도 -10%, 보스·엘리트 피해 +15%', unlock: { cond: '누적 처치 1500', chips: 70, check: () => SAVE.stats.kills >= 1500 } }
 });
 const CHAR_IDS = ['rain', 'momo', 'kai', 'sera', 'blaze', 'volt', 'nova', 'grim', 'marin', 'iron'];
+// 요원의 친화 속성: 그 속성의 강화가 강화 선택지·상점에 나올 확률이 50% 높아진다
+const AFFINITY_BOOST = 1.5;
+function upgWeight(u) { return (u.rare ? 0.55 : 1) * (run && CHARS[run.char] && CHARS[run.char].affinity === u.tag ? AFFINITY_BOOST : 1); }
 function charUnlocked(id) { const c = CHARS[id]; return !c.unlock || !!SAVE.unlocks['char_' + id] || c.unlock.check(); }
 
 // ---------- 무기 ----------
@@ -4744,6 +4747,7 @@ function showCharSelect(mode) {
       <h3 style="color:${c.color}">${c.name} <span class="muted small">${c.role} · 체력 ${c.hp}</span></h3>
       <p><b>스킬 · ${c.skill}</b> <span class="muted small">대기 ${c.cd}초</span><br>${c.skillDesc}</p>
       <p><b>패시브</b> ${c.passive}</p>
+      ${c.affinity ? `<p style="color:${TAG_COLOR[c.affinity]}"><b>속성 친화 · ${TAG_NAME[c.affinity]}</b> ${TAG_NAME[c.affinity]} 강화가 선택지와 상점에 나올 확률 +50%</p>` : ''}
       <p class="muted">시작 무기: ${GRADES[c.startGrade || 0].name} ${WEAPONS[c.weapon].name}${c.startMods ? ' (' + c.startMods.map(m => MODS[m].name.replace('속성 변환기: ', '') + ' 변환').join(', ') + ')' : ''}</p>
       ${okSel ? '' : `<p style="color:#ff4d6d"><b>잠김</b> — ${c.unlock.cond} · 또는 해금 메뉴에서 코어 칩 ◈${c.unlock.chips}</p>`}
     </div>`;
@@ -4896,7 +4900,7 @@ function showLoadout(back) {
 function genUpgradeChoices(count, rare) {
   let pool = upgradePool().filter(u => (run.ups[u.id] || 0) < (u.max || 1));
   const out = [];
-  const take = list => { if (!list.length) return null; const u = rweighted(list, x => x.rare ? 0.55 : 1); pool = pool.filter(p => p !== u); out.push(u); return u; };
+  const take = list => { if (!list.length) return null; const u = rweighted(list, upgWeight); pool = pool.filter(p => p !== u); out.push(u); return u; };
   let guaranteed = null;
   if (rare) guaranteed = take(pool.filter(u => u.rare));
   // 현재 빌드와 같은 태그 보정: 1개 보장, 3개 이상 모았으면 50% 확률로 1개 더
@@ -5028,7 +5032,7 @@ function genShop() {
   for (const m of mods) items.push({ kind: 'mod', id: m, price: Math.round(45 * pm) });
   items.push({ kind: 'heal', amt: 30, price: Math.round(35 * pm) });
   const ups = upgradePool().filter(u => (run.ups[u.id] || 0) < (u.max || 1));
-  if (ups.length) items.push({ kind: 'upgrade', id: rp(ups).id, price: Math.round(80 * pm) });
+  if (ups.length) items.push({ kind: 'upgrade', id: rweighted(ups, upgWeight).id, price: Math.round(80 * pm) });
   return items;
 }
 function showShop() {

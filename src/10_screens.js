@@ -53,6 +53,7 @@ function showCharSelect(mode) {
       <h3 style="color:${c.color}">${c.name} <span class="muted small">${c.role} · 체력 ${c.hp}</span></h3>
       <p><b>스킬 · ${c.skill}</b> <span class="muted small">대기 ${c.cd}초</span><br>${c.skillDesc}</p>
       <p><b>패시브</b> ${c.passive}</p>
+      ${c.affinity ? `<p style="color:${TAG_COLOR[c.affinity]}"><b>속성 친화 · ${TAG_NAME[c.affinity]}</b> ${TAG_NAME[c.affinity]} 강화가 선택지와 상점에 나올 확률 +50%</p>` : ''}
       <p class="muted">시작 무기: ${GRADES[c.startGrade || 0].name} ${WEAPONS[c.weapon].name}${c.startMods ? ' (' + c.startMods.map(m => MODS[m].name.replace('속성 변환기: ', '') + ' 변환').join(', ') + ')' : ''}</p>
       ${okSel ? '' : `<p style="color:#ff4d6d"><b>잠김</b> — ${c.unlock.cond} · 또는 해금 메뉴에서 코어 칩 ◈${c.unlock.chips}</p>`}
     </div>`;
@@ -205,7 +206,7 @@ function showLoadout(back) {
 function genUpgradeChoices(count, rare) {
   let pool = upgradePool().filter(u => (run.ups[u.id] || 0) < (u.max || 1));
   const out = [];
-  const take = list => { if (!list.length) return null; const u = rweighted(list, x => x.rare ? 0.55 : 1); pool = pool.filter(p => p !== u); out.push(u); return u; };
+  const take = list => { if (!list.length) return null; const u = rweighted(list, upgWeight); pool = pool.filter(p => p !== u); out.push(u); return u; };
   let guaranteed = null;
   if (rare) guaranteed = take(pool.filter(u => u.rare));
   // 현재 빌드와 같은 태그 보정: 1개 보장, 3개 이상 모았으면 50% 확률로 1개 더
