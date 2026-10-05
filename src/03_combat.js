@@ -22,11 +22,11 @@ function recomputeBuild() {
   const surv7 = set('surv', 7);
   BS = {
     tags, aw, awakened, awakenElems: awakened.filter(t => ELEM_TAGS.includes(t)),
-    dmgMult: (1 + 0.15 * u('sharp')) * (u('bigcal') ? 1.1 : 1) * (c.glass ? 1.5 : 1) * (set('bullet', 3) ? 1.1 : 1) * (set('bullet', 7) ? 1.25 : 1) * (awakened.length ? 1.5 : 1),
-    rateMult: (1 + 0.15 * u('rapid')) * (c.frenzy ? 1.4 : 1) * (1 + 0.08 * u('accelerate')),
+    dmgMult: (1 + 0.15 * u('sharp')) * (u('bigcal') ? 1.1 : 1) * (c.glass ? 1.5 : 1) * (set('bullet', 3) ? 1.1 : 1) * (set('bullet', 7) ? 1.25 : 1) * (awakened.length ? 3 + 0.5 * (awakened.length - 1) : 1),
+    rateMult: (1 + 0.15 * u('rapid')) * (c.frenzy ? 1.4 : 1) * (1 + 0.08 * u('accelerate')) * (awakened.length ? 1.4 : 1),
     reloadMult: 1 / (1 + 0.3 * u('quickhand')),
     crit: 0.1 * u('critup') + (aw.bullet ? 0.25 : 0),
-    pierce: u('pierce') + (set('bullet', 7) ? 2 : 0),
+    pierce: u('pierce') + (set('bullet', 7) ? 2 : 0) + (awakened.length ? 2 : 0),
     bulletSpd: (set('bullet', 3) ? 1.6 : 1) * (1 + 0.1 * u('tailwind')),
     bulletSize: u('bigcal') ? 1.4 : 1,
     spreadMult: c.frenzy ? 2.5 : 1, spreadAdd: c.frenzy ? 0.08 : 0, twin: u('twin') > 0,
@@ -73,10 +73,10 @@ function recomputeBuild() {
     blastroll: u('blastroll') > 0, safety: u('safety') > 0 || aw.exp, exp5: set('exp', 5), exp7: set('exp', 7),
     // 생존
     vamp: u('vamp'), regen: 8 * u('regen'), evasion: u('evasion') ? 1.5 : 1, medkit: u('medkit') > 0, surv3: set('surv', 3), surv5: set('surv', 5), surv7,
-    takenMult: (1 - 0.1 * u('plating')) * (surv7 ? 0.85 : 1) * (aw.surv ? 0.75 : 1), revive: aw.surv,
+    takenMult: (1 - 0.1 * u('plating')) * (surv7 ? 0.85 : 1) * (aw.surv ? 0.75 : 1) * (awakened.length ? 0.8 : 1), revive: aw.surv,
     // 기타
-    magnet: u('magnet') ? 2 : 1, afterimage: u('afterimage') > 0, cdMult: Math.pow(0.8, u('cooldown')),
-    moveMult: (1 + 0.1 * u('swift')) * (1 + 0.08 * u('tailwind')) * (set('wind', 5) ? 1.2 : 1),
+    magnet: u('magnet') ? 2 : 1, afterimage: u('afterimage') > 0, cdMult: Math.pow(0.8, u('cooldown')) * (awakened.length ? 0.6 : 1),
+    moveMult: (1 + 0.1 * u('swift')) * (1 + 0.08 * u('tailwind')) * (set('wind', 5) ? 1.2 : 1) * (awakened.length ? 1.15 : 1),
     comboTime: 3 + 2 * u('combokeep'), invest: 8 * u('invest'), lucky: 0.2 * u('lucky'),
     coinMult: c.avarice ? 2 : 1, enemyMult: c.avarice ? 1.25 : 1, berserk: !!c.berserk, noHeal: !!c.berserk
   };
@@ -114,7 +114,17 @@ function healRun(n, silent) {
   return h;
 }
 function hurtRun(n) { run.hp = Math.max(1, run.hp - n); }
-function addUpgrade(id) { if (!UPG[id]) return; run.ups[id] = Math.min(UPG[id].max || 1, (run.ups[id] || 0) + 1); recomputeBuild(); }
+function addUpgrade(id) {
+  if (!UPG[id]) return;
+  const before = (run.awaken || []).length;
+  run.ups[id] = Math.min(UPG[id].max || 1, (run.ups[id] || 0) + 1); recomputeBuild();
+  if (run.awaken.length > before) { // 프리즘 각성 순간 연출
+    const t = run.awaken[run.awaken.length - 1];
+    G.banner = { text: '프리즘 각성!', sub: `${TAG_NAME[t]} 9세트 — 피해 ×${(3 + 0.5 * (run.awaken.length - 1)).toFixed(1)} · 연사 +40% · 관통 +2`, t: 3, color: TAG_COLOR[t] };
+    SFX.play('win'); SFX.play('reaction');
+    if (P && room && G.screen === 'combat') { G.flash = 0.5; G.flashColor = '255,235,150'; shake(14); }
+  }
+}
 function applyCurse(id) { run.curses[id] = 1; recomputeBuild(); }
 
 // ================= 무기 인스턴스 =================
@@ -244,7 +254,7 @@ function updateBullets(dt) {
         }
       }
     } else if (b.type === 'flame') {
-      b.r += 38 * bdt; b.vx *= 0.97; b.vy *= 0.97;
+      b.r += 38 * bdt; b.vx *= 0.988; b.vy *= 0.988;
       if (Math.random() < 0.5 * PFX()) part({ x: b.x + rand(-b.r, b.r) * 0.5, y: b.y + rand(-b.r, b.r) * 0.5, vx: rand(-30, 30), vy: rand(-60, -10), life: rand(0.3, 0.6), size: rand(2, 5), color: pick(['#ff6a1a', '#ffb347', '#ffe14d', '#ff3b1a']), kind: 'dot' });
     }
     else if (b.type === 'stream') { b.r += 9 * bdt; b.vx *= 0.985; b.vy *= 0.985; }

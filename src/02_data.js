@@ -53,7 +53,7 @@ const WEAPONS = {
   shotgun: { name: '산탄총', dmg: 9, rate: 1.3, mag: 6, reload: 1.5, spd: 850, spread: 0.38, pellets: 6, life: 0.36, tag: 'bullet', pierce: 0, r: 3.5, shake: 5, sfx: 'shotgun', color: '#ffc27a', knock: 70, desc: '근거리 특화. 6발 동시 발사.' },
   sniper: { name: '저격총', dmg: 70, rate: 1.0, mag: 5, reload: 1.8, spd: 1900, spread: 0, pellets: 1, life: 0.8, tag: 'metal', pierce: 99, r: 4, shake: 6, sfx: 'sniper', color: '#d0dcf0', knock: 40, desc: '적을 관통하는 철갑탄. 파쇄 부여.' },
   grenade: { name: '유탄발사기', dmg: 35, rate: 1, mag: 4, reload: 1.8, spd: 540, spread: 0.03, pellets: 1, life: 1.1, tag: 'exp', pierce: 0, r: 7, shake: 3, sfx: 'grenade', color: '#ff9b3d', type: 'grenade', aoe: 85, knock: 0, desc: '범위 폭발. 자신도 피해를 입을 수 있다.' },
-  flamer: { name: '화염방사기', dmg: 3, rate: 20, mag: 100, reload: 2, spd: 430, spread: 0.2, pellets: 1, life: 0.55, tag: 'fire', pierce: 99, r: 9, shake: 0.3, sfx: 'flame', color: '#ff7a2a', type: 'flame', knock: 0, desc: '짧은 사거리. 화상 부여.' },
+  flamer: { name: '화염방사기', dmg: 3, rate: 20, mag: 100, reload: 2, spd: 600, spread: 0.2, pellets: 1, life: 0.85, tag: 'fire', pierce: 99, r: 9, shake: 0.3, sfx: 'flame', color: '#ff7a2a', type: 'flame', knock: 0, desc: '짧은 사거리. 화상 부여.' },
   tesla: { name: '테슬라 코일', dmg: 15, rate: 2, mag: 12, reload: 1.5, spd: 0, spread: 0, pellets: 1, life: 0, tag: 'elec', pierce: 0, r: 0, shake: 2, sfx: 'tesla', color: '#fff04d', type: 'tesla', range: 400, chain: 3, knock: 0, desc: '가까운 적 3명에게 연쇄 번개.' },
   cryo: { name: '냉각포', dmg: 9, rate: 5, mag: 20, reload: 1.4, spd: 720, spread: 0.05, pellets: 1, life: 0.8, tag: 'ice', pierce: 0, r: 5, shake: 1, sfx: 'cryo', color: '#8fe8ff', knock: 10, desc: '둔화를 부여하는 냉기탄.' },
   lightbeam: { name: '광선총', dmg: 16, rate: 2.5, mag: 15, reload: 1.6, spd: 0, spread: 0, pellets: 1, life: 0, tag: 'light', pierce: 99, r: 0, shake: 2, sfx: 'laser', color: '#fffbe6', type: 'beam', range: 900, knock: 0, desc: '벽까지 닿는 관통 광선. 실명 부여.' },
@@ -256,7 +256,7 @@ const SETS = {
   bullet: ['탄 속도 +60%, 피해 +10%', '3발마다 관통탄', '모든 탄 관통 +2, 피해 +25%', '탄막: 탄 2발 추가 발사, 치명타 +25%, 재장전 없음'],
   surv: ['최대 체력 +40', '방에 입장할 때마다 보호막 2회', '받는 피해 -15%, 2초마다 체력 3 회복', '불사: 전투마다 1회 쓰러지면 체력 50%로 부활, 받는 피해 -25%']
 };
-const PRISM = '프리즘 각성 (같은 태그 강화 9개): 모든 피해 +50% + 태그마다 다른 각성 효과';
+const PRISM = '프리즘 각성 (같은 태그 강화 9개): 모든 피해 ×3 (각성한 태그가 늘 때마다 +0.5), 연사 +40%, 이동 +15%, 받는 피해 -20%, 탄 관통 +2, 스킬 대기 -40% + 태그마다 다른 각성 효과';
 
 // ---------- 적 ----------
 const ENEMY_INFO = {
