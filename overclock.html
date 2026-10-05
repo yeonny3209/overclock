@@ -5269,11 +5269,13 @@ function touchButtons() {
   const rx = VW - R * 1.35 - 8, by = VH - R * 1.35 - 8;
   return [
     { id: 'skill', label: '스킬', x: rx, y: by, r: R * 1.1, mp: 2 },
-    { id: 'roll', label: '구르기', x: rx - R * 2.5, y: by + R * 0.15, r: R, key: 'Space' },
-    { id: 'od', label: 'OC', x: rx - R * 0.2, y: by - R * 2.4, r: R * 0.8, key: 'KeyF' },
-    { id: 'use', label: 'E', x: rx - R * 4.6, y: by + R * 0.35, r: R * 0.72, key: 'KeyE' },
-    { id: 'swap', label: '교체', x: rx - R * 2.4, y: by - R * 2.2, r: R * 0.72, key: 'KeyQ' },
-    { id: 'reload', label: 'R', x: rx - R * 4.4, y: by - R * 1.7, r: R * 0.6, key: 'KeyR' },
+    { id: 'roll', label: '구르기', x: rx - R * 2.6, y: by + R * 0.15, r: R, key: 'Space' },
+    { id: 'use', label: 'E', x: rx - R * 4.7, y: by + R * 0.35, r: R * 0.72, key: 'KeyE' },
+    // 발사 버튼: 누르고 있으면 자동 조준해서 계속 쏜다 (적이 없으면 히터·서버 기둥 같은 부술 수 있는 사물을 조준)
+    { id: 'fire', label: '발사', x: rx - R * 1.1, y: by - R * 2.4, r: R * 1.25 },
+    { id: 'od', label: 'OC', x: rx - R * 3.5, y: by - R * 2.5, r: R * 0.8, key: 'KeyF' },
+    { id: 'swap', label: '교체', x: rx - R * 5.3, y: by - R * 1.6, r: R * 0.7, key: 'KeyQ' },
+    { id: 'reload', label: 'R', x: rx - R * 6.4, y: by - R * 0.3, r: R * 0.6, key: 'KeyR' },
     { id: 'pause', label: 'Ⅱ', x: 330, y: 30, r: 22 }
   ];
 }
@@ -5330,15 +5332,44 @@ function updateTouchInput() {
     if (l > R) { TouchCtl.move.ox = TouchCtl.move.x - dx / l * R; TouchCtl.move.oy = TouchCtl.move.y - dy / l * R; dx = dx / l * R; dy = dy / l * R; }
     if (l > 8) { Input.tmx = dx / R; Input.tmy = dy / R; }
   }
+  const fireHeld = Object.values(TouchCtl.held).includes('fire');
   if (TouchCtl.aim) {
     const dx = TouchCtl.aim.x - TouchCtl.aim.ox, dy = TouchCtl.aim.y - TouchCtl.aim.oy;
     if (Math.hypot(dx, dy) > 14) { P.ang = Math.atan2(dy, dx); Input.touchFire = true; }
   } else {
-    // 자동 조준: 조준 스틱을 쓰지 않으면 가장 가까운 적
-    const t = assistTarget(P.ang, Math.PI, 700);
-    if (t) { P.ang = angTo(P.x, P.y, t.x, t.y); Input.touchAuto = SAVE.settings.touchAutoFire !== false; }
-    else if (Math.hypot(Input.tmx, Input.tmy) > 0.2) P.ang = Math.atan2(Input.tmy, Input.tmx);
+    // 자동 조준: 조준 스틱을 쓰지 않으면 가장 가까운 목표 (적, 보스 보호막이 켜져 있으면 히터·서버 기둥)
+    const t = touchTarget(fireHeld);
+    if (t) {
+      P.ang = angTo(P.x, P.y, t.x, t.y);
+      // 사물은 발사 버튼을 누를 때만 쏜다 (드럼통을 멋대로 터뜨리지 않도록)
+      if (t.isEnemy || fireHeld) Input.touchAuto = SAVE.settings.touchAutoFire !== false;
+    } else if (Math.hypot(Input.tmx, Input.tmy) > 0.2) P.ang = Math.atan2(Input.tmy, Input.tmx);
   }
+  if (fireHeld) Input.touchFire = true;
+}
+
+// 발사 버튼과 자동 조준이 노리는 목표
+function nearestShootableProp(filter, range) {
+  let best = null, bd = range * range;
+  for (const p of room.props) {
+    if (!p.shootable || p.dead || !filter(p)) continue;
+    const dd = d2(P.x, P.y, p.x, p.y); if (dd > bd) continue;
+    if (rayWalls(P.x, P.y, p.x - P.x, p.y - P.y, Math.sqrt(dd)) < Math.sqrt(dd) - p.r - 2) continue; // 벽에 가려짐
+    bd = dd; best = p;
+  }
+  return best;
+}
+function touchTarget(fireHeld) {
+  // 보스가 보호막 때문에 무적이면 먼저 부숴야 하는 사물(히터, 서버 기둥)을 노린다
+  const shielded = room.enemies.some(e => e.boss && !e.dead && e.invuln);
+  if (shielded) {
+    const p = nearestShootableProp(q => (q.type === 'heater' && !q.on) || q.type === 'spillar', 1200);
+    if (p) return p;
+  }
+  const e = assistTarget(P.ang, Math.PI, 700);
+  if (e) { e.isEnemy = true; return e; }
+  if (fireHeld) return nearestShootableProp(q => !(q.type === 'heater' && q.on), 900);
+  return null;
 }
 
 function drawTouchControls() {
@@ -5361,6 +5392,7 @@ function drawTouchControls() {
     if (b.id === 'roll') ready = P.rollCharges > 0;
     if (b.id === 'use') { ready = !!P.prompt; col = '#ffe14d'; }
     if (b.id === 'swap') ready = run.weapons.length > 1;
+    if (b.id === 'fire') col = '#ff4d6d';
     circlePath(b.x, b.y, b.r);
     ctx.fillStyle = held.has(b.id) ? 'rgba(255,255,255,0.28)' : 'rgba(6,5,16,0.55)'; ctx.fill();
     ctx.strokeStyle = col; ctx.globalAlpha = ready ? 0.95 : 0.35; ctx.lineWidth = ready ? 3 : 2; ctx.stroke();
