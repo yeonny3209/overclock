@@ -358,7 +358,7 @@ function updateEnemies(dt) {
         if (e.dead) continue;
         if (BS.fire7 && Math.random() < 0.1) { const t = room.enemies.find(q => q !== e && !q.dead && !q.spawning && !(q.burnT > 0) && d2(q.x, q.y, e.x, e.y) < 120 * 120); if (t) applyStatus(t, 'fire', {}); }
       }
-      if (Math.random() < 0.3) part({ x: e.x + rand(-e.r, e.r), y: e.y + rand(-e.r, e.r) * 0.5, vx: 0, vy: -rand(30, 70), life: 0.4, size: rand(2, 4), color: pick(['#ff6a1a', '#ffb347']), kind: 'dot' });
+      if (Math.random() < 0.9 * PFX()) part({ x: e.x + rand(-e.r, e.r), y: e.y + rand(-e.r, e.r) * 0.5, vx: rand(-15, 15), vy: -rand(40, 95), life: 0.55, size: rand(3, 6), color: pick(['#ff6a1a', '#ffb347', '#ffe14d']), kind: 'dot' });
     }
     if (e.shockT > 0) { e.shockT -= edt; if (Math.random() < 0.08) addBolt(e.x + rand(-e.r, e.r), e.y + rand(-e.r, e.r), e.x + rand(-e.r, e.r), e.y + rand(-e.r, e.r), '#fff04d', 0.06); }
     if (e.chillT > 0) { e.chillT -= edt; if (e.chillT <= 0) e.chill = 0; }

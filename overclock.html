@@ -399,7 +399,7 @@ const WEAPONS = {
   shotgun: { name: '산탄총', dmg: 9, rate: 1.3, mag: 6, reload: 1.5, spd: 850, spread: 0.38, pellets: 6, life: 0.36, tag: 'bullet', pierce: 0, r: 3.5, shake: 5, sfx: 'shotgun', color: '#ffc27a', knock: 70, desc: '근거리 특화. 6발 동시 발사.' },
   sniper: { name: '저격총', dmg: 70, rate: 1.0, mag: 5, reload: 1.8, spd: 1900, spread: 0, pellets: 1, life: 0.8, tag: 'metal', pierce: 99, r: 4, shake: 6, sfx: 'sniper', color: '#d0dcf0', knock: 40, desc: '적을 관통하는 철갑탄. 파쇄 부여.' },
   grenade: { name: '유탄발사기', dmg: 35, rate: 1, mag: 4, reload: 1.8, spd: 540, spread: 0.03, pellets: 1, life: 1.1, tag: 'exp', pierce: 0, r: 7, shake: 3, sfx: 'grenade', color: '#ff9b3d', type: 'grenade', aoe: 85, knock: 0, desc: '범위 폭발. 자신도 피해를 입을 수 있다.' },
-  flamer: { name: '화염방사기', dmg: 3, rate: 20, mag: 100, reload: 2, spd: 430, spread: 0.2, pellets: 1, life: 0.42, tag: 'fire', pierce: 99, r: 9, shake: 0.3, sfx: 'flame', color: '#ff7a2a', type: 'flame', knock: 0, desc: '짧은 사거리. 화상 부여.' },
+  flamer: { name: '화염방사기', dmg: 3, rate: 20, mag: 100, reload: 2, spd: 430, spread: 0.2, pellets: 1, life: 0.55, tag: 'fire', pierce: 99, r: 9, shake: 0.3, sfx: 'flame', color: '#ff7a2a', type: 'flame', knock: 0, desc: '짧은 사거리. 화상 부여.' },
   tesla: { name: '테슬라 코일', dmg: 15, rate: 2, mag: 12, reload: 1.5, spd: 0, spread: 0, pellets: 1, life: 0, tag: 'elec', pierce: 0, r: 0, shake: 2, sfx: 'tesla', color: '#fff04d', type: 'tesla', range: 400, chain: 3, knock: 0, desc: '가까운 적 3명에게 연쇄 번개.' },
   cryo: { name: '냉각포', dmg: 9, rate: 5, mag: 20, reload: 1.4, spd: 720, spread: 0.05, pellets: 1, life: 0.8, tag: 'ice', pierce: 0, r: 5, shake: 1, sfx: 'cryo', color: '#8fe8ff', knock: 10, desc: '둔화를 부여하는 냉기탄.' },
   lightbeam: { name: '광선총', dmg: 16, rate: 2.5, mag: 15, reload: 1.6, spd: 0, spread: 0, pellets: 1, life: 0, tag: 'light', pierce: 99, r: 0, shake: 2, sfx: 'laser', color: '#fffbe6', type: 'beam', range: 900, knock: 0, desc: '벽까지 닿는 관통 광선. 실명 부여.' },
@@ -1031,7 +1031,10 @@ function updateBullets(dt) {
           if (d2(b.x, b.y, home.x, home.y) < 26 * 26 || b.t > 4) b.dead = true;
         }
       }
-    } else if (b.type === 'flame') { b.r += 38 * bdt; b.vx *= 0.97; b.vy *= 0.97; }
+    } else if (b.type === 'flame') {
+      b.r += 38 * bdt; b.vx *= 0.97; b.vy *= 0.97;
+      if (Math.random() < 0.5 * PFX()) part({ x: b.x + rand(-b.r, b.r) * 0.5, y: b.y + rand(-b.r, b.r) * 0.5, vx: rand(-30, 30), vy: rand(-60, -10), life: rand(0.3, 0.6), size: rand(2, 5), color: pick(['#ff6a1a', '#ffb347', '#ffe14d', '#ff3b1a']), kind: 'dot' });
+    }
     else if (b.type === 'stream') { b.r += 9 * bdt; b.vx *= 0.985; b.vy *= 0.985; }
     if (b.accel) { b.vx *= 1 + b.accel * bdt; b.vy *= 1 + b.accel * bdt; }
     if (b.homing && b.team === 'p') {
@@ -2694,7 +2697,7 @@ function updateEnemies(dt) {
         if (e.dead) continue;
         if (BS.fire7 && Math.random() < 0.1) { const t = room.enemies.find(q => q !== e && !q.dead && !q.spawning && !(q.burnT > 0) && d2(q.x, q.y, e.x, e.y) < 120 * 120); if (t) applyStatus(t, 'fire', {}); }
       }
-      if (Math.random() < 0.3) part({ x: e.x + rand(-e.r, e.r), y: e.y + rand(-e.r, e.r) * 0.5, vx: 0, vy: -rand(30, 70), life: 0.4, size: rand(2, 4), color: pick(['#ff6a1a', '#ffb347']), kind: 'dot' });
+      if (Math.random() < 0.9 * PFX()) part({ x: e.x + rand(-e.r, e.r), y: e.y + rand(-e.r, e.r) * 0.5, vx: rand(-15, 15), vy: -rand(40, 95), life: 0.55, size: rand(3, 6), color: pick(['#ff6a1a', '#ffb347', '#ffe14d']), kind: 'dot' });
     }
     if (e.shockT > 0) { e.shockT -= edt; if (Math.random() < 0.08) addBolt(e.x + rand(-e.r, e.r), e.y + rand(-e.r, e.r), e.x + rand(-e.r, e.r), e.y + rand(-e.r, e.r), '#fff04d', 0.06); }
     if (e.chillT > 0) { e.chillT -= edt; if (e.chillT <= 0) e.chill = 0; }
@@ -3288,7 +3291,7 @@ function updateHazards(dt) {
       if (h.type === 'elecfloor' && room.powerOff) h.state = 'off';
       h.on = h.state === 'on';
     }
-    if (h.type === 'fire' && Math.random() < (h.r > 40 ? 0.7 : 0.2) * PFX()) {
+    if (h.type === 'fire' && Math.random() < (h.r > 40 ? 1 : 0.5) * PFX()) {
       const a = rand(0, TAU), d = rand(0, h.r);
       part({ x: h.x + Math.cos(a) * d, y: h.y + Math.sin(a) * d, vx: rand(-10, 10), vy: -rand(40, 100), life: rand(0.3, 0.7), size: rand(3, 6), color: pick(['#ff6a1a', '#ffb347', '#ffe14d']), kind: 'dot' });
     }
@@ -4161,7 +4164,20 @@ function drawEnemy(e) {
     circlePath(e.x, e.y, e.r + 2); ctx.fillStyle = 'rgba(140,220,255,0.22)'; ctx.fill();
     for (let i = 0; i < (e.chill || 0); i++) { ctx.fillStyle = '#8fe8ff'; ctx.fillRect(e.x - 8 + i * 6, e.y + e.r + 4, 4, 4); }
   }
-  if (e.burnT > 0) { circlePath(e.x, e.y, e.r + 3); ctx.strokeStyle = `rgba(255,120,30,${0.5 + Math.random() * 0.4})`; ctx.lineWidth = 2; ctx.stroke(); }
+  if (e.burnT > 0) {
+    // 불타는 적: 주황 빛무리 + 일렁이는 불꽃 혀
+    circlePath(e.x, e.y, e.r + 4); ctx.fillStyle = 'rgba(255,110,20,0.2)'; ctx.fill();
+    ctx.strokeStyle = `rgba(255,150,40,${0.6 + Math.random() * 0.4})`; ctx.lineWidth = 2.5; ctx.stroke();
+    const n = Math.min(5, 2 + (e.burnStacks || 1));
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < n; i++) {
+      const a = i / n * TAU + G.time * 2, fx = e.x + Math.cos(a) * e.r * 0.7, fy = e.y + Math.sin(a) * e.r * 0.5, h = e.r * (0.9 + Math.sin(G.time * 14 + i * 2) * 0.3);
+      const gr = ctx.createLinearGradient(fx, fy, fx, fy - h);
+      gr.addColorStop(0, 'rgba(255,200,60,0.85)'); gr.addColorStop(1, 'rgba(255,60,0,0)');
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(fx - 4, fy); ctx.quadraticCurveTo(fx, fy - h * 0.6, fx + Math.sin(G.time * 10 + i) * 3, fy - h); ctx.quadraticCurveTo(fx + 1, fy - h * 0.5, fx + 4, fy); ctx.fill();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
   if (e.shockT > 0 && Math.random() < 0.5) { circlePath(e.x, e.y, e.r + 4); ctx.strokeStyle = '#fff04d'; ctx.lineWidth = 1; ctx.stroke(); }
   if (e.barrier > 0) { circlePath(e.x, e.y, e.r + 10); ctx.fillStyle = 'rgba(77,210,255,0.15)'; ctx.fill(); ctx.strokeStyle = '#4dd2ff'; ctx.lineWidth = 2; ctx.stroke(); }
   // 원소 상태 표시 (원소마다 다른 모양)
@@ -4243,8 +4259,14 @@ function drawBullets() {
         break;
       }
       case 'flame': {
-        const k = b.life / b.maxLife;
-        circlePath(b.x, b.y, b.r); ctx.fillStyle = `rgba(255,${Math.floor(80 + 120 * k)},30,${0.35 * k + 0.05})`; ctx.fill();
+        // 밝은 속불 + 주황 겉불 + 붉은 가장자리: 겹칠수록 더 밝게 타오른다
+        const k = clamp(b.life / b.maxLife, 0, 1), rr = b.r * (1.7 + (1 - k) * 0.5);
+        const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, rr);
+        g.addColorStop(0, `rgba(255,255,225,${0.55 + 0.4 * k})`);
+        g.addColorStop(0.35, `rgba(255,205,70,${0.35 + 0.45 * k})`);
+        g.addColorStop(0.7, `rgba(255,90,20,${0.15 + 0.35 * k})`);
+        g.addColorStop(1, 'rgba(255,40,0,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(b.x, b.y, rr, 0, TAU); ctx.fill();
         break;
       }
       case 'boomerang':

@@ -66,7 +66,7 @@ function updateHazards(dt) {
       if (h.type === 'elecfloor' && room.powerOff) h.state = 'off';
       h.on = h.state === 'on';
     }
-    if (h.type === 'fire' && Math.random() < (h.r > 40 ? 0.7 : 0.2) * PFX()) {
+    if (h.type === 'fire' && Math.random() < (h.r > 40 ? 1 : 0.5) * PFX()) {
       const a = rand(0, TAU), d = rand(0, h.r);
       part({ x: h.x + Math.cos(a) * d, y: h.y + Math.sin(a) * d, vx: rand(-10, 10), vy: -rand(40, 100), life: rand(0.3, 0.7), size: rand(3, 6), color: pick(['#ff6a1a', '#ffb347', '#ffe14d']), kind: 'dot' });
     }

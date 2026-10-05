@@ -243,7 +243,10 @@ function updateBullets(dt) {
           if (d2(b.x, b.y, home.x, home.y) < 26 * 26 || b.t > 4) b.dead = true;
         }
       }
-    } else if (b.type === 'flame') { b.r += 38 * bdt; b.vx *= 0.97; b.vy *= 0.97; }
+    } else if (b.type === 'flame') {
+      b.r += 38 * bdt; b.vx *= 0.97; b.vy *= 0.97;
+      if (Math.random() < 0.5 * PFX()) part({ x: b.x + rand(-b.r, b.r) * 0.5, y: b.y + rand(-b.r, b.r) * 0.5, vx: rand(-30, 30), vy: rand(-60, -10), life: rand(0.3, 0.6), size: rand(2, 5), color: pick(['#ff6a1a', '#ffb347', '#ffe14d', '#ff3b1a']), kind: 'dot' });
+    }
     else if (b.type === 'stream') { b.r += 9 * bdt; b.vx *= 0.985; b.vy *= 0.985; }
     if (b.accel) { b.vx *= 1 + b.accel * bdt; b.vy *= 1 + b.accel * bdt; }
     if (b.homing && b.team === 'p') {

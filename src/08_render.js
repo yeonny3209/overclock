@@ -400,7 +400,20 @@ function drawEnemy(e) {
     circlePath(e.x, e.y, e.r + 2); ctx.fillStyle = 'rgba(140,220,255,0.22)'; ctx.fill();
     for (let i = 0; i < (e.chill || 0); i++) { ctx.fillStyle = '#8fe8ff'; ctx.fillRect(e.x - 8 + i * 6, e.y + e.r + 4, 4, 4); }
   }
-  if (e.burnT > 0) { circlePath(e.x, e.y, e.r + 3); ctx.strokeStyle = `rgba(255,120,30,${0.5 + Math.random() * 0.4})`; ctx.lineWidth = 2; ctx.stroke(); }
+  if (e.burnT > 0) {
+    // 불타는 적: 주황 빛무리 + 일렁이는 불꽃 혀
+    circlePath(e.x, e.y, e.r + 4); ctx.fillStyle = 'rgba(255,110,20,0.2)'; ctx.fill();
+    ctx.strokeStyle = `rgba(255,150,40,${0.6 + Math.random() * 0.4})`; ctx.lineWidth = 2.5; ctx.stroke();
+    const n = Math.min(5, 2 + (e.burnStacks || 1));
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < n; i++) {
+      const a = i / n * TAU + G.time * 2, fx = e.x + Math.cos(a) * e.r * 0.7, fy = e.y + Math.sin(a) * e.r * 0.5, h = e.r * (0.9 + Math.sin(G.time * 14 + i * 2) * 0.3);
+      const gr = ctx.createLinearGradient(fx, fy, fx, fy - h);
+      gr.addColorStop(0, 'rgba(255,200,60,0.85)'); gr.addColorStop(1, 'rgba(255,60,0,0)');
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(fx - 4, fy); ctx.quadraticCurveTo(fx, fy - h * 0.6, fx + Math.sin(G.time * 10 + i) * 3, fy - h); ctx.quadraticCurveTo(fx + 1, fy - h * 0.5, fx + 4, fy); ctx.fill();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
   if (e.shockT > 0 && Math.random() < 0.5) { circlePath(e.x, e.y, e.r + 4); ctx.strokeStyle = '#fff04d'; ctx.lineWidth = 1; ctx.stroke(); }
   if (e.barrier > 0) { circlePath(e.x, e.y, e.r + 10); ctx.fillStyle = 'rgba(77,210,255,0.15)'; ctx.fill(); ctx.strokeStyle = '#4dd2ff'; ctx.lineWidth = 2; ctx.stroke(); }
   // 원소 상태 표시 (원소마다 다른 모양)
@@ -482,8 +495,14 @@ function drawBullets() {
         break;
       }
       case 'flame': {
-        const k = b.life / b.maxLife;
-        circlePath(b.x, b.y, b.r); ctx.fillStyle = `rgba(255,${Math.floor(80 + 120 * k)},30,${0.35 * k + 0.05})`; ctx.fill();
+        // 밝은 속불 + 주황 겉불 + 붉은 가장자리: 겹칠수록 더 밝게 타오른다
+        const k = clamp(b.life / b.maxLife, 0, 1), rr = b.r * (1.7 + (1 - k) * 0.5);
+        const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, rr);
+        g.addColorStop(0, `rgba(255,255,225,${0.55 + 0.4 * k})`);
+        g.addColorStop(0.35, `rgba(255,205,70,${0.35 + 0.45 * k})`);
+        g.addColorStop(0.7, `rgba(255,90,20,${0.15 + 0.35 * k})`);
+        g.addColorStop(1, 'rgba(255,40,0,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(b.x, b.y, rr, 0, TAU); ctx.fill();
         break;
       }
       case 'boomerang':
