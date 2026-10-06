@@ -210,13 +210,15 @@ function spawnBullet(o) {
   return b;
 }
 function clearBullets() { while (BULLETS.length) BPOOL.push(BULLETS.pop()); }
+function isMom(e, o) { const s = (o && o.owner) || e; return !!(s && (s.bossId === 'mother' || s.momMinion)); }
 function eShoot(e, a, spd, dmg, o = {}) {
   SFX.play('eshoot', 0.8);
+  if (isMom(e, o)) spd *= 0.85; // 마더보드의 탄은 15% 느리다
   if (e.ally) return spawnBullet(Object.assign({ x: e.x + Math.cos(a) * (e.r + 4), y: e.y + Math.sin(a) * (e.r + 4), vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, r: 5, dmg: dmg * 1.5 * BS.dmgMult, team: 'p', life: 3, color: '#29f0ff', small: true }, o, { team: 'p', color: '#29f0ff', chill: false, owner: null, type: o.type === 'boomerang' ? 'n' : (o.type || 'n') }));
   return spawnBullet(Object.assign({ x: e.x + Math.cos(a) * (e.r + 4), y: e.y + Math.sin(a) * (e.r + 4), vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, r: 6, dmg: dmg, team: 'e', life: 4, color: '#ff3b3b', owner: e }, o));
 }
-function eRing(e, n, spd, dmg, off = 0, o = {}) { for (let i = 0; i < n; i++) eShoot(e, off + i / n * TAU, spd, dmg, o); }
-function eFan(e, a, n, spread, spd, dmg, o = {}) { for (let i = 0; i < n; i++) eShoot(e, a + (n > 1 ? (i / (n - 1) - 0.5) * spread : 0), spd, dmg, o); }
+function eRing(e, n, spd, dmg, off = 0, o = {}) { if (isMom(e, o)) n = Math.max(8, Math.round(n * 0.55)); for (let i = 0; i < n; i++) eShoot(e, off + i / n * TAU, spd, dmg, o); }
+function eFan(e, a, n, spread, spd, dmg, o = {}) { if (isMom(e, o)) n = Math.max(1, Math.round(n * 0.6)); for (let i = 0; i < n; i++) eShoot(e, a + (n > 1 ? (i / (n - 1) - 0.5) * spread : 0), spd, dmg, o); }
 
 function inSlowField(x, y) { return P && P.slowT > 0 && d2(x, y, P.x, P.y) < 520 * 520; }
 
@@ -950,7 +952,7 @@ function damagePlayer(dmg, src) {
     part({ x: P.x, y: P.y, vx: 0, vy: 0, life: 0.3, size: 40, color: '#6dff8a', kind: 'ring' });
     return;
   }
-  if (src && src.bossId === 'mother') dmg *= 0.6; // 4층 보스(마더보드)의 모든 공격 피해 -40%
+  if (src && (src.bossId === 'mother' || src.momMinion)) dmg *= 0.6; // 4층 보스(마더보드)와 그가 소환한 적의 피해 -40%
   dmg *= G.eDmgMult * BS.takenMult * (P.fortT > 0 ? 0.2 : 1);
   if (src && src.poisonT > 0) dmg *= 1 - BS.weaken;
   if (P.fortT > 0 && src && !src.dead && src.type && !src.ally) applyStatus(src, 'metal', { stacks: 3 });

@@ -304,18 +304,18 @@ EN.boss_mother = {
       for (const b of BULLETS) if (b.team === 'e') b.dead = true;
     }
     if (!e.enraged && e.hp < e.maxHp * 0.25) { e.enraged = true; G.banner = { text: '마더보드 폭주', sub: '남은 체력 25% — 모든 패턴이 빨라진다', t: 2, color: '#ff3d6a' }; SFX.play('boss'); shake(16); G.glitchVis = 0.8; }
-    const spd = (e.phase === 3 ? 1.6 : e.phase === 2 ? 1.3 : 1.1) * (e.enraged ? 1.25 : 1);
+    const spd = (e.phase === 3 ? 1.2 : e.phase === 2 ? 1.05 : 0.95) * (e.enraged ? 1.1 : 1);
     // 기둥 사격 (2페이즈 이상)
-    if (e.phase >= 2) for (const p of pillars) { p.shootT -= dt; if (p.shootT <= 0) { p.shootT = rand(1.6, 2.4); eFan(p, angTo(p.x, p.y, P.x, P.y), e.phase === 3 ? 3 : 1, 0.3, 280, 12, { color: '#e28bff', owner: e }); } }
+    if (e.phase >= 2) for (const p of pillars) { p.shootT -= dt; if (p.shootT <= 0) { p.shootT = rand(3, 4.2); eFan(p, angTo(p.x, p.y, P.x, P.y), e.phase === 3 ? 2 : 1, 0.3, 260, 12, { color: '#e28bff', owner: e }); } }
     // 회전 레이저 (2페이즈 이상)
     if (e.phase >= 2) {
       e.beamT -= dt;
-      if (e.beamT <= -4) e.beamT = e.phase === 3 ? 3 : 4.5;
+      if (e.beamT <= -2.6) e.beamT = e.phase === 3 ? 7 : 9;
       if (e.beamT < 0) {
-        e.beamA += dt * (e.phase === 3 ? 1.25 : 0.95);
-        const nb = e.phase === 3 ? 3 : 2; e.nb = nb;
+        e.beamA += dt * (e.phase === 3 ? 0.6 : 0.5);
+        const nb = 2; e.nb = nb;
         for (let k = 0; k < nb; k++) {
-          const a = e.beamA + k * TAU / nb, L = e.beamT > -0.8 ? 0 : 900;
+          const a = e.beamA + k * TAU / nb, L = e.beamT > -1.4 ? 0 : 900;
           e['beamL' + k] = L;
           if (L && segDist(P.x, P.y, e.x, e.y, e.x + Math.cos(a) * L, e.y + Math.sin(a) * L) < P.r + 7) damagePlayer(20, e);
         }
@@ -326,10 +326,10 @@ EN.boss_mother = {
       e.glitchT -= dt;
       if (e.glitchT <= 0) { e.glitchT = e.enraged ? 5 : 6.5; G.glitchWarn = 0.8; SFX.play('glitch'); }
       e.summonT -= dt;
-      if (e.summonT <= 0 && room.enemies.filter(m => !m.dead && !m.boss).length < 8) { e.summonT = 8; for (const t of ['tele', 'mimic', 'tele']) spawnEnemy(t, clamp(P.x + rand(-300, 300), 40, room.w - 40), clamp(P.y + rand(-250, 250), 40, room.h - 40), {}); }
+      if (e.summonT <= 0 && room.enemies.filter(m => !m.dead && !m.boss).length < 1) { e.summonT = 28; const m = spawnEnemy('gunner', clamp(P.x + rand(-300, 300), 40, room.w - 40), clamp(P.y + rand(-250, 250), 40, room.h - 40), {}); m.momMinion = true; }
     } else if (e.phase === 2) {
       e.sumT2 -= dt;
-      if (e.sumT2 <= 0 && room.enemies.filter(m => !m.dead && !m.boss).length < 6) { e.sumT2 = 13; for (const t of ['shield', 'gunner', 'gunner']) spawnEnemy(t, clamp(P.x + rand(-320, 320), 40, room.w - 40), clamp(P.y + rand(-260, 260), 40, room.h - 40), {}); }
+      if (e.sumT2 <= 0 && room.enemies.filter(m => !m.dead && !m.boss).length < 1) { e.sumT2 = 26; const m = spawnEnemy('gunner', clamp(P.x + rand(-320, 320), 40, room.w - 40), clamp(P.y + rand(-260, 260), 40, room.h - 40), {}); m.momMinion = true; }
     }
     e.t -= dt * spd;
     switch (e.st) {
@@ -339,35 +339,35 @@ EN.boss_mother = {
           const pats = e.phase === 1 ? ['dash', 'ring', 'fan', 'lob'] : e.phase === 2 ? ['dash', 'ring', 'spiral', 'fan', 'grid', 'lob'] : ['dash', 'crusher', 'ring', 'spiral', 'grid', 'frost', 'twin', 'wall', 'lob'];
           if (bossExtra() && e.phase < 3) pats.push('wall');
           const p = pats[e.pat++ % pats.length];
-          if (p === 'dash') { e.st = 'windup'; e.t = 0.55; e.lockA = angTo(e.x, e.y, P.x, P.y); SFX.play('warn'); }
+          if (p === 'dash') { e.st = 'windup'; e.t = 0.9; e.lockA = angTo(e.x, e.y, P.x, P.y); SFX.play('warn'); }
           else if (p === 'crusher') { // 복제: 크러셔 — 연속 돌진 3회
-            floatText(e.x, e.y - 90, '복제: 크러셔', '#ff8a2a', 22); e.dashLeft = 2; e.st = 'windup'; e.t = 0.5; e.lockA = angTo(e.x, e.y, P.x, P.y); SFX.play('warn');
+            floatText(e.x, e.y - 90, '복제: 크러셔', '#ff8a2a', 22); e.dashLeft = 1; e.st = 'windup'; e.t = 0.8; e.lockA = angTo(e.x, e.y, P.x, P.y); SFX.play('warn');
           }
           else if (p === 'frost') { // 복제: 프로스트 코어 — 얼음 링과 눈보라
             floatText(e.x, e.y - 90, '복제: 프로스트 코어', '#7fdcff', 22); eRing(e, 32, 180, 11, rand(0, TAU), { chill: true, color: '#9fe8ff' });
-            for (let i = 0; i < 18; i++) spawnBullet({ x: rand(0, room.w), y: 5, vx: rand(-30, 30), vy: rand(170, 250), team: 'e', dmg: 10, r: 7, life: 7, color: '#bff4ff', chill: true, noWall: true, owner: e });
+            for (let i = 0; i < 7; i++) spawnBullet({ x: rand(0, room.w), y: 5, vx: rand(-30, 30), vy: rand(130, 190), team: 'e', dmg: 10, r: 7, life: 7, color: '#bff4ff', chill: true, noWall: true, owner: e });
             e.t = 2.2;
           }
           else if (p === 'twin') { // 복제: 볼트 트윈스 — 낙뢰와 연속 부채꼴
             floatText(e.x, e.y - 90, '복제: 볼트 트윈스', '#ffe14d', 22); SFX.play('warn');
-            for (let i = 0; i < 6; i++) lob(e, clamp(P.x + (i ? rand(-220, 220) : 0), 40, room.w - 40), clamp(P.y + (i ? rand(-220, 220) : 0), 40, room.h - 40), 1.0 + i * 0.13, 70, 20, false);
-            for (let k = 0; k < 3; k++) room.timers.push({ t: 0.25 + k * 0.3, fn: () => { if (!e.dead) eFan(e, angTo(e.x, e.y, P.x, P.y), 7, 0.9, 340, 12, { color: '#ffee40' }); } });
+            for (let i = 0; i < 3; i++) lob(e, clamp(P.x + (i ? rand(-220, 220) : 0), 40, room.w - 40), clamp(P.y + (i ? rand(-220, 220) : 0), 40, room.h - 40), 1.3 + i * 0.25, 70, 20, false);
+            for (let k = 0; k < 2; k++) room.timers.push({ t: 0.4 + k * 0.5, fn: () => { if (!e.dead) eFan(e, angTo(e.x, e.y, P.x, P.y), 7, 0.9, 340, 12, { color: '#ffee40' }); } });
             e.t = 2.4;
           }
           else if (p === 'grid') { // 레이저 격자: 경고선이 켜진 뒤 1초 만에 발사
             floatText(e.x, e.y - 90, '레이저 격자', '#ff3df0', 20); SFX.play('warn');
-            for (let k = 0; k < 3; k++) {
-              const vx = clamp(P.x + (k - 1) * 170 + rand(-40, 40), 40, room.w - 40), hy = clamp(P.y + (k - 1) * 150 + rand(-40, 40), 40, room.h - 40);
-              addHazard({ type: 'laser', shape: 'r', x: vx - 7, y: 0, w: 14, h: room.h, cycle: [0.01, 1.0, 1.3], state: 'off', ct: 0.01, life: 2.45, boss: true });
-              addHazard({ type: 'laser', shape: 'r', x: 0, y: hy - 7, w: room.w, h: 14, cycle: [0.01, 1.0, 1.3], state: 'off', ct: 0.01, life: 2.45, boss: true });
+            for (let k = 0; k < 2; k++) {
+              const vx = clamp(P.x + (k - 0.5) * 300 + rand(-40, 40), 40, room.w - 40), hy = clamp(P.y + (k - 0.5) * 260 + rand(-40, 40), 40, room.h - 40);
+              addHazard({ type: 'laser', shape: 'r', x: vx - 7, y: 0, w: 14, h: room.h, cycle: [0.01, 1.5, 0.8], state: 'off', ct: 0.01, life: 2.35, boss: true });
+              addHazard({ type: 'laser', shape: 'r', x: 0, y: hy - 7, w: room.w, h: 14, cycle: [0.01, 1.5, 0.8], state: 'off', ct: 0.01, life: 2.35, boss: true });
             }
             e.t = 2.6;
           }
           else if (p === 'ring') { eRing(e, 24 + e.phase * 5, 215, 12, rand(0, TAU), { color: '#e28bff' }); if (e.phase >= 2) room.timers.push({ t: 0.5, fn: () => { if (!e.dead) eRing(e, 24 + e.phase * 5, 175, 12, rand(0, TAU), { color: '#e28bff' }); } }); e.t = 1.6; }
-          else if (p === 'spiral') { e.st = 'spiral'; e.st2 = 2.4; e.fireT = 0; }
+          else if (p === 'spiral') { e.st = 'spiral'; e.st2 = 1.8; e.fireT = 0; }
           else if (p === 'fan') { eFan(e, angTo(e.x, e.y, P.x, P.y), 11, 1.1, 330, 12, { chill: true, color: '#9fe8ff' }); e.t = 1.4; }
-          else if (p === 'lob') { for (let i = 0; i < 6; i++) lob(e, clamp(P.x + rand(-170, 170), 30, room.w - 30), clamp(P.y + rand(-170, 170), 30, room.h - 30), 1 + i * 0.1, 62, 16, true); e.t = 1.7; }
-          else if (p === 'wall') { const gap = rand(100, room.w - 100); for (let x = 20; x < room.w; x += 40) if (Math.abs(x - gap) > 70) spawnBullet({ x, y: 5, vx: 0, vy: 230, team: 'e', dmg: 12, r: 7, life: 7, color: '#e28bff', noWall: true, owner: e }); e.t = 2; }
+          else if (p === 'lob') { for (let i = 0; i < 3; i++) lob(e, clamp(P.x + rand(-170, 170), 30, room.w - 30), clamp(P.y + rand(-170, 170), 30, room.h - 30), 1.2 + i * 0.2, 62, 16, true); e.t = 2.2; }
+          else if (p === 'wall') { const gap = rand(100, room.w - 100); for (let x = 20; x < room.w; x += 64) if (Math.abs(x - gap) > 110) spawnBullet({ x, y: 5, vx: 0, vy: 170, team: 'e', dmg: 12, r: 7, life: 7, color: '#e28bff', noWall: true, owner: e }); e.t = 2; }
         }
         break;
       case 'windup':
@@ -375,22 +375,22 @@ EN.boss_mother = {
         if (e.t <= 0) { e.st = 'dash'; e.t = 2; }
         break;
       case 'dash': {
-        const nx = e.x + Math.cos(e.lockA) * 860 * dt, ny = e.y + Math.sin(e.lockA) * 860 * dt;
+        const nx = e.x + Math.cos(e.lockA) * 680 * dt, ny = e.y + Math.sin(e.lockA) * 680 * dt;
         if (nx < e.r || nx > room.w - e.r || ny < e.r || ny > room.h - e.r || e.t <= 0) {
           shake(10); eRing(e, 16, 190, 11, 0, { color: '#e28bff' }); SFX.play('explode');
-          if (e.dashLeft > 0) { e.dashLeft--; e.st = 'windup'; e.t = 0.45; e.lockA = angTo(e.x, e.y, P.x, P.y); SFX.play('warn'); } else { e.st = 'return'; e.t = 1.0; }
+          if (e.dashLeft > 0) { e.dashLeft--; e.st = 'windup'; e.t = 0.8; e.lockA = angTo(e.x, e.y, P.x, P.y); SFX.play('warn'); } else { e.st = 'return'; e.t = 1.0; }
         }
         else { e.x = nx; e.y = ny; }
         break;
       }
       case 'return':
         e.x = lerp(e.x, e.home.x, Math.min(1, 3 * dt)); e.y = lerp(e.y, e.home.y, Math.min(1, 3 * dt));
-        if (e.t <= 0) { e.st = 'idle'; e.t = 1.2; }
+        if (e.t <= 0) { e.st = 'idle'; e.t = 2.2; }
         break;
       case 'spiral':
         e.st2 -= dt; e.fireT -= dt;
-        if (e.fireT <= 0) { e.fireT = 0.09; for (let k = 0; k < 5; k++) eShoot(e, G.time * 2.4 + k * TAU / 5, 215, 11, { color: '#bff4ff', chill: true }); }
-        if (e.st2 <= 0) { e.st = 'idle'; e.t = 1.2; }
+        if (e.fireT <= 0) { e.fireT = 0.2; for (let k = 0; k < 3; k++) eShoot(e, G.time * 1.6 + k * TAU / 3, 200, 11, { color: '#bff4ff', chill: true }); }
+        if (e.st2 <= 0) { e.st = 'idle'; e.t = 2.2; }
         break;
     }
   },
