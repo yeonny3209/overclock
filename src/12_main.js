@@ -36,7 +36,7 @@ function startCampaign(charId, oc, mode, seed, hard) {
   newRun(mode || 'campaign', charId, oc, seed, hard);
   G.mode = run.mode;
   run.map = genMap(0);
-  const go = () => { showMap(); radio(RADIO[0], () => { }); };
+  const go = () => { showMap(); radio(RADIO[0], () => { }, 'ch0'); };
   if (SAVE.unlocks.qol_start) { reseed(run.seed + 17); openUpgradePick({ count: 3, title: '출격 준비: 시작 강화' }, go); }
   else go();
 }
@@ -94,7 +94,9 @@ function enterNode(r, i) {
   switch (node.type) {
     case 'combat': startRoom({ kind: 'combat', zone: run.zone, objective: node.obj, row: r }); break;
     case 'elite': startRoom({ kind: 'elite', zone: run.zone, objective: 'exterminate', row: r }); break;
-    case 'boss': startRoom({ kind: 'boss', zone: run.zone, row: 6 }); break;
+    case 'boss':
+      if (run.zone === 3 && !run.cutSeen) { run.cutSeen = true; showCutscene(CUT_MOTHER, () => startRoom({ kind: 'boss', zone: run.zone, row: 6 })); return; }
+      startRoom({ kind: 'boss', zone: run.zone, row: 6 }); break;
     case 'shop': showShop(); break;
     case 'workshop': showWorkshop(); break;
     case 'event': showEvent(); break;
@@ -124,10 +126,10 @@ function afterCombat(success, kind) {
   else showMap();
 }
 function nextZone() {
-  if (run.zone >= 3) { run.ended = true; clearRun(run.mode); UI(''); radio(RADIO_END, () => endRun(true)); return; }
+  if (run.zone >= 3) { run.ended = true; clearRun(run.mode); UI(''); radio(RADIO_END, () => endRun(true), 'end'); return; }
   run.zone++; run.map = genMap(run.zone); run.row = -1; run.col = -1;
   showMap();
-  radio(RADIO[run.zone], () => { });
+  radio(RADIO[run.zone], () => { }, 'ch' + run.zone);
 }
 
 // ================= 런 종료 =================
@@ -297,6 +299,10 @@ function frame(now) {
 
 function onGlobalKey(e) {
   SFX.init();
+  if (typeof cutActive === 'function' && cutActive()) {
+    if (e.code === 'Escape') { e.preventDefault(); cutSkip(); } else if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); cutAdvance(); }
+    return;
+  }
   if (e.code === 'Escape') {
     if (G.paused) resumeGame();
     else if (G.screen === 'combat') pauseGame();
@@ -316,6 +322,7 @@ window.androidPause = function () {
 };
 window.androidBack = function () {
   try {
+    if (cutActive()) { cutSkip(); return true; }
     if (radioState) { advanceRadio(); return true; }
     if (G.screen === 'combat' || G.paused) { if (G.paused) resumeGame(); else pauseGame(); return true; }
     if (G.screen === 'overlay') return true;

@@ -96,6 +96,33 @@ table.tb{border-collapse:collapse;font-size:13px}
 table.tb td{padding:3px 10px;border-bottom:1px solid #22203f}
 .btn:focus-visible,.card:focus-visible,.node:focus-visible{outline:2px solid var(--ye);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.logo,.node.avail{animation:none}}
+
+.cut{position:absolute;inset:0;background:#05030a;cursor:pointer;pointer-events:auto;overflow:hidden;animation:cutin .9s ease-out}
+.cut.out{opacity:0;transition:opacity .6s}
+@keyframes cutin{from{opacity:0}to{opacity:1}}
+#cutCv{position:absolute;inset:0;width:100%;height:100%}
+.cut-bar{position:absolute;left:0;right:0;height:11vh;background:#000;z-index:2}
+.cut-bar.top{top:0;animation:barT 1.2s ease-out}.cut-bar.bot{bottom:0;animation:barB 1.2s ease-out}
+@keyframes barT{from{transform:translateY(-100%)}to{transform:none}}@keyframes barB{from{transform:translateY(100%)}to{transform:none}}
+.cut-skip{position:absolute;top:calc(11vh + 10px);right:16px;z-index:5;font-family:inherit;font-size:13px;font-weight:700;color:#c5cae6;background:rgba(6,5,16,.7);border:1px solid #4a4670;padding:8px 14px;cursor:pointer}
+.cut-skip:hover,.cut-skip:focus-visible{background:#29f0ff;color:#05040c;border-color:#29f0ff;outline:none}
+.cut-title{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;transition:opacity 1s;animation:titlein 1.6s ease-out}
+.cut-title.hide{opacity:0;pointer-events:none}
+.cut-title small{font-family:'Orbitron',sans-serif;font-weight:700;letter-spacing:.5em;text-indent:.5em;color:#ff3df0;font-size:13px}
+.cut-title b{font-family:'Black Han Sans','Malgun Gothic',sans-serif;font-weight:400;font-size:clamp(40px,9vw,84px);color:#fff;text-shadow:0 0 14px #c86bff,0 0 40px #ff3df0;letter-spacing:4px}
+.cut-title span{color:#c5cae6;letter-spacing:.3em;font-size:14px}
+@keyframes titlein{from{opacity:0;transform:scale(1.15);filter:blur(10px)}to{opacity:1;transform:none;filter:none}}
+.cut-box{position:absolute;left:50%;bottom:calc(11vh + 18px);transform:translateX(-50%);width:min(860px,92vw);z-index:3;background:rgba(6,4,16,.82);border:1.5px solid var(--cc,#29f0ff);box-shadow:0 0 24px color-mix(in srgb,var(--cc,#29f0ff) 35%,transparent);padding:14px 20px 12px;min-height:96px;transition:opacity .4s;clip-path:polygon(14px 0,100% 0,calc(100% - 14px) 100%,0 100%)}
+.cut-box.narr{border-color:#4a4670;box-shadow:none;font-style:italic}
+.cut-who{font-family:'Black Han Sans','Malgun Gothic',sans-serif;font-size:19px;letter-spacing:1px;margin-bottom:4px}
+.cut-text{font-size:clamp(15px,2.4vw,18px);line-height:1.75;color:#eef0ff;min-height:3.5em}
+.cut-hint{margin-top:6px;font-size:11px;color:#6a7096;text-align:right}
+.cut-flash{position:absolute;inset:0;z-index:2;background:#fff;opacity:0;pointer-events:none}
+.cut-flash.go{animation:cflash .9s ease-out}
+@keyframes cflash{0%{opacity:.95}100%{opacity:0}}
+.cut.shake{animation:cshake .6s}
+@keyframes cshake{0%,100%{transform:none}15%{transform:translate(-8px,5px)}30%{transform:translate(7px,-6px)}45%{transform:translate(-6px,-4px)}60%{transform:translate(5px,4px)}80%{transform:translate(-2px,2px)}}
+@media (prefers-reduced-motion:reduce){.cut,.cut-bar,.cut-title{animation:none!important}.cut.shake{animation:none}.cut-flash.go{animation:none}}
 ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:#3a3570}
 @media(max-width:640px){.card{width:100%}.btn{min-width:160px}}
 </style>

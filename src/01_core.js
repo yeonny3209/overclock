@@ -42,7 +42,7 @@ function defaultSave() {
   return {
     chips: 0, totalChips: 0, unlocks: {},
     stats: { dodged: 0, runs: 0, clears: 0, zone2: false, sniperBoss: false, kills: 0, bestZone: 0, reactions: 0 },
-    codex: { weapon: {}, enemy: {}, boss: {}, reaction: {}, event: {} },
+    codex: { weapon: {}, enemy: {}, boss: {}, reaction: {}, event: {}, story: {} },
     ocMax: 0, arenaBest: 0, daily: {},
     settings: { shake: !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches), particles: 2, vol: 0.5, dmgNum: true, aimAssist: false, autoFire: false, autoCoin: true, skipRadio: false, minimap: true, touchAutoFire: true }
   };

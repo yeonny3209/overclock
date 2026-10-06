@@ -81,7 +81,8 @@ function showCharSelect(mode) {
 
 // ================= 무전 =================
 let radioState = null;
-function radio(lines, done) {
+function radio(lines, done, id) {
+  if (id) codex('story', id);
   if (SAVE.settings.skipRadio) { if (done) setTimeout(done, 0); return; }
   const el = document.createElement('div');
   el.className = 'radio';

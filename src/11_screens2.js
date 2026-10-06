@@ -134,7 +134,7 @@ function showUnlocks() {
 // ================= 도감 =================
 function showCodex(tab) {
   menuMode();
-  const tabs = { element: '속성', weapon: '무기', enemy: '적', boss: '보스', reaction: '속성 반응', event: '이벤트', elite: '엘리트 변이' };
+  const tabs = { element: '속성', story: '스토리', weapon: '무기', enemy: '적', boss: '보스', reaction: '속성 반응', event: '이벤트', elite: '엘리트 변이' };
   const cx = SAVE.codex;
   let items = [];
   const unk = `<div class="card nohover"><h3 class="muted">???</h3><p class="muted">아직 발견하지 못했다.</p></div>`;
@@ -144,10 +144,13 @@ function showCodex(tab) {
   if (tab === 'reaction') items = Object.keys(REACTIONS).map(id => cx.reaction[id] ? `<div class="card nohover"><h3 style="color:${REACTIONS[id].color}">${REACTIONS[id].name}</h3><p>${REACTIONS[id].desc}</p></div>` : `<div class="card nohover"><h3 class="muted">???</h3><p class="muted">속성을 조합해 발견하라.</p></div>`);
   if (tab === 'event') items = EVENTS.map(e => cx.event[e.id] ? `<div class="card nohover"><h3>${e.icon} ${e.name}</h3><p>${e.desc}</p></div>` : unk);
   if (tab === 'element') items = SET_TAGS.map(t => `<div class="card nohover" style="grid-column:span 2"><h3>${tagHTML(t)} ${STATUS_INFO[t].name}</h3><p>${STATUS_INFO[t].core}</p><p class="small" style="margin-top:6px">3: ${SETS[t][0]}<br>5: ${SETS[t][1]}<br>7: ${SETS[t][2]}<br><span style="color:#ff3df0">9: ${SETS[t][3]}</span></p></div>`);
+  if (tab === 'story') items = STORY.map(s => cx.story && cx.story[s.id]
+    ? `<div class="card nohover" style="grid-column:1/-1;cursor:default"><h3>${s.title}</h3><div class="small" style="line-height:1.8;margin-top:6px">${s.lines().map(l => esc(l).replace(/^(\[[^\]]+\])/, '<b style="color:#29f0ff">$1</b>')).join('<br>')}</div>${s.cut ? `<button class="btn sm mg" style="margin-top:10px" onclick="${cb(() => showCutscene(CUT_MOTHER, () => showCodex('story')))}">컷씬 다시 보기</button>` : ''}</div>`
+    : `<div class="card nohover" style="grid-column:1/-1"><h3 class="muted">??? · ${s.title.split('·')[0].trim()}</h3><p class="muted">이야기를 진행하면 기록됩니다.</p></div>`);
   if (tab === 'elite') items = ELITE_IDS.map(id => `<div class="card nohover"><h3 style="color:${ELITES[id].color}">${ELITES[id].name}</h3><p>${ELITES[id].desc}</p></div>`);
   const cnt = k => Object.keys(cx[k] || {}).length;
-  const totals = { weapon: WEAPON_IDS.length, enemy: Object.keys(ENEMY_INFO).length, boss: Object.keys(BOSS_INFO).length, reaction: Object.keys(REACTIONS).length, event: EVENTS.length };
-  const cnt2 = k => Object.keys(cx[k] || {}).filter(id => k === 'weapon' ? WEAPONS[id] : k === 'enemy' ? ENEMY_INFO[id] : k === 'boss' ? BOSS_INFO[id] : k === 'reaction' ? REACTIONS[id] : EVENTS.some(e => e.id === id)).length;
+  const totals = { story: STORY.length, weapon: WEAPON_IDS.length, enemy: Object.keys(ENEMY_INFO).length, boss: Object.keys(BOSS_INFO).length, reaction: Object.keys(REACTIONS).length, event: EVENTS.length };
+  const cnt2 = k => Object.keys(cx[k] || {}).filter(id => k === 'story' ? STORY.some(s => s.id === id) : k === 'weapon' ? WEAPONS[id] : k === 'enemy' ? ENEMY_INFO[id] : k === 'boss' ? BOSS_INFO[id] : k === 'reaction' ? REACTIONS[id] : EVENTS.some(e => e.id === id)).length;
   scr(`<h2>도감</h2>
     <div class="tabs">${Object.keys(tabs).map(k => `<button class="btn ${k === tab ? 'on' : ''}" onclick="${cb(() => showCodex(k))}">${tabs[k]}${totals[k] ? ` ${cnt2(k)}/${totals[k]}` : ''}</button>`).join('')}</div>
     <div class="list">${items.join('')}</div>
