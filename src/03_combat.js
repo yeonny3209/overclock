@@ -950,6 +950,7 @@ function damagePlayer(dmg, src) {
     part({ x: P.x, y: P.y, vx: 0, vy: 0, life: 0.3, size: 40, color: '#6dff8a', kind: 'ring' });
     return;
   }
+  if (src && src.bossId === 'mother') dmg *= 0.6; // 4층 보스(마더보드)의 모든 공격 피해 -40%
   dmg *= G.eDmgMult * BS.takenMult * (P.fortT > 0 ? 0.2 : 1);
   if (src && src.poisonT > 0) dmg *= 1 - BS.weaken;
   if (P.fortT > 0 && src && !src.dead && src.type && !src.ally) applyStatus(src, 'metal', { stacks: 3 });

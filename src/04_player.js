@@ -437,7 +437,7 @@ function playerHazards() {
       case 'water': if (h.elecT > 0 && !h.player) damagePlayer(8, null); if (run.char === 'marin') r.slow = Math.max(r.slow, 1.25); break;
       case 'steam': if (h.on) { P.chillT = Math.max(P.chillT, 1); damagePlayer(4, null); } break;
       case 'elecfloor': if (h.state === 'on') damagePlayer(10, null); break;
-      case 'laser': if (h.state === 'on') damagePlayer(15, null); break;
+      case 'laser': if (h.state === 'on') damagePlayer(h.boss ? 9 : 15, null); break;
       case 'conveyor': r.px += h.dx * 140; r.py += h.dy * 140; break;
     }
   }
