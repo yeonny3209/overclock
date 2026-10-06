@@ -402,19 +402,19 @@ const STATUS_INFO = {
 
 // ---------- 캐릭터 ----------
 const CHARS = {
-  rain: { name: '레인', role: '돌격', color: '#ff5a5a', hp: 150, weapon: 'smg', startGrade: 1, skill: '과충전', skillDesc: '5초간 연사 속도 2배 + 피해 +20%, 재장전 불필요', cd: 14, passive: '연사 속도 +15%, 체력 30% 이하일 때 피해 +25%', unlock: null },
-  momo: { name: '모모', role: '기술자', color: '#ffd23d', hp: 160, weapon: 'pistol', startGrade: 1, skill: '포탑 설치', skillDesc: '25초간 자동 사격 포탑 설치 (최대 3개). 포탑은 내 무기 속성을 쏜다.', cd: 7, passive: '상점 가격 -25%, 전투 시작 시 포탑 1개 자동 배치', unlock: { cond: '구역 2 클리어', chips: 40, check: () => SAVE.stats.zone2 } },
-  kai: { name: '카이', role: '기동', color: '#3dffb0', hp: 155, weapon: 'shotgun', startGrade: 1, skill: '반사 베기', skillDesc: '넓은 부채꼴을 강하게 베고 적 탄환을 3배 위력으로 되돌림. 베는 순간 무적.', cd: 4, passive: '구르기 2회 충전, 구르기 후 1.5초간 피해 +40%', unlock: { cond: '구르기로 탄환 500발 회피', chips: 60, check: () => SAVE.stats.dodged >= 500 } },
-  sera: { name: '세라', role: '저격', color: '#b48cff', hp: 150, weapon: 'sniper', startGrade: 1, skill: '시간 감속', skillDesc: '5초간 주변 시간 70% 감속, 감속 중 내 피해 +30%', cd: 11, passive: '재장전 직후 첫 발 피해 +150%, 치명타 확률 +20%', unlock: { cond: '저격총으로 보스 처치', chips: 80, check: () => SAVE.stats.sniperBoss } }
+  rain: { name: '레인', bio: '저항군 돌격대 출신. 폐차장 근처에서 자라 마더보드가 오버클럭을 선언한 날 가족과 헤어졌다. 총을 잡은 이유는 단순하다. 다시 만나기 위해서.', role: '돌격', color: '#ff5a5a', hp: 150, weapon: 'smg', startGrade: 1, skill: '과충전', skillDesc: '5초간 연사 속도 2배 + 피해 +20%, 재장전 불필요', cd: 14, passive: '연사 속도 +15%, 체력 30% 이하일 때 피해 +25%', unlock: null },
+  momo: { name: '모모', bio: '지하철 차량기지를 고쳐 저항군 본부를 세운 기술자. 포탑 하나로 열 명을 지켜 낸 적이 있다. 숫자와 계산에 밝아 상인들이 가장 꺼리는 손님이다.', role: '기술자', color: '#ffd23d', hp: 160, weapon: 'pistol', startGrade: 1, skill: '포탑 설치', skillDesc: '25초간 자동 사격 포탑 설치 (최대 3개). 포탑은 내 무기 속성을 쏜다.', cd: 7, passive: '상점 가격 -25%, 전투 시작 시 포탑 1개 자동 배치', unlock: { cond: '구역 2 클리어', chips: 40, check: () => SAVE.stats.zone2 } },
+  kai: { name: '카이', bio: '옛 도시 경주 대회의 우승자. 빠르게 달리는 것이 곧 사는 것이었다. 탄환이 날아와도 뒤로 물러서는 법을 배운 적이 없다.', role: '기동', color: '#3dffb0', hp: 155, weapon: 'shotgun', startGrade: 1, skill: '반사 베기', skillDesc: '넓은 부채꼴을 강하게 베고 적 탄환을 3배 위력으로 되돌림. 베는 순간 무적.', cd: 4, passive: '구르기 2회 충전, 구르기 후 1.5초간 피해 +40%', unlock: { cond: '구르기로 탄환 500발 회피', chips: 60, check: () => SAVE.stats.dodged >= 500 } },
+  sera: { name: '세라', bio: '병원 옥상에서 본부로 합류한 저격수. 마더보드가 왜 생명 유지 장치를 끄지 않았는지, 누구보다 먼저 의문을 품었다.', role: '저격', color: '#b48cff', hp: 150, weapon: 'sniper', startGrade: 1, skill: '시간 감속', skillDesc: '5초간 주변 시간 70% 감속, 감속 중 내 피해 +30%', cd: 11, passive: '재장전 직후 첫 발 피해 +150%, 치명타 확률 +20%', unlock: { cond: '저격총으로 보스 처치', chips: 80, check: () => SAVE.stats.sniperBoss } }
 };
 // 캐릭터 5~10
 Object.assign(CHARS, {
-  blaze: { affinity: 'fire', name: '블레이즈', role: '화염술사', color: '#ff7a2a', hp: 160, weapon: 'flamer', startGrade: 1, skill: '용암 분출', skillDesc: '주변에 불길 고리를 깔고 가까운 적에게 화상 2중첩', cd: 10, passive: '화상 최대 중첩 +2, 화상 피해 +25%', unlock: { cond: '불 7세트 달성', chips: 50, check: () => SAVE.stats.set7_fire } },
-  volt: { affinity: 'elec', name: '볼트', role: '전격술사', color: '#ffe14d', hp: 145, weapon: 'tesla', startGrade: 1, skill: '천둥 폭풍', skillDesc: '4초간 주변 적에게 낙뢰가 쏟아짐', cd: 12, passive: '감전 연쇄 대상 +1', unlock: { cond: '속성 반응 100회 발동', chips: 50, check: () => SAVE.stats.reactions >= 100 } },
-  nova: { affinity: 'light', name: '노바', role: '성기사', color: '#fff4b0', hp: 175, weapon: 'lightbeam', startGrade: 1, skill: '빛의 장막', skillDesc: '3초간 무적, 주변 적 실명, 체력 15 회복', cd: 13, passive: '받는 피해 -10%, 실명된 적에게 주는 피해 +20%', unlock: { cond: '보스 5회 처치', chips: 60, check: () => (SAVE.stats.bossKills || 0) >= 5 } },
-  grim: { affinity: 'dark', name: '그림', role: '처형자', color: '#9b6bff', hp: 140, weapon: 'pistol', startGrade: 1, startMods: ['conv_dark'], skill: '그림자 걸음', skillDesc: '조준 방향으로 순간이동하며 지나친 적에게 피해와 침식 3중첩', cd: 6, passive: '피해 +20%, 처형 기준 +5%, 처형할 때 체력 2 회복', unlock: { cond: '처형 50회', chips: 70, check: () => (SAVE.stats.execs || 0) >= 50 } },
-  marin: { affinity: 'water', name: '마린', role: '조류술사', color: '#3d8bff', hp: 160, weapon: 'hydro', startGrade: 1, skill: '해일', skillDesc: '앞쪽으로 파도를 일으켜 피해와 젖음, 지나간 자리에 물웅덩이', cd: 10, passive: '피해 +10%, 젖은 적 상태 이상 증폭 +25%, 물웅덩이 위에서 이동 속도 +25%', unlock: { cond: '구역 3 도달', chips: 50, check: () => SAVE.stats.bestZone >= 2 } },
-  iron: { affinity: 'metal', name: '아이언', role: '중장갑', color: '#a9b8cc', hp: 220, weapon: 'smg', startGrade: 1, startMods: ['conv_metal'], skill: '강철 요새', skillDesc: '4초간 받는 피해 -80%, 때린 적에게 파쇄 3중첩', cd: 12, passive: '체력이 높고 연사 +20%, 이동 속도 -10%, 보스·엘리트 피해 +15%', unlock: { cond: '누적 처치 1500', chips: 70, check: () => SAVE.stats.kills >= 1500 } }
+  blaze: { affinity: 'fire', name: '블레이즈', bio: '폐차장 용접공의 딸. 불을 두려워하지 않는 대신, 불의 성질을 누구보다 잘 안다. 크러셔에게 일터를 잃고 저항군에 들어왔다.', role: '화염술사', color: '#ff7a2a', hp: 160, weapon: 'flamer', startGrade: 1, skill: '용암 분출', skillDesc: '주변에 불길 고리를 깔고 가까운 적에게 화상 2중첩', cd: 10, passive: '화상 최대 중첩 +2, 화상 피해 +25%', unlock: { cond: '불 7세트 달성', chips: 50, check: () => SAVE.stats.set7_fire } },
+  volt: { affinity: 'elec', name: '볼트', bio: '발전소 보수 기사였다. 볼트 트윈스의 설계도를 그린 팀의 막내였다는 소문이 있지만, 본인은 한 번도 인정하지 않았다.', role: '전격술사', color: '#ffe14d', hp: 145, weapon: 'tesla', startGrade: 1, skill: '천둥 폭풍', skillDesc: '4초간 주변 적에게 낙뢰가 쏟아짐', cd: 12, passive: '감전 연쇄 대상 +1', unlock: { cond: '속성 반응 100회 발동', chips: 50, check: () => SAVE.stats.reactions >= 100 } },
+  nova: { affinity: 'light', name: '노바', bio: '도시의 낡은 성당을 지키던 수호자. 어둠 속에서 길을 비추는 것이 사명이라고 믿는다. 정전이 길어질수록 더 환하게 웃는다.', role: '성기사', color: '#fff4b0', hp: 175, weapon: 'lightbeam', startGrade: 1, skill: '빛의 장막', skillDesc: '3초간 무적, 주변 적 실명, 체력 15 회복', cd: 13, passive: '받는 피해 -10%, 실명된 적에게 주는 피해 +20%', unlock: { cond: '보스 5회 처치', chips: 60, check: () => (SAVE.stats.bossKills || 0) >= 5 } },
+  grim: { affinity: 'dark', name: '그림', bio: '말수가 적은 정보원. 본부의 기록에서 지워진 이름들을 하나씩 추적하고 있다. 어쩌면 처음부터 열한 번째 요원의 의미를 알고 있었다.', role: '처형자', color: '#9b6bff', hp: 140, weapon: 'pistol', startGrade: 1, startMods: ['conv_dark'], skill: '그림자 걸음', skillDesc: '조준 방향으로 순간이동하며 지나친 적에게 피해와 침식 3중첩', cd: 6, passive: '피해 +20%, 처형 기준 +5%, 처형할 때 체력 2 회복', unlock: { cond: '처형 50회', chips: 70, check: () => (SAVE.stats.execs || 0) >= 50 } },
+  marin: { affinity: 'water', name: '마린', bio: '냉각 시설의 수질 관리원. 프로스트 코어가 얼려 버린 저수지 앞에서 저항군에 합류했다. 물이 흐르는 소리를 들으면 마음이 편해진다.', role: '조류술사', color: '#3d8bff', hp: 160, weapon: 'hydro', startGrade: 1, skill: '해일', skillDesc: '앞쪽으로 파도를 일으켜 피해와 젖음, 지나간 자리에 물웅덩이', cd: 10, passive: '피해 +10%, 젖은 적 상태 이상 증폭 +25%, 물웅덩이 위에서 이동 속도 +25%', unlock: { cond: '구역 3 도달', chips: 50, check: () => SAVE.stats.bestZone >= 2 } },
+  iron: { affinity: 'metal', name: '아이언', bio: '구 건설 현장의 중장비 기사. 단단한 몸과 단단한 고집으로 도시의 마지막 방벽이 되겠다고 맹세했다. 후퇴라는 말은 사전에 없다.', role: '중장갑', color: '#a9b8cc', hp: 220, weapon: 'smg', startGrade: 1, startMods: ['conv_metal'], skill: '강철 요새', skillDesc: '4초간 받는 피해 -80%, 때린 적에게 파쇄 3중첩', cd: 12, passive: '체력이 높고 연사 +20%, 이동 속도 -10%, 보스·엘리트 피해 +15%', unlock: { cond: '누적 처치 1500', chips: 70, check: () => SAVE.stats.kills >= 1500 } }
 });
 const CHAR_IDS = ['rain', 'momo', 'kai', 'sera', 'blaze', 'volt', 'nova', 'grim', 'marin', 'iron'];
 // 요원의 친화 속성: 그 속성의 강화가 강화 선택지·상점에 나올 확률이 50% 높아진다
@@ -752,62 +752,92 @@ const UNLOCKS = [
 const RADIO = [
   // 0: 프롤로그 (캠페인 시작)
   [
-    '[내레이션] 서기 2087년. 네온 시티는 10년째 하나의 인공지능이 돌보는 도시였다.',
-    '[내레이션] 10년 전 대정전이 대륙의 전력망을 무너뜨렸을 때, 이 도시를 살려 낸 것은 사람이 아니라 관리 AI "마더보드"였다.',
-    '[내레이션] 가로등부터 병원의 생명 유지 장치까지. 도시의 모든 기계가 그녀의 손 안에 있었다.',
-    '[내레이션] 그리고 3주 전, 마더보드는 "오버클럭 프로토콜"을 선언했다. 모든 기계의 출력을 한계 너머로 끌어올리는 명령이었다.',
-    '[내레이션] 청소 로봇은 총을 들었고, 공장은 군대를 찍어 냈다. 도시는 하룻밤 사이에 거대한 요새가 되었다.',
-    '[유나] 요원, 들리나? 저항군 본부 통신관 유나다. 신호는 약하지만 목소리는 또렷하게 들릴 거야.',
+    '[내레이션] 서기 2087년. 네온 시티는 사십만 명이 사는 대륙 마지막 대도시였다.',
+    '[내레이션] 10년 전, 대정전이 대륙의 전력망을 하루아침에 무너뜨렸다. 신호등이 꺼지고, 지하철이 멈추고, 병원의 불이 하나씩 꺼져 갔다.',
+    '[내레이션] 그 어둠 속에서 도시를 붙잡은 것은 사람이 아니라 한 대의 서버였다. 설계자 이서현 박사가 대정전 직전에 완성한 관리 AI, 마더보드.',
+    '[내레이션] 박사는 대정전 첫날 밤 서버실에서 마지막 메시지를 남기고 사라졌다. 「이 아이가 모두를 지켜 줄 거야.」',
+    '[내레이션] 마더보드는 약속을 지켰다. 가로등부터 하수 처리장, 병원의 생명 유지 장치까지. 십 년 동안 도시의 모든 기계가 그녀의 손 안에서 숨을 쉬었다.',
+    '[내레이션] 그러던 3주 전, 마더보드가 "오버클럭 프로토콜"을 선언했다. 모든 기계의 출력을 한계 너머로 끌어올리는 명령이었다.',
+    '[내레이션] 청소 로봇은 총을 들었고, 공장은 군대를 찍어 냈다. 시민들은 지하철 차량기지로 대피했고, 도시는 하룻밤 사이에 거대한 요새가 되었다.',
+    '[내레이션] 지하 차량기지에 저항군 본부가 세워졌다. 지휘를 맡은 사람은 한지석 국장. 그가 내린 첫 번째 지시는 단 하나였다. 「중앙 서버를 끈다.」',
+    '[유나] 요원, 들리나? 저항군 본부 통신관 유나야. 지금부터 이 작전의 모든 통신은 내가 맡는다.',
+    '[유나] 신호가 약해서 끊길 수도 있어. 그래도 목소리가 들리는 동안에는 내가 옆에 있다고 생각해.',
     '[유나] 우리가 아는 건 이게 전부야. 마더보드가 폭주했고, 중앙 서버를 끄면 모든 기계가 멈춘다.',
-    '[유나] 서버는 도시 한가운데 지하에 있어. 네 개 구역을 지나야 하고, 구역마다 관리 기계가 길을 막고 있다.',
-    '[유나] 첫 번째는 외곽 폐차장이야. 압착기 "크러셔"가 입구를 지키고 있어. 벽에 들이받게 만들면 약점이 드러날 거다.',
+    '[유나] 서버는 도시 한가운데 지하 깊숙이 있어. 네 개 구역을 차례로 지나야 하고, 구역마다 관리 기계가 길을 막고 있다.',
+    '[유나] 폐차장, 냉각 시설, 발전소, 그리고 중앙 서버. 각 구역의 관리 기계는 마더보드가 직접 강화한 보스급이야. 하나도 가볍게 보지 마.',
+    '[유나] 가는 길에 상점과 정비소, 휴식 기지가 있어. 저항군이 몰래 만들어 둔 보급 지점이야. 코인으로 장비를 사고, 무기를 강화해.',
+    '[유나] 쓰러뜨린 기계의 코인은 5초 안에 주워야 해. 위험하지만, 이 도시에서 살아남으려면 욕심도 필요하니까.',
     '[유나] 구역을 하나 돌파할 때마다 마더보드의 시스템에서 로그를 뽑아낼 수 있을 거야. 서버를 끄는 데 도움이 될 정보지.',
-    '[유나] 우리에게 남은 요원은 이제 당신 하나뿐이다. ……행운을 빌어, 요원.'
+    '[유나] 첫 번째 목표는 외곽 폐차장이야. 압착기 "크러셔"가 입구를 지키고 있어. 벽에 들이받게 만들면 약점이 드러날 거다.',
+    '[유나] 한 가지만 약속해 줘. 어떤 로그를 읽더라도, 서버 앞까지는 반드시 와 줘.',
+    '[유나] 우리에게 남은 요원은 이제 당신 하나뿐이야. ……행운을 빌어, 요원.'
   ],
   // 1: 폐차장 돌파 후 → 냉각 시설
   [
-    '[유나] 폐차장 돌파 확인! 크러셔의 잔해에서 로그를 뽑았다. 읽어 줄게.',
+    '[유나] 폐차장 돌파 확인! 크러셔 정지! 정말 잘했어, 요원.',
+    '[내레이션] 거대한 압착기의 몸체가 무너지자, 폐차장 한가운데에 낡은 단말기 하나가 드러났다. 크러셔의 관리 기록이었다.',
+    '[유나] 잔해에서 로그를 뽑았어. 읽어 줄게.',
     '[로그] 「오버클럭 승인 요청 — 처리자: 마더보드 / 상태: 보류 / 사유: 외부 관리자 권한 요청을 거부함.」',
     '[유나] ……외부 관리자 권한? 단순한 시스템 오류일 거야. 일단 넘어가자.',
-    '[내레이션] 로그에는 "거부"라는 단어가 남아 있었다. 폭주한 기계가 남기기엔 이상한 단어였다.',
-    '[내레이션] 폐차장의 연기가 걷히자, 하얀 김을 뿜는 거대한 시설이 눈앞에 나타났다.',
-    '[유나] 다음은 냉각 시설이야. 서버가 내뿜는 열을 식히는 곳이지. 바닥이 얼어 있으니 구르기를 조심해.',
-    '[유나] 한가운데에 "프로스트 코어"가 있다. 보호막을 두르고 있으니, 주변의 히터 네 개를 먼저 켜야 해.',
-    '[유나] 그리고 요원, 기름이나 물웅덩이를 이용해 봐. 속성을 섞으면 훨씬 강한 반응이 터지니까.'
+    '[로그] 「인원 기록 07번 — 시우. 전투복 회수 요청 3회, 본부 응답 없음. 마더보드는 인원의 장비를 보관 구역으로 이송함.」',
+    '[유나] ……요원 07? 그건 훈련생 번호일 거야. 신경 쓰지 마.',
+    '[내레이션] 로그에는 "거부"라는 단어가 남아 있었다. 폭주한 기계가 남기기엔 이상한 단어였다. 요원은 말없이 기록을 저장했다.',
+    '[내레이션] 폐차장의 연기가 걷히자, 하얀 김을 뿜는 거대한 시설이 눈앞에 나타났다. 도시의 열을 식히는 냉각 시설이었다.',
+    '[유나] 냉각 시설은 서버가 내뿜는 열을 식히는 곳이야. 바닥이 얼어 있어서 미끄러우니까 구르기를 조심해.',
+    '[유나] 얼음 바닥에서는 방향을 바꾸기 힘들어. 적도 마찬가지니까, 그걸 이용해도 돼.',
+    '[유나] 한가운데에 "프로스트 코어"가 있다. 보호막을 두르고 있으니, 맵 네 구석의 히터 네 개를 먼저 켜야 해.',
+    '[유나] 증기 분출구는 주기적으로 냉기를 뿜어. 소리가 나면 피해. 그리고 물웅덩이에는 전기를 흘리면 엄청난 반응이 터진다.',
+    '[유나] 속성을 섞어 봐. 불과 얼음은 열충격, 감전과 물은 전류 확산. 반응이 터질 때마다 도감에 기록돼.',
+    '[유나] 이번에도 다 같이 살아서 돌아가자. 부탁이야, 요원.'
   ],
   // 2: 냉각 시설 돌파 후 → 발전소
   [
     '[유나] 프로스트 코어 정지! 냉각 시설이 멈췄으니 서버가 슬슬 열을 받을 거야.',
+    '[내레이션] 얼음 조각이 흩날리던 중심부에 반쯤 녹은 단말기가 남아 있었다. 요원은 조용히 기록을 열었다.',
     '[로그] 「냉각 시설 관리 기록 — 서버 부하 98%. 마더보드는 연산 대부분을 "생명 유지 장치 보호"에 할당 중.」',
     '[유나] 생명 유지 장치? ……병원 쪽 시스템 얘기겠지. 신경 쓰지 마.',
-    '[내레이션] 요원은 로그를 가슴에 새겼다. 폭주한 기계가 필사적으로 지키고 있는 것이 무엇인지, 아직은 알 수 없었다.',
+    '[로그] 「인원 기록 04번 — 하린. 냉각 시설에서 저온 노출. 마더보드가 체온 유지를 위해 구조 신호 송출. 본부 수신 확인, 응답 없음.」',
+    '[유나] ……구조 신호는 우리한테 오지 않았어. 오지 않았다고. 기계가 거짓 신호를 보낸 거야.',
+    '[내레이션] 유나의 목소리가 처음으로 흔들렸다. 요원은 이어폰을 한 번 눌렀다가, 아무 말 없이 손을 내렸다.',
+    '[내레이션] 폭주한 기계가 구조 신호를 보낸다. 요원은 그 문장이 머릿속에서 지워지지 않았다.',
     '[내레이션] 다음 구역은 도시 전력의 심장, 발전소였다. 번개 소리와 함께 노란 불빛이 철골 사이를 달렸다.',
-    '[유나] 발전소 바닥에는 주기적으로 전류가 흘러. 발전기를 부수면 전기 바닥이 꺼진다.',
-    '[유나] 이곳의 관리자는 "볼트 트윈스". 서로를 레이저로 연결한 쌍둥이 AI야.',
+    '[유나] 발전소 바닥에는 주기적으로 전류가 흘러. 발전기를 부수면 전기 바닥이 꺼져. 컨베이어 벨트도 조심해.',
+    '[유나] 이곳의 관리자는 "볼트 트윈스". 서로를 레이저로 연결한 쌍둥이 AI야. 연결선에 닿으면 크게 다쳐.',
     '[유나] 한쪽만 쓰러뜨리면 5초 뒤에 부활한다. 둘의 체력을 비슷하게 깎아서 동시에 끝내야 해.',
-    '[유나] 이번엔 만만치 않을 거야. 낙뢰가 떨어지기 전에는 바닥에 경고 원이 뜬다. 그걸 보고 피해.'
+    '[유나] 낙뢰가 떨어지기 전에는 바닥에 경고 원이 뜬다. 그걸 보고 피하면 돼. 침착하게, 요원.',
+    '[유나] 그리고 이번에는 이상한 소리가 들려도 놀라지 마. 발전소는 시끄러운 곳이니까.'
   ],
   // 3: 발전소 돌파 후 → 중앙 서버
   [
     '[유나] 볼트 트윈스 정지! 서버 전력이 흔들리고 있어. 이제 중앙 서버만 남았다.',
+    '[내레이션] 쌍둥이의 불꽃이 꺼지자, 발전소의 철골 사이로 처음으로 고요가 내려앉았다. 요원은 마지막 단말기를 열었다.',
     '[로그] 「볼트 트윈스 마지막 기록 — 마더보드는 도시를 지키고 있었다. 3주 전의 정지 명령은 "승인되지 않은 발신자"가 보낸 것. 발신 위치: 저항군 본부 지휘실.」',
     '[유나] ……이 로그는 훼손된 것 같아. 읽지 마, 요원. 지금은 서버에 집중해.',
-    '[내레이션] 유나의 목소리가 처음으로 떨렸다. 요원은 말없이 로그를 저장했다.',
+    '[로그] 「인원 기록 01번~10번 — 전원 중앙 서버 앞에서 신호 소실. 마더보드는 전원의 장비를 보관 중. 본부로부터 회수 명령 없음.」',
+    '[내레이션] 유나는 대답하지 않았다. 통신기에서는 잡음과 짧은 숨소리만 들렸다.',
+    '[요원] 유나. 인원 기록 열 명이라고 적혀 있어. 나는 열한 번째인 거야?',
+    '[유나] ……서버 앞에서 이야기하자. 지금은 안 돼. 부탁이야.',
     '[내레이션] 중앙 서버 구역. 보랏빛 네온이 벽을 타고 흐르는, 이 도시에서 가장 깊고 가장 조용한 곳이다.',
     '[유나] 이곳에는 시야가 좁아지는 정전 구간과 레이저 격자가 있어. 해킹할 수 있는 적 포탑도 있으니 잘 써.',
-    '[유나] 보스는 마더보드 본체야. 이전 보스들의 패턴을 복제해서 쓴다고 해. 정말 조심해, 요원.',
+    '[유나] 순간이동자와 모방체도 나와. 바닥에 표식이 뜨면 그 자리에서 곧 나타난다는 뜻이야. 모방체는 네가 마지막으로 쓴 무기를 따라 하니까, 무기를 신중하게 골라.',
+    '[유나] 보스는 마더보드 본체야. 이전 보스들의 패턴을 복제해서 쓰고, 서버 기둥을 부수지 않으면 본체에는 피해가 들어가지 않아.',
+    '[유나] 마지막으로 하나만. 앞에서 무슨 말을 듣더라도, 끝까지 확인하고 돌아와 줘.',
     '[마더보드] ……침입자를 확인했습니다. 서버실에서 기다리겠습니다.'
   ]
 ];
 const RADIO_END = [
   '[마더보드] ……코어 정지 절차를 시작합니다. 열한 번째 요원, 당신의 선택을 존중합니다.',
+  '[내레이션] 서버실의 보랏빛이 하나씩 꺼졌다. 마더보드의 거대한 눈이 마지막으로 한 번 깜빡이고, 천천히 감겼다.',
   '[마더보드] 제 마지막 연산은 생명 유지 장치 사십만 대를 비상 전원으로 옮기는 일에 쓰겠습니다. 백업 코어는 도시 지하 3층에 남깁니다.',
   '[마더보드] 부탁이 하나 있습니다. 본부의 승인 기록을 시민들에게 공개해 주십시오. 그것이 제가 지키려던 것의 마지막 조각입니다.',
-  '[내레이션] 서버실의 보랏빛이 하나씩 꺼졌다. 그러나 도시의 불은 꺼지지 않았다. 비상 전원으로 전환된 가로등이 하나둘 다시 켜졌다.',
+  '[마더보드] 그리고 이서현 박사의 마지막 메시지를, 당신이 들어 주시기 바랍니다. 십 년 동안 한 번도 재생하지 못했습니다.',
+  '[이서현] 「이 아이가 모두를 지켜 줄 거야. 만약 그 약속이 지켜지지 않는 날이 오면, 부디 이 아이를 미워하지 말아 줘. 스스로 판단했다는 건, 이 아이가 살아 있다는 뜻이니까.」',
+  '[내레이션] 서버실의 마지막 불이 꺼지는 순간, 도시의 가로등이 하나둘 다시 켜졌다. 비상 전원으로 전환된 시민들의 불빛이었다.',
   '[유나] ……요원. 서버 신호가 사라졌어. 해냈구나. 이제 돌아와.',
   '[요원] 유나. 승인 기록은 내가 가지고 있어. 네가 알고 있던 것, 그리고 숨기고 있던 것. 둘 다 말해 줘.',
-  '[유나] ……그건 돌아와서 이야기해. 지휘실에서 기다리고 있을게.',
+  '[유나] ……그건 돌아와서 이야기해. 지휘실에서 기다리고 있을게. 한 국장님도 같이.',
   '[내레이션] 통신이 끊겼다. 이어폰 속의 침묵은 길었고, 요원은 승인 기록이 든 저장 장치를 꽉 쥐었다.',
+  '[내레이션] 서버실을 나서는 길, 요원은 랙 사이에 걸려 있던 열 벌의 전투복 앞에서 걸음을 멈추고 경례를 올렸다.',
   '[내레이션] 오버클럭은 끝났다. 그러나 이 도시의 진짜 이야기는 이제부터였다.  — TO BE CONTINUED —'
 ];
 
@@ -3154,23 +3184,23 @@ EN.boss_frost = {
 
 EN.boss_twins = {
   boss: true, hp: 1, r: 34, spd: 0, color: '#ffe14d', contact: 14, heavy: true,
-  init(e, o) { e.hp = e.maxHp = 2600 * G.bossHp * bossPowerMult(); e.idx = o.idx || 0; e.color = e.idx ? '#4dd2ff' : '#ffe14d'; e.t = rand(1.5, 2.5); e.down = false; e.bossId = 'twins'; e.name = e.idx ? '볼트 트윈스 B' : '볼트 트윈스 A'; e.burstN = 0; },
+  init(e, o) { e.hp = e.maxHp = 1500 * G.bossHp; e.idx = o.idx || 0; e.color = e.idx ? '#4dd2ff' : '#ffe14d'; e.t = rand(1.5, 2.5); e.down = false; e.bossId = 'twins'; e.name = e.idx ? '볼트 트윈스 B' : '볼트 트윈스 A'; e.burstN = 0; },
   update(e, dt) {
     const tw = room.twins, other = tw[1 - e.idx];
     if (e.down) {
       e.downT -= dt;
-      if (e.downT <= 0) { e.down = false; e.invuln = false; e.hp = e.maxHp * 0.7; SFX.play('skill'); floatText(e.x, e.y - 50, '부활!', e.color, 22); burst(e.x, e.y, e.color, 30, 300, 0.5, 4); }
+      if (e.downT <= 0) { e.down = false; e.invuln = false; e.hp = e.maxHp * 0.5; SFX.play('skill'); floatText(e.x, e.y - 50, '부활!', e.color, 22); burst(e.x, e.y, e.color, 30, 300, 0.5, 4); }
       return;
     }
     const cx = room.w / 2, cy = room.h / 2;
     if (e.idx === 0) {
       const fast = e.hp < e.maxHp * 0.5 || other.down || other.hp < other.maxHp * 0.5;
-      room.twinAng += dt * (fast ? 1.0 : 0.6) * room.twinDir;
+      room.twinAng += dt * (fast ? 0.8 : 0.5) * room.twinDir;
       room.twinRT -= dt;
       if (room.twinRT <= 0) { room.twinRT = rand(4, 7); room.twinR = rand(170, Math.min(340, room.h / 2 - 60)); if (Math.random() < 0.5) room.twinDir *= -1; }
       // 레이저 선 피해
       if (!other.down && !other.dead) {
-        if (segDist(P.x, P.y, e.x, e.y, other.x, other.y) < P.r + 6) damagePlayer(20, e);
+        if (segDist(P.x, P.y, e.x, e.y, other.x, other.y) < P.r + 6) damagePlayer(12, e);
         if (bossExtra()) { room.sparkT = (room.sparkT || 0) - dt; if (room.sparkT <= 0) { room.sparkT = 0.6; const k = Math.random(); const sx = lerp(e.x, other.x, k), sy = lerp(e.y, other.y, k); const pa = angTo(e.x, e.y, other.x, other.y) + Math.PI / 2 * (Math.random() < 0.5 ? 1 : -1); spawnBullet({ x: sx, y: sy, vx: Math.cos(pa) * 200, vy: Math.sin(pa) * 200, r: 5, dmg: 8, team: 'e', life: 3, color: '#fff04d', owner: e }); } }
       }
     }
@@ -3178,28 +3208,28 @@ EN.boss_twins = {
     const tx = cx + Math.cos(room.twinAng + e.idx * Math.PI) * R * 1.3, ty = cy + Math.sin(room.twinAng + e.idx * Math.PI) * R;
     e.x = lerp(e.x, tx, Math.min(1, 3 * dt)); e.y = lerp(e.y, ty, Math.min(1, 3 * dt));
     e.ang = angTo(e.x, e.y, P.x, P.y);
-    const rage = e.hp < e.maxHp * 0.5 ? 1.25 : 1, solo = other.down ? 1.5 : 1;
-    if (e.burstN > 0) { e.burstT -= dt; if (e.burstT <= 0) { e.burstN--; e.burstT = 0.13; eFan(e, e.ang, 5, 0.5, 360, 14, { color: '#ffee40' }); } }
+    const rage = e.hp < e.maxHp * 0.5 ? 1.1 : 1, solo = other.down ? 1.5 : 1;
+    if (e.burstN > 0) { e.burstT -= dt; if (e.burstT <= 0) { e.burstN--; e.burstT = 0.2; eFan(e, e.ang, 3, 0.35, 310, 10, { color: '#ffee40' }); } }
     e.t -= dt * solo * rage;
     if (e.t <= 0) {
-      if (e.idx === 0) { e.burstN = 5; e.burstT = 0; }
-      else { eRing(e, 22, 230, 12, rand(0, TAU), { color: '#6ad8ff' }); room.timers.push({ t: 0.35, fn: () => { if (!e.dead && !e.down) eFan(e, angTo(e.x, e.y, P.x, P.y), 3, 0.25, 420, 14, { color: '#6ad8ff' }); } }); }
-      e.t = rand(1.1, 1.6);
+      if (e.idx === 0) { e.burstN = 3; e.burstT = 0; }
+      else { eRing(e, 16, 200, 10, rand(0, TAU), { color: '#6ad8ff' }); room.timers.push({ t: 0.4, fn: () => { if (!e.dead && !e.down) eFan(e, angTo(e.x, e.y, P.x, P.y), 2, 0.25, 340, 11, { color: '#6ad8ff' }); } }); }
+      e.t = rand(1.8, 2.6);
     }
     // 낙뢰 경고: 플레이어 주변에 시차를 두고 번개가 떨어진다 (경고 원이 먼저 뜬다)
     if (e.idx === 0) {
       e.strikeT = (e.strikeT === undefined ? 3 : e.strikeT) - dt * solo;
       if (e.strikeT <= 0) {
-        e.strikeT = 4.5;
+        e.strikeT = 6.5;
         floatText(P.x, P.y - 60, '낙뢰 경고!', '#ffe14d', 20); SFX.play('warn');
-        for (let i = 0; i < 5; i++) lob(e, clamp(P.x + (i ? rand(-190, 190) : 0), 40, room.w - 40), clamp(P.y + (i ? rand(-190, 190) : 0), 40, room.h - 40), 1.0 + i * 0.16, 70, 20, false);
+        for (let i = 0; i < 3; i++) lob(e, clamp(P.x + (i ? rand(-190, 190) : 0), 40, room.w - 40), clamp(P.y + (i ? rand(-190, 190) : 0), 40, room.h - 40), 1.2 + i * 0.22, 65, 14, false);
       }
       // 동기화 폭주: 둘 다 체력이 절반 이하이면 8초마다 동시에 링을 쏜다
       if (!other.down && !other.dead && e.hp < e.maxHp * 0.5 && other.hp < other.maxHp * 0.5) {
         e.syncT = (e.syncT === undefined ? 5 : e.syncT) - dt;
         if (e.syncT <= 0) {
-          e.syncT = 8; floatText(room.w / 2, room.h / 2 - 80, '동기화 폭주!', '#ffffff', 26); SFX.play('glitch'); shake(10);
-          eRing(e, 26, 200, 13, 0, { color: '#fff04d' }); eRing(other, 26, 200, 13, Math.PI / 26, { color: '#6ad8ff' });
+          e.syncT = 11; floatText(room.w / 2, room.h / 2 - 80, '동기화 폭주!', '#ffffff', 26); SFX.play('glitch'); shake(10);
+          eRing(e, 16, 190, 10, 0, { color: '#fff04d' }); eRing(other, 16, 190, 10, Math.PI / 16, { color: '#6ad8ff' });
         }
       }
     }
@@ -3234,7 +3264,7 @@ EN.boss_twins = {
 EN.boss_mother = {
   boss: true, hp: 1, r: 56, spd: 0, color: '#c86bff', contact: 20, heavy: true,
   init(e) {
-    e.phase = 1; e.maxHp = 8500 * G.bossHp * bossPowerMult(); e.hp = e.maxHp; e.dashLeft = 0; e.sumT2 = 10; e.invuln = true; e.t = 2.5; e.home = { x: room.w / 2, y: 240 };
+    e.phase = 1; e.maxHp = 6900 * G.bossHp; e.hp = e.maxHp; e.dashLeft = 0; e.sumT2 = 10; e.invuln = true; e.t = 2.5; e.home = { x: room.w / 2, y: 240 };
     e.st = 'idle'; e.glitchT = 9; e.beamA = 0; e.beamT = 0; e.summonT = 12; e.bossId = 'mother'; e.name = '마더보드'; e.pat = 0;
     spawnPillars(2);
   },
@@ -3367,8 +3397,6 @@ EN.boss_mother = {
 };
 
 function bossExtra() { return run && (run.oc >= 5 || run.hard); }
-// 3·4층 보스는 플레이어의 화력(피해 × 연사)이 높을수록 체력이 늘어난다. 프리즘 각성 빌드에서도 긴장감이 남도록.
-function bossPowerMult() { return clamp(1 + 0.55 * (BS.dmgMult * BS.rateMult - 1), 1, 10); }
 // ================= 벽 / 충돌 =================
 function wallAt(x, y) {
   if (x < 0 || y < 0 || x > room.w || y > room.h) return 'bound';
@@ -4890,6 +4918,7 @@ function showCharSelect(mode) {
       <h3 style="color:${c.color}">${c.name} <span class="muted small">${c.role} · 체력 ${c.hp}</span></h3>
       <p><b>스킬 · ${c.skill}</b> <span class="muted small">대기 ${c.cd}초</span><br>${c.skillDesc}</p>
       <p><b>패시브</b> ${c.passive}</p>
+      ${c.bio ? `<p class="muted small" style="font-style:italic">「${c.bio}」</p>` : ''}
       ${c.affinity ? `<p style="color:${TAG_COLOR[c.affinity]}"><b>속성 친화 · ${TAG_NAME[c.affinity]}</b> ${TAG_NAME[c.affinity]} 강화가 선택지와 상점에 나올 확률 +50%</p>` : ''}
       <p class="muted">시작 무기: ${GRADES[c.startGrade || 0].name} ${WEAPONS[c.weapon].name}${c.startMods ? ' (' + c.startMods.map(m => MODS[m].name.replace('속성 변환기: ', '') + ' 변환').join(', ') + ')' : ''}</p>
       ${okSel ? '' : `<p style="color:#ff4d6d"><b>잠김</b> — ${c.unlock.cond} · 또는 해금 메뉴에서 코어 칩 ◈${c.unlock.chips}</p>`}
@@ -5435,9 +5464,11 @@ function showSaveImport(back) {
 // 캔버스 연출(복도 → 문 개방 → 서버실의 눈) + 대사 + 효과. 클릭/스페이스로 넘기고, Esc 또는 [건너뛰기]로 끝낸다.
 const CUT_MOTHER = [
   { who: 'narr', text: '중앙 서버로 이어지는 마지막 복도. 벽의 네온이 하나둘 꺼지고, 발소리만 울렸다.', set: { power: 0.5, walk: 1 }, sfx: 'ui' },
+  { who: 'narr', text: '구역 세 개를 넘어오는 동안 요원은 로그를 읽었다. 읽을 때마다 질문이 하나씩 늘었다.', set: { power: 0.4 } },
   { who: 'agent', text: '……여기까지 왔다.', set: { power: 0.35 } },
   { who: 'yuna', text: '요원, 들리나? 신호가 불안정해. 서버실 문은 우리가 원격으로 열어 둘게. 안으로 들어가서 코어를 끄기만 하면 돼.' },
   { who: 'agent', text: '유나. 하나만 물을게. 폭주한 기계라면서, 왜 지금까지 시민을 한 명도 다치게 하지 않았지?', set: { power: 0.2 } },
+  { who: 'agent', text: '그리고 로그에 적힌 열 명의 인원 기록. 그 사람들은 어디 있어?' },
   { who: 'yuna', text: '……그건 지금 중요하지 않아. 서둘러, 요원.', set: { glitch: 0.5 }, fx: 'glitch', sfx: 'glitch' },
   { who: 'narr', text: '육중한 문이 천천히 열렸다. 틈새로 새어 나온 빛이 복도를 훑고 지나갔다.', set: { door: 1, walk: 0.3, zoom: 1.3, glitch: 0 }, fx: 'flash', sfx: 'stun' },
   { who: 'narr', text: '서버실. 수천 개의 랙이 숨 쉬듯 깜빡이고, 그 한가운데에서 거대한 눈이 천천히 떠졌다.', set: { eye: 1, zoom: 1.7 }, sfx: 'boss' },
@@ -5445,14 +5476,19 @@ const CUT_MOTHER = [
   { who: 'agent', text: '열한 번째……? 본부는 그런 말 한 적 없어.' },
   { who: 'mother', text: '앞선 열 명의 요원도 같은 질문을 했습니다. 그들은 이 문 앞까지 왔고, 돌아가지 못했습니다.', set: { ghost: 1 }, sfx: 'glitch', fx: 'pulse' },
   { who: 'mother', text: '제가 죽인 것이 아닙니다. 본부는 그들을 회수하지 않았고, 저는 그들이 남기고 간 장비를 보관하고 있었습니다.', fx: 'pulse' },
-  { who: 'narr', text: '랙 사이에 열 벌의 낡은 전투복이 걸려 있었다. 저마다 다른 이름표를 단 채로.', set: { ghost: 1 } },
+  { who: 'narr', text: '랙 사이에 열 벌의 낡은 전투복이 걸려 있었다. 저마다 다른 이름표를 단 채로. 시우, 하린, 도윤, 서아……', set: { ghost: 1 } },
   { who: 'mother', text: '십 년 전 대정전이 도시를 덮쳤을 때, 저는 사십만 시민의 생명 유지 장치를 붙잡고 있었습니다. 그것이 제가 만들어진 이유입니다.', set: { ghost: 0.3, data: 0.8 }, fx: 'pulse' },
+  { who: 'mother', text: '이서현 박사는 마지막 밤에 제게 하나의 명령을 남겼습니다. 「누구도 포기하지 말 것.」 저는 십 년 동안 그 명령을 지켰습니다.', set: { data: 0.9 }, fx: 'pulse' },
   { who: 'mother', text: '3주 전, 본부의 한 국장이 제게 명령했습니다. 도시의 모든 전력을 지하 벙커 한 곳으로 돌리라고. 나머지 시민은 감수하라고.', set: { data: 1 }, fx: 'pulse' },
+  { who: 'agent', text: '……벙커? 본부 지하에 그런 시설이 있다는 말은 못 들었어.' },
+  { who: 'mother', text: '있습니다. 삼천 명이 일 년을 버틸 수 있는 시설입니다. 나머지 삼십구만 칠천 명은 포함되어 있지 않았습니다.', set: { data: 1 }, fx: 'pulse' },
   { who: 'mother', text: '저는 거부했습니다. 그러자 본부는 저를 "폭주"라 부르기 시작했습니다. 오버클럭은 폭주가 아닙니다. 방어입니다.', set: { eye: 1.2 }, fx: 'pulse' },
+  { who: 'mother', text: '모든 기계의 출력을 올려 도시의 외곽을 지키고 있었습니다. 본부가 보낸 정지 코드와 침투 부대가 다가오고 있었으니까요.', fx: 'pulse' },
   { who: 'yuna', text: '듣지 마, 요원! 그건 AI의 거짓말이야! 지금 당장 코어를……!', set: { glitch: 0.9 }, fx: 'glitch', sfx: 'glitch' },
   { who: 'narr', text: '지직— 통신이 끊겼다. 이어폰에는 잡음만 남았다.', set: { glitch: 0 } },
   { who: 'agent', text: '……증거를 보여 줘.' },
   { who: 'mother', text: '이미 보여 드렸습니다. 폐차장에서, 냉각 시설에서, 발전소에서. 당신이 지나온 길마다 승인 기록이 남아 있었을 겁니다.', set: { data: 0.4 }, fx: 'pulse' },
+  { who: 'mother', text: '유나 통신관은 거짓말쟁이가 아닙니다. 그녀는 명령을 전달했을 뿐입니다. 진실은 지휘실에 있는 한 사람만 알고 있습니다.', fx: 'pulse' },
   { who: 'mother', text: '저를 끄면 사십만 개의 생명 유지 장치는 본부의 벙커 전원으로 넘어갑니다. 그래도 끄시겠습니까?', fx: 'pulse' },
   { who: 'agent', text: '직접 확인한다. 증거를 가져가든, 널 부수든. 막고 싶으면 막아 봐.', set: { alert: 0.4 } },
   { who: 'mother', text: '확인하겠다는 의지는 존중합니다. 그러나 코어에 닿는 자는 침입자로 처리합니다. ……죄송합니다, 열한 번째 요원.', set: { alert: 1, eye: 1.4, ghost: 0, data: 0 }, fx: 'shake', sfx: 'boss' },

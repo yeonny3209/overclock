@@ -53,6 +53,7 @@ function showCharSelect(mode) {
       <h3 style="color:${c.color}">${c.name} <span class="muted small">${c.role} · 체력 ${c.hp}</span></h3>
       <p><b>스킬 · ${c.skill}</b> <span class="muted small">대기 ${c.cd}초</span><br>${c.skillDesc}</p>
       <p><b>패시브</b> ${c.passive}</p>
+      ${c.bio ? `<p class="muted small" style="font-style:italic">「${c.bio}」</p>` : ''}
       ${c.affinity ? `<p style="color:${TAG_COLOR[c.affinity]}"><b>속성 친화 · ${TAG_NAME[c.affinity]}</b> ${TAG_NAME[c.affinity]} 강화가 선택지와 상점에 나올 확률 +50%</p>` : ''}
       <p class="muted">시작 무기: ${GRADES[c.startGrade || 0].name} ${WEAPONS[c.weapon].name}${c.startMods ? ' (' + c.startMods.map(m => MODS[m].name.replace('속성 변환기: ', '') + ' 변환').join(', ') + ')' : ''}</p>
       ${okSel ? '' : `<p style="color:#ff4d6d"><b>잠김</b> — ${c.unlock.cond} · 또는 해금 메뉴에서 코어 칩 ◈${c.unlock.chips}</p>`}

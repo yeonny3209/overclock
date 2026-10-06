@@ -207,23 +207,23 @@ EN.boss_frost = {
 
 EN.boss_twins = {
   boss: true, hp: 1, r: 34, spd: 0, color: '#ffe14d', contact: 14, heavy: true,
-  init(e, o) { e.hp = e.maxHp = 2600 * G.bossHp * bossPowerMult(); e.idx = o.idx || 0; e.color = e.idx ? '#4dd2ff' : '#ffe14d'; e.t = rand(1.5, 2.5); e.down = false; e.bossId = 'twins'; e.name = e.idx ? '볼트 트윈스 B' : '볼트 트윈스 A'; e.burstN = 0; },
+  init(e, o) { e.hp = e.maxHp = 1500 * G.bossHp; e.idx = o.idx || 0; e.color = e.idx ? '#4dd2ff' : '#ffe14d'; e.t = rand(1.5, 2.5); e.down = false; e.bossId = 'twins'; e.name = e.idx ? '볼트 트윈스 B' : '볼트 트윈스 A'; e.burstN = 0; },
   update(e, dt) {
     const tw = room.twins, other = tw[1 - e.idx];
     if (e.down) {
       e.downT -= dt;
-      if (e.downT <= 0) { e.down = false; e.invuln = false; e.hp = e.maxHp * 0.7; SFX.play('skill'); floatText(e.x, e.y - 50, '부활!', e.color, 22); burst(e.x, e.y, e.color, 30, 300, 0.5, 4); }
+      if (e.downT <= 0) { e.down = false; e.invuln = false; e.hp = e.maxHp * 0.5; SFX.play('skill'); floatText(e.x, e.y - 50, '부활!', e.color, 22); burst(e.x, e.y, e.color, 30, 300, 0.5, 4); }
       return;
     }
     const cx = room.w / 2, cy = room.h / 2;
     if (e.idx === 0) {
       const fast = e.hp < e.maxHp * 0.5 || other.down || other.hp < other.maxHp * 0.5;
-      room.twinAng += dt * (fast ? 1.0 : 0.6) * room.twinDir;
+      room.twinAng += dt * (fast ? 0.8 : 0.5) * room.twinDir;
       room.twinRT -= dt;
       if (room.twinRT <= 0) { room.twinRT = rand(4, 7); room.twinR = rand(170, Math.min(340, room.h / 2 - 60)); if (Math.random() < 0.5) room.twinDir *= -1; }
       // 레이저 선 피해
       if (!other.down && !other.dead) {
-        if (segDist(P.x, P.y, e.x, e.y, other.x, other.y) < P.r + 6) damagePlayer(20, e);
+        if (segDist(P.x, P.y, e.x, e.y, other.x, other.y) < P.r + 6) damagePlayer(12, e);
         if (bossExtra()) { room.sparkT = (room.sparkT || 0) - dt; if (room.sparkT <= 0) { room.sparkT = 0.6; const k = Math.random(); const sx = lerp(e.x, other.x, k), sy = lerp(e.y, other.y, k); const pa = angTo(e.x, e.y, other.x, other.y) + Math.PI / 2 * (Math.random() < 0.5 ? 1 : -1); spawnBullet({ x: sx, y: sy, vx: Math.cos(pa) * 200, vy: Math.sin(pa) * 200, r: 5, dmg: 8, team: 'e', life: 3, color: '#fff04d', owner: e }); } }
       }
     }
@@ -231,28 +231,28 @@ EN.boss_twins = {
     const tx = cx + Math.cos(room.twinAng + e.idx * Math.PI) * R * 1.3, ty = cy + Math.sin(room.twinAng + e.idx * Math.PI) * R;
     e.x = lerp(e.x, tx, Math.min(1, 3 * dt)); e.y = lerp(e.y, ty, Math.min(1, 3 * dt));
     e.ang = angTo(e.x, e.y, P.x, P.y);
-    const rage = e.hp < e.maxHp * 0.5 ? 1.25 : 1, solo = other.down ? 1.5 : 1;
-    if (e.burstN > 0) { e.burstT -= dt; if (e.burstT <= 0) { e.burstN--; e.burstT = 0.13; eFan(e, e.ang, 5, 0.5, 360, 14, { color: '#ffee40' }); } }
+    const rage = e.hp < e.maxHp * 0.5 ? 1.1 : 1, solo = other.down ? 1.5 : 1;
+    if (e.burstN > 0) { e.burstT -= dt; if (e.burstT <= 0) { e.burstN--; e.burstT = 0.2; eFan(e, e.ang, 3, 0.35, 310, 10, { color: '#ffee40' }); } }
     e.t -= dt * solo * rage;
     if (e.t <= 0) {
-      if (e.idx === 0) { e.burstN = 5; e.burstT = 0; }
-      else { eRing(e, 22, 230, 12, rand(0, TAU), { color: '#6ad8ff' }); room.timers.push({ t: 0.35, fn: () => { if (!e.dead && !e.down) eFan(e, angTo(e.x, e.y, P.x, P.y), 3, 0.25, 420, 14, { color: '#6ad8ff' }); } }); }
-      e.t = rand(1.1, 1.6);
+      if (e.idx === 0) { e.burstN = 3; e.burstT = 0; }
+      else { eRing(e, 16, 200, 10, rand(0, TAU), { color: '#6ad8ff' }); room.timers.push({ t: 0.4, fn: () => { if (!e.dead && !e.down) eFan(e, angTo(e.x, e.y, P.x, P.y), 2, 0.25, 340, 11, { color: '#6ad8ff' }); } }); }
+      e.t = rand(1.8, 2.6);
     }
     // 낙뢰 경고: 플레이어 주변에 시차를 두고 번개가 떨어진다 (경고 원이 먼저 뜬다)
     if (e.idx === 0) {
       e.strikeT = (e.strikeT === undefined ? 3 : e.strikeT) - dt * solo;
       if (e.strikeT <= 0) {
-        e.strikeT = 4.5;
+        e.strikeT = 6.5;
         floatText(P.x, P.y - 60, '낙뢰 경고!', '#ffe14d', 20); SFX.play('warn');
-        for (let i = 0; i < 5; i++) lob(e, clamp(P.x + (i ? rand(-190, 190) : 0), 40, room.w - 40), clamp(P.y + (i ? rand(-190, 190) : 0), 40, room.h - 40), 1.0 + i * 0.16, 70, 20, false);
+        for (let i = 0; i < 3; i++) lob(e, clamp(P.x + (i ? rand(-190, 190) : 0), 40, room.w - 40), clamp(P.y + (i ? rand(-190, 190) : 0), 40, room.h - 40), 1.2 + i * 0.22, 65, 14, false);
       }
       // 동기화 폭주: 둘 다 체력이 절반 이하이면 8초마다 동시에 링을 쏜다
       if (!other.down && !other.dead && e.hp < e.maxHp * 0.5 && other.hp < other.maxHp * 0.5) {
         e.syncT = (e.syncT === undefined ? 5 : e.syncT) - dt;
         if (e.syncT <= 0) {
-          e.syncT = 8; floatText(room.w / 2, room.h / 2 - 80, '동기화 폭주!', '#ffffff', 26); SFX.play('glitch'); shake(10);
-          eRing(e, 26, 200, 13, 0, { color: '#fff04d' }); eRing(other, 26, 200, 13, Math.PI / 26, { color: '#6ad8ff' });
+          e.syncT = 11; floatText(room.w / 2, room.h / 2 - 80, '동기화 폭주!', '#ffffff', 26); SFX.play('glitch'); shake(10);
+          eRing(e, 16, 190, 10, 0, { color: '#fff04d' }); eRing(other, 16, 190, 10, Math.PI / 16, { color: '#6ad8ff' });
         }
       }
     }
@@ -287,7 +287,7 @@ EN.boss_twins = {
 EN.boss_mother = {
   boss: true, hp: 1, r: 56, spd: 0, color: '#c86bff', contact: 20, heavy: true,
   init(e) {
-    e.phase = 1; e.maxHp = 8500 * G.bossHp * bossPowerMult(); e.hp = e.maxHp; e.dashLeft = 0; e.sumT2 = 10; e.invuln = true; e.t = 2.5; e.home = { x: room.w / 2, y: 240 };
+    e.phase = 1; e.maxHp = 6900 * G.bossHp; e.hp = e.maxHp; e.dashLeft = 0; e.sumT2 = 10; e.invuln = true; e.t = 2.5; e.home = { x: room.w / 2, y: 240 };
     e.st = 'idle'; e.glitchT = 9; e.beamA = 0; e.beamT = 0; e.summonT = 12; e.bossId = 'mother'; e.name = '마더보드'; e.pat = 0;
     spawnPillars(2);
   },
@@ -420,5 +420,3 @@ EN.boss_mother = {
 };
 
 function bossExtra() { return run && (run.oc >= 5 || run.hard); }
-// 3·4층 보스는 플레이어의 화력(피해 × 연사)이 높을수록 체력이 늘어난다. 프리즘 각성 빌드에서도 긴장감이 남도록.
-function bossPowerMult() { return clamp(1 + 0.55 * (BS.dmgMult * BS.rateMult - 1), 1, 10); }
