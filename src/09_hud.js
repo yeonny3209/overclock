@@ -1,9 +1,10 @@
 // ================= 화면 효과 =================
 function drawScreenFx() {
+  if (room.zid >= 4) drawS2Screen();
   // 정전 구간
   if (room.darkOn && !P.dead) {
     const px = P.x - cam.x, py = P.y - cam.y;
-    const g = ctx.createRadialGradient(px, py, 120, px, py, 300);
+    const vm = darkVision(), g = ctx.createRadialGradient(px, py, 120 * vm, px, py, 300 * vm);
     g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(2,0,8,0.97)');
     ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
   } else if (room.dark && room.darkT < 1 && !room.darkOn && Math.sin(G.time * 40) > 0.3) {
@@ -103,7 +104,7 @@ function drawHUD() {
   const rx = VW - pad;
   panel(rx - 200, pad, 200, 74);
   hudText(`◆ ${run.coins}`, rx - 14, pad + 26, 22, '#ffe14d', 'right');
-  const loc = (run.hard ? 'HARD · ' : '') + (G.mode === 'arena' ? `아레나 웨이브 ${room.obj.wave || 0}` : `${ZONES[run.zone].name} · ${Math.min(6, run.row + 1)}/7`);
+  const loc = (run.hard ? 'HARD · ' : '') + (G.mode === 'arena' ? `아레나 웨이브 ${room.obj.wave || 0}` : `${zoneOf().name} · ${Math.min(6, run.row + 1)}/7`);
   hudText(loc, rx - 188, pad + 26, 12, '#8a90b0');
   if (run.combo > 0) {
     const gr = comboGrade(run.combo);

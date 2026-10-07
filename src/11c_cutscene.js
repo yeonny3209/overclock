@@ -51,7 +51,7 @@ const CUT_WHO = {
 const cut = { on: false };
 function cutActive() { return cut.on; }
 
-function showCutscene(lines, done) {
+function showCutscene(lines, done, opt = {}) {
   menuMode(); stopCut();
   const ch = run ? CHARS[run.char] : CHARS.rain;
   UI(`<div class="cut" id="cut">
@@ -59,7 +59,7 @@ function showCutscene(lines, done) {
     <div class="cut-flash" id="cutFlash"></div>
     <div class="cut-bar top"></div><div class="cut-bar bot"></div>
     <button class="cut-skip" id="cutSkip" type="button">건너뛰기 ▶▶</button>
-    <div class="cut-title" id="cutTitle"><small>CHAPTER 4</small><b>중앙 서버</b><span>열한 번째 요원</span></div>
+    <div class="cut-title" id="cutTitle"><small>${opt.ch || 'CHAPTER 4'}</small><b>${opt.name || '중앙 서버'}</b><span>${opt.sub || '열한 번째 요원'}</span></div>
     <div class="cut-box" id="cutBox"><div class="cut-who" id="cutWho"></div><div class="cut-text" id="cutText"></div><div class="cut-hint">클릭 · 스페이스로 넘기기 &nbsp;/&nbsp; Esc 건너뛰기</div></div>
   </div>`);
   Object.assign(cut, {
@@ -76,7 +76,7 @@ function showCutscene(lines, done) {
   cutDrone();
   cut.raf = requestAnimationFrame(cutFrame);
   cut.startTimer = setTimeout(() => { cut.started = true; $('cutTitle').classList.add('hide'); cutNext(); }, 3000);
-  codex('story', 'cut');
+  codex('story', opt.id || 'cut');
 }
 function cutDrone() { if (!cut.on) return; try { SFX.init(); if (SFX.ctx) { SFX.tone('sawtooth', 55, 52, 4.5, 0.05); SFX.tone('sine', 110, 104, 4.5, 0.04); } } catch (e) { } cut.droneT = setTimeout(cutDrone, 4300); }
 function stopCut() { cut.on = false; cancelAnimationFrame(cut.raf); clearInterval(cut.timer); clearTimeout(cut.startTimer); clearTimeout(cut.droneT); }

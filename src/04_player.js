@@ -3,7 +3,7 @@ function rollMax() { return run.char === 'kai' ? 2 : 1; }
 function createPlayer(x, y) {
   P = {
     x, y, vx: 0, vy: 0, kx: 0, ky: 0, r: 13, ang: -Math.PI / 2, rollT: 0, rollDx: 1, rollDy: 0, rollCharges: rollMax(), rollRe: 0,
-    iframe: 1, hurtT: 0, skillCd: 0, skillMax: 1, overT: 0, slowT: 0, shield: BS.surv5 ? 2 : 0, dead: false, staticShots: 0,
+    iframe: 1, hurtT: 0, skillCd: 0, skillMax: 1, overT: 0, slowT: 0, shield: (BS.surv5 ? 2 : 0) + (BS.crewShield || 0), dead: false, staticShots: 0,
     chillT: 0, trailT: 0, stepT: 0, prompt: null, swapT: 0, pullT: 0, momT: 0, reaperShots: 0, bladeA: 0, odT: 0, hackCd: 0, stormT: 0, stormTick: 0, novaT: 0, fortT: 0
   };
   for (const w of run.weapons) w.first = true;
@@ -11,7 +11,7 @@ function createPlayer(x, y) {
 
 function updatePlayer(dt) {
   if (P.dead) return;
-  P.iframe -= dt; P.hurtT -= dt; P.overT -= dt; P.slowT -= dt; P.chillT -= dt; P.skillCd -= dt; P.swapT -= dt; P.momT -= dt; P.odT -= dt; P.hackCd -= dt; P.novaT -= dt; P.fortT -= dt;
+  P.iframe -= dt; P.hurtT -= dt; P.overT -= dt; P.slowT -= dt; P.chillT -= dt; P.skillCd -= dt; P.swapT -= dt; P.momT -= dt; P.odT -= dt; P.hackCd -= dt; P.shadeT = (P.shadeT || 0) - dt; P.novaT -= dt; P.fortT -= dt;
   const rm = rollMax();
   if (P.rollCharges < rm) { P.rollRe -= dt; if (P.rollRe <= 0) { P.rollCharges++; P.rollRe = 0.75 * BS.rollCdMult; } }
   const gp = Input.gp;
@@ -56,7 +56,7 @@ function updatePlayer(dt) {
       if (run.char === 'kai') P.momT = 1.5;
     }
   } else {
-    const spd = 235 * BS.moveMult * (P.chillT > 0 ? 0.7 : 1) * hz.slow * (P.odT > 0 ? 1.25 : 1);
+    const spd = 235 * BS.moveMult * (P.chillT > 0 ? 0.7 : 1) * hz.slow * (P.odT > 0 ? 1.25 : 1) * (room.floodOn && !BS.floodRun ? 0.82 : 1);
     const acc = hz.slick ? 2.5 : 14;
     P.vx = lerp(P.vx, mx * spd, Math.min(1, acc * dt));
     P.vy = lerp(P.vy, my * spd, Math.min(1, acc * dt));
@@ -189,6 +189,7 @@ function useSkill() {
       part({ x: P.x, y: P.y, life: 0.4, size: 330, color: '#3d8bff', kind: 'arc', rot: P.ang }); SFX.play('water'); shake(5);
       break;
     }
+    case 'yuna': case 'siwoo': useSkillS2(run.char); break;
     case 'iron': P.fortT = 4; floatText(P.x, P.y - 36, '강철 요새!', '#a9b8cc', 20); part({ x: P.x, y: P.y, life: 0.5, size: 60, color: '#a9b8cc', kind: 'ring' }); break;
   }
   if (BS.discharge) {
@@ -393,7 +394,7 @@ function findInteract() {
   if (P.hackCd <= 0) {
     let hb = null, hd = 90 * 90;
     for (const e of room.enemies) { if (!canHack(e)) continue; const dd = d2(e.x, e.y, P.x, P.y); if (dd < hd) { hd = dd; hb = e; } }
-    if (hb) return { label: `[E] 해킹: ${(ENEMY_INFO[hb.type] || { name: '분열 조각' }).name}`, act: () => { hackEnemy(hb); P.hackCd = 8; } };
+    if (hb) return { label: `[E] 해킹: ${(ENEMY_INFO[hb.type] || { name: '분열 조각' }).name}`, act: () => { hackEnemy(hb, 15 + (BS.hackDur || 0)); P.hackCd = 8 * (BS.hackCdMult || 1); } };
   }
   for (const p of room.pickups) {
     if (p.type !== 'weapon') continue;
@@ -439,6 +440,7 @@ function playerHazards() {
       case 'elecfloor': if (h.state === 'on') damagePlayer(10, null); break;
       case 'laser': if (h.state === 'on') damagePlayer(h.boss ? 9 : 15, null); break;
       case 'conveyor': r.px += h.dx * 140; r.py += h.dy * 140; break;
+      case 'train': if (h.state === 'on') damagePlayer(20, null); break;
     }
   }
   return r;

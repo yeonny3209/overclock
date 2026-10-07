@@ -26,7 +26,7 @@ function setupBoss(id) {
     room.twinAng = Math.PI; room.twinR = 250; room.twinDir = 1; room.twinRT = 5;
   } else if (id === 'mother') {
     spawnEnemy('boss_mother', cx, 240, { instant: true });
-  }
+  } else setupBossS2(id);
   const info = BOSS_INFO[id];
   G.bossIntro = { t: 2.6, max: 2.6, name: info.name, sub: info.sub };
   SFX.play('boss');
@@ -47,10 +47,12 @@ function onBossKilled(e) {
   run.bossesKilled++;
   SAVE.stats.bossKills = (SAVE.stats.bossKills || 0) + 1;
   G.slowmo = 1.4; shake(24); SFX.play('explode');
-  for (let i = 0; i < 8; i++) room.timers.push({ t: i * 0.15, fn: () => fxExplosion(e.x + rand(-70, 70), e.y + rand(-70, 70), 80) });
+  if (e.bossId === 'siwoo') floatText(e.x, e.y - 50, '시우가 무릎을 꿇었다', '#b49bff', 20);
+  else for (let i = 0; i < 8; i++) room.timers.push({ t: i * 0.15, fn: () => fxExplosion(e.x + rand(-70, 70), e.y + rand(-70, 70), 80) });
   for (const m of room.enemies) if (!m.dead && !m.boss) { m.noReward = true; killEnemy(m, {}); }
   for (const b of BULLETS) if (b.team === 'e') b.dead = true;
-  room.props = room.props.filter(p => p.type !== 'spillar' && p.type !== 'heater');
+  room.props = room.props.filter(p => p.type !== 'spillar' && p.type !== 'heater' && p.type !== 'valve' && p.type !== 'mterm');
+  room.darkOn = false; room.dark = false; room.smokeT = 0;
   room.hazards = room.hazards.filter(h => !h.boss); // 보스가 만든 얼음 바닥 제거 (아레나에서 계속 남던 문제)
   G.glitchT = 0; G.glitchWarn = 0;
   room.bossDead = true;

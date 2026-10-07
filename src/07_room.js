@@ -80,6 +80,7 @@ function updateHazards(dt) {
 // ================= 사물 =================
 function hitProp(p, dmg, b, isExp) {
   if (p.dead) return;
+  if (hitPropS2(p, dmg)) return;
   switch (p.type) {
     case 'barrel':
       p.hp -= dmg; p.flash = 0.08;
@@ -120,7 +121,7 @@ function interactProp(p) {
   } else if (p.type === 'hturret') {
     p.hacked = true; p.interact = null; SFX.play('hack');
     floatText(p.x, p.y - 30, '해킹 성공!', '#29f0ff', 18); burst(p.x, p.y, '#29f0ff', 20, 200, 0.5, 3);
-  }
+  } else interactPropS2(p);
 }
 function updateProps(dt) {
   for (const p of room.props) {
@@ -193,6 +194,7 @@ function freeSpot(r, minFromSpawn = 260, tries = 60, extraCheck) {
 }
 function newRoom(kind, zone, w, h) {
   room = {
+    zid: zone + (run && run.mode === 'season2' ? 4 : 0),
     kind, zone, w, h, walls: [], hazards: [], props: [], enemies: [], pickups: [], allies: [], hacked: [], vortices: [], decals: [], timers: [],
     obj: null, objProp: null, kills: 0, over: false, done: false, success: false, t: 0, dark: false, darkOn: false, darkT: 7,
     eliteChance: 0, muts2: false, extra: 1, medkitUsed: false, powerOff: false, sx: w / 2, sy: h - 130, bossDead: false
@@ -230,6 +232,7 @@ function genLayout(objType) {
       break;
     }
   }
+  if (room.zid >= 4) { genLayoutS2(); return; }
   const spot = (r, d) => freeSpot(r, d || 240, 60, band ? (x, y) => Math.abs(y - H / 2) > r + 60 : null);
   const puddle = (type, n, r0, r1) => { for (let i = 0; i < n; i++) { const r = rand(r0, r1); const s = freeSpot(r, 200, 40); if (s) addHazard({ type, x: s.x, y: s.y, r }); } };
   if (z === 0) {
@@ -285,17 +288,18 @@ function startRoom(o) {
   const boss = kind === 'boss';
   const W = boss ? 1500 : Math.round(rand(1500, 1800)), H = boss ? 1000 : Math.round(rand(1000, 1200));
   newRoom(kind, zone, W, H);
-  setScaling(zone, 0);
+  setScaling(zone + (isS2() ? 0.5 : 0), 0);
   resetFx();
   const objType = boss ? 'boss' : o.objective;
   if (objType === 'escort') { room.sx = 160; room.sy = H / 2 + 70; }
   if (boss) {
     room.sy = H - 120;
-    if (zone === 0) { // 크러셔: 부딪힐 기둥
+    if (room.zid === 0) { // 크러셔: 부딪힐 기둥
       for (const [x, y] of [[W * 0.25, H * 0.3], [W * 0.75, H * 0.3], [W * 0.25, H * 0.68], [W * 0.75, H * 0.68]]) room.walls.push({ x: x - 45, y: y - 35, w: 90, h: 70, hp: Infinity, kind: 'block' });
     }
-    if (zone === 2) { for (let i = 0; i < 2; i++) addHazard({ type: 'water', x: W * (0.2 + i * 0.6), y: H * 0.5, r: 80 }); }
-    if (zone === 0) for (let i = 0; i < 2; i++) addHazard({ type: 'oil', x: W * (0.35 + i * 0.3), y: H * 0.82, r: 70 });
+    if (room.zid === 2) { for (let i = 0; i < 2; i++) addHazard({ type: 'water', x: W * (0.2 + i * 0.6), y: H * 0.5, r: 80 }); }
+    if (room.zid >= 4) bossRoomS2();
+    if (room.zid === 0) for (let i = 0; i < 2; i++) addHazard({ type: 'oil', x: W * (0.35 + i * 0.3), y: H * 0.82, r: 70 });
   } else genLayout(objType);
   createPlayer(room.sx, room.sy);
   if (run.char === 'momo') placeTurret(P.x + 40, P.y - 30);
@@ -347,20 +351,20 @@ function setupObjective(type) {
       break;
     case 'bounty': {
       ob.time = 45; ob.spawnT = 3;
-      const pool = Object.keys(ZONES[z].spawn).filter(t => t !== 'sturret' && t !== 'summoner');
+      const pool = Object.keys(ZONES[room.zid].spawn).filter(t => t !== 'sturret' && t !== 'summoner');
       const s = freeSpot(30, 600) || { x: W / 2, y: 120 };
       const t = spawnEnemy(pick(pool), s.x, s.y, { muts: rollMuts(z >= 2 ? 2 : 1), hpMult: 1.4 });
       t.bounty = true; ob.target = t;
       break;
     }
-    case 'boss': setupBoss(ZONES[z].boss); break;
+    case 'boss': setupBoss(ZONES[room.zid].boss); break;
     case 'arena': ob.wave = 0; ob.state = 'break'; ob.bt = 2; break;
   }
 }
 
 // ================= 적 소환 =================
 function pickEnemyType() {
-  const sp = room.kind === 'arena' ? arenaSpawnTable() : ZONES[room.zone].spawn;
+  const sp = room.kind === 'arena' ? arenaSpawnTable() : ZONES[room.zid].spawn;
   const turrets = room.enemies.filter(e => e.type === 'sturret' && !e.dead).length;
   let keys = Object.keys(sp);
   if (turrets >= 3) keys = keys.filter(k => k !== 'sturret');

@@ -81,6 +81,7 @@ function recomputeBuild() {
     coinMult: c.avarice ? 2 : 1, enemyMult: c.avarice ? 1.25 : 1, berserk: !!c.berserk, noHeal: !!c.berserk
   };
   BS.execFlat = 0;
+  s2Build();
   if (run) {
     // 캐릭터 패시브
     switch (run.char) {
@@ -97,7 +98,7 @@ function recomputeBuild() {
   }
   if (run) {
     const old = run.maxHp || 0;
-    let mh = run.baseMaxHp + 15 * u('armor') + (BS.surv3 ? 40 : 0);
+    let mh = run.baseMaxHp + 15 * u('armor') + (BS.surv3 ? 40 : 0) + (run.crewHp || 0);
     if (c.glass) mh *= 0.7;
     if (run.oc >= 9) mh *= 0.85;
     run.maxHp = Math.max(10, Math.round(mh));
@@ -171,6 +172,8 @@ function wStats(w) {
     if (w.id === 'smg') s.rate *= 1 + 0.6 * (w.spin || 0);
     if (w.id === 'flamer') { s.life *= 1.5; s.stacks = 2; }
     if (w.id === 'hydro') s.pierce += 3;
+    if (w.id === 'riotgun') { s.pellets += 2; s.knock *= 1.5; }
+    if (w.id === 'harpoon') { s.pierce += 3; s.dmg *= 1.25; }
     if (w.id === 'needler') s.stacks = 2;
     if (w.id === 'chrono') { s.pierce += 3; s.life *= 2; }
     if (w.id === 'sonicgun') s.pellets += 3;
@@ -186,6 +189,8 @@ function dynDmg() {
   if (run.char === 'sera' && P && P.slowT > 0) m *= 1.3;
   if (run.char === 'rain' && P && P.overT > 0) m *= 1.2;
   if (P && P.odT > 0) m *= 1.5;
+  if (P && P.shadeT > 0) m *= 1.6;
+  if (room && room.floodOn && BS.floodRun) m *= 1.2;
   if (BS.berserk) m *= 1 + Math.min(0.9, 0.03 * run.berserk);
   return m;
 }
@@ -214,7 +219,7 @@ function isMom(e, o) { const s = (o && o.owner) || e; return !!(s && (s.bossId =
 function eShoot(e, a, spd, dmg, o = {}) {
   SFX.play('eshoot', 0.8);
   if (isMom(e, o)) spd *= 0.85; // 마더보드의 탄은 15% 느리다
-  if (e.ally) return spawnBullet(Object.assign({ x: e.x + Math.cos(a) * (e.r + 4), y: e.y + Math.sin(a) * (e.r + 4), vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, r: 5, dmg: dmg * 1.5 * BS.dmgMult, team: 'p', life: 3, color: '#29f0ff', small: true }, o, { team: 'p', color: '#29f0ff', chill: false, owner: null, type: o.type === 'boomerang' ? 'n' : (o.type || 'n') }));
+  if (e.ally) return spawnBullet(Object.assign({ x: e.x + Math.cos(a) * (e.r + 4), y: e.y + Math.sin(a) * (e.r + 4), vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, r: 5, dmg: dmg * 1.5 * BS.dmgMult * allyDmgMult(), team: 'p', life: 3, color: '#29f0ff', small: true }, o, { team: 'p', color: '#29f0ff', chill: false, owner: null, type: o.type === 'boomerang' ? 'n' : (o.type || 'n') }));
   return spawnBullet(Object.assign({ x: e.x + Math.cos(a) * (e.r + 4), y: e.y + Math.sin(a) * (e.r + 4), vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, r: 6, dmg: dmg, team: 'e', life: 4, color: '#ff3b3b', owner: e }, o));
 }
 function eRing(e, n, spd, dmg, off = 0, o = {}) { if (isMom(e, o)) n = Math.max(8, Math.round(n * 0.55)); for (let i = 0; i < n; i++) eShoot(e, off + i / n * TAU, spd, dmg, o); }
@@ -1024,7 +1029,7 @@ function activateOverdrive() {
 
 // ================= 해킹: 약해진 적을 아군으로 =================
 const HACKABLE = ['grunt', 'gunner', 'bomber', 'tank', 'splitter', 'mini', 'frostdrone', 'shield', 'snake', 'mimic'];
-function canHack(e) { return !e.dead && !e.spawning && !e.boss && !e.bounty && !e.ally && HACKABLE.includes(e.type) && e.hp <= e.maxHp * 0.3; }
+function canHack(e) { return !e.dead && !e.spawning && !e.boss && !e.bounty && !e.ally && HACKABLE.includes(e.type) && e.hp <= e.maxHp * hackThreshold(); }
 function hackEnemy(e, dur = 15) {
   const i = room.enemies.indexOf(e); if (i < 0) return;
   room.enemies.splice(i, 1);

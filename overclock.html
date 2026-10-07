@@ -366,7 +366,7 @@ function saveRun() {
   try { if (run && run.mode !== 'arena' && run.map && !run.ended) localStorage.setItem(runKey(run.mode), JSON.stringify(run)); } catch (e) { }
 }
 function clearRun(mode) { try { localStorage.removeItem(runKey(mode)); if ((mode || 'campaign') === 'campaign') localStorage.removeItem(RUN_KEY); } catch (e) { } }
-function clearAllRuns() { for (const m of ['campaign', 'daily']) clearRun(m); }
+function clearAllRuns() { for (const m of ['campaign', 'daily', 'season2']) clearRun(m); }
 function peekRun(mode = 'campaign') {
   try {
     let r = JSON.parse(localStorage.getItem(runKey(mode)));
@@ -985,6 +985,7 @@ function recomputeBuild() {
     coinMult: c.avarice ? 2 : 1, enemyMult: c.avarice ? 1.25 : 1, berserk: !!c.berserk, noHeal: !!c.berserk
   };
   BS.execFlat = 0;
+  s2Build();
   if (run) {
     // 캐릭터 패시브
     switch (run.char) {
@@ -1001,7 +1002,7 @@ function recomputeBuild() {
   }
   if (run) {
     const old = run.maxHp || 0;
-    let mh = run.baseMaxHp + 15 * u('armor') + (BS.surv3 ? 40 : 0);
+    let mh = run.baseMaxHp + 15 * u('armor') + (BS.surv3 ? 40 : 0) + (run.crewHp || 0);
     if (c.glass) mh *= 0.7;
     if (run.oc >= 9) mh *= 0.85;
     run.maxHp = Math.max(10, Math.round(mh));
@@ -1075,6 +1076,8 @@ function wStats(w) {
     if (w.id === 'smg') s.rate *= 1 + 0.6 * (w.spin || 0);
     if (w.id === 'flamer') { s.life *= 1.5; s.stacks = 2; }
     if (w.id === 'hydro') s.pierce += 3;
+    if (w.id === 'riotgun') { s.pellets += 2; s.knock *= 1.5; }
+    if (w.id === 'harpoon') { s.pierce += 3; s.dmg *= 1.25; }
     if (w.id === 'needler') s.stacks = 2;
     if (w.id === 'chrono') { s.pierce += 3; s.life *= 2; }
     if (w.id === 'sonicgun') s.pellets += 3;
@@ -1090,6 +1093,8 @@ function dynDmg() {
   if (run.char === 'sera' && P && P.slowT > 0) m *= 1.3;
   if (run.char === 'rain' && P && P.overT > 0) m *= 1.2;
   if (P && P.odT > 0) m *= 1.5;
+  if (P && P.shadeT > 0) m *= 1.6;
+  if (room && room.floodOn && BS.floodRun) m *= 1.2;
   if (BS.berserk) m *= 1 + Math.min(0.9, 0.03 * run.berserk);
   return m;
 }
@@ -1118,7 +1123,7 @@ function isMom(e, o) { const s = (o && o.owner) || e; return !!(s && (s.bossId =
 function eShoot(e, a, spd, dmg, o = {}) {
   SFX.play('eshoot', 0.8);
   if (isMom(e, o)) spd *= 0.85; // 마더보드의 탄은 15% 느리다
-  if (e.ally) return spawnBullet(Object.assign({ x: e.x + Math.cos(a) * (e.r + 4), y: e.y + Math.sin(a) * (e.r + 4), vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, r: 5, dmg: dmg * 1.5 * BS.dmgMult, team: 'p', life: 3, color: '#29f0ff', small: true }, o, { team: 'p', color: '#29f0ff', chill: false, owner: null, type: o.type === 'boomerang' ? 'n' : (o.type || 'n') }));
+  if (e.ally) return spawnBullet(Object.assign({ x: e.x + Math.cos(a) * (e.r + 4), y: e.y + Math.sin(a) * (e.r + 4), vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, r: 5, dmg: dmg * 1.5 * BS.dmgMult * allyDmgMult(), team: 'p', life: 3, color: '#29f0ff', small: true }, o, { team: 'p', color: '#29f0ff', chill: false, owner: null, type: o.type === 'boomerang' ? 'n' : (o.type || 'n') }));
   return spawnBullet(Object.assign({ x: e.x + Math.cos(a) * (e.r + 4), y: e.y + Math.sin(a) * (e.r + 4), vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, r: 6, dmg: dmg, team: 'e', life: 4, color: '#ff3b3b', owner: e }, o));
 }
 function eRing(e, n, spd, dmg, off = 0, o = {}) { if (isMom(e, o)) n = Math.max(8, Math.round(n * 0.55)); for (let i = 0; i < n; i++) eShoot(e, off + i / n * TAU, spd, dmg, o); }
@@ -1928,7 +1933,7 @@ function activateOverdrive() {
 
 // ================= 해킹: 약해진 적을 아군으로 =================
 const HACKABLE = ['grunt', 'gunner', 'bomber', 'tank', 'splitter', 'mini', 'frostdrone', 'shield', 'snake', 'mimic'];
-function canHack(e) { return !e.dead && !e.spawning && !e.boss && !e.bounty && !e.ally && HACKABLE.includes(e.type) && e.hp <= e.maxHp * 0.3; }
+function canHack(e) { return !e.dead && !e.spawning && !e.boss && !e.bounty && !e.ally && HACKABLE.includes(e.type) && e.hp <= e.maxHp * hackThreshold(); }
 function hackEnemy(e, dur = 15) {
   const i = room.enemies.indexOf(e); if (i < 0) return;
   room.enemies.splice(i, 1);
@@ -2000,7 +2005,7 @@ function rollMax() { return run.char === 'kai' ? 2 : 1; }
 function createPlayer(x, y) {
   P = {
     x, y, vx: 0, vy: 0, kx: 0, ky: 0, r: 13, ang: -Math.PI / 2, rollT: 0, rollDx: 1, rollDy: 0, rollCharges: rollMax(), rollRe: 0,
-    iframe: 1, hurtT: 0, skillCd: 0, skillMax: 1, overT: 0, slowT: 0, shield: BS.surv5 ? 2 : 0, dead: false, staticShots: 0,
+    iframe: 1, hurtT: 0, skillCd: 0, skillMax: 1, overT: 0, slowT: 0, shield: (BS.surv5 ? 2 : 0) + (BS.crewShield || 0), dead: false, staticShots: 0,
     chillT: 0, trailT: 0, stepT: 0, prompt: null, swapT: 0, pullT: 0, momT: 0, reaperShots: 0, bladeA: 0, odT: 0, hackCd: 0, stormT: 0, stormTick: 0, novaT: 0, fortT: 0
   };
   for (const w of run.weapons) w.first = true;
@@ -2008,7 +2013,7 @@ function createPlayer(x, y) {
 
 function updatePlayer(dt) {
   if (P.dead) return;
-  P.iframe -= dt; P.hurtT -= dt; P.overT -= dt; P.slowT -= dt; P.chillT -= dt; P.skillCd -= dt; P.swapT -= dt; P.momT -= dt; P.odT -= dt; P.hackCd -= dt; P.novaT -= dt; P.fortT -= dt;
+  P.iframe -= dt; P.hurtT -= dt; P.overT -= dt; P.slowT -= dt; P.chillT -= dt; P.skillCd -= dt; P.swapT -= dt; P.momT -= dt; P.odT -= dt; P.hackCd -= dt; P.shadeT = (P.shadeT || 0) - dt; P.novaT -= dt; P.fortT -= dt;
   const rm = rollMax();
   if (P.rollCharges < rm) { P.rollRe -= dt; if (P.rollRe <= 0) { P.rollCharges++; P.rollRe = 0.75 * BS.rollCdMult; } }
   const gp = Input.gp;
@@ -2053,7 +2058,7 @@ function updatePlayer(dt) {
       if (run.char === 'kai') P.momT = 1.5;
     }
   } else {
-    const spd = 235 * BS.moveMult * (P.chillT > 0 ? 0.7 : 1) * hz.slow * (P.odT > 0 ? 1.25 : 1);
+    const spd = 235 * BS.moveMult * (P.chillT > 0 ? 0.7 : 1) * hz.slow * (P.odT > 0 ? 1.25 : 1) * (room.floodOn && !BS.floodRun ? 0.82 : 1);
     const acc = hz.slick ? 2.5 : 14;
     P.vx = lerp(P.vx, mx * spd, Math.min(1, acc * dt));
     P.vy = lerp(P.vy, my * spd, Math.min(1, acc * dt));
@@ -2186,6 +2191,7 @@ function useSkill() {
       part({ x: P.x, y: P.y, life: 0.4, size: 330, color: '#3d8bff', kind: 'arc', rot: P.ang }); SFX.play('water'); shake(5);
       break;
     }
+    case 'yuna': case 'siwoo': useSkillS2(run.char); break;
     case 'iron': P.fortT = 4; floatText(P.x, P.y - 36, '강철 요새!', '#a9b8cc', 20); part({ x: P.x, y: P.y, life: 0.5, size: 60, color: '#a9b8cc', kind: 'ring' }); break;
   }
   if (BS.discharge) {
@@ -2390,7 +2396,7 @@ function findInteract() {
   if (P.hackCd <= 0) {
     let hb = null, hd = 90 * 90;
     for (const e of room.enemies) { if (!canHack(e)) continue; const dd = d2(e.x, e.y, P.x, P.y); if (dd < hd) { hd = dd; hb = e; } }
-    if (hb) return { label: `[E] 해킹: ${(ENEMY_INFO[hb.type] || { name: '분열 조각' }).name}`, act: () => { hackEnemy(hb); P.hackCd = 8; } };
+    if (hb) return { label: `[E] 해킹: ${(ENEMY_INFO[hb.type] || { name: '분열 조각' }).name}`, act: () => { hackEnemy(hb, 15 + (BS.hackDur || 0)); P.hackCd = 8 * (BS.hackCdMult || 1); } };
   }
   for (const p of room.pickups) {
     if (p.type !== 'weapon') continue;
@@ -2436,6 +2442,7 @@ function playerHazards() {
       case 'elecfloor': if (h.state === 'on') damagePlayer(10, null); break;
       case 'laser': if (h.state === 'on') damagePlayer(h.boss ? 9 : 15, null); break;
       case 'conveyor': r.px += h.dx * 140; r.py += h.dy * 140; break;
+      case 'train': if (h.state === 'on') damagePlayer(20, null); break;
     }
   }
   return r;
@@ -2935,6 +2942,7 @@ function enemyHazards(e, dt) {
       case 'venom': if (tick) applyStatus(e, 'poison', {}); break;
       case 'elecfloor': if (h.state === 'on' && tick) { damageEnemy(e, 15, { quiet: true, dot: true }); applyStatus(e, 'elec', { noChain: true }); } break;
       case 'laser': if (h.state === 'on' && tick) damageEnemy(e, 20, { quiet: true, dot: true }); break;
+      case 'train': if (h.state === 'on') trainHitEnemy(e, tick); break;
       case 'steam': if (h.on && tick) applyStatus(e, 'ice', {}); break;
       case 'frostfloor': if (tick) applyStatus(e, 'ice', {}); break;
       case 'conveyor': if (!e.heavy) { e.x += h.dx * 140 * dt; e.y += h.dy * 140 * dt; } break;
@@ -2974,7 +2982,7 @@ function updateHacked(dt) {
     if (h.contactCd <= 0) for (const e of room.enemies) {
       if (e.dead || e.spawning || d2(e.x, e.y, h.x, h.y) > (e.r + h.r + 2) ** 2) continue;
       h.contactCd = 0.45;
-      damageEnemy(e, Math.max(8, h.contact * 1.6) * BS.dmgMult, { knock: 120, ang: angTo(h.x, h.y, e.x, e.y) });
+      damageEnemy(e, Math.max(8, h.contact * 1.6) * BS.dmgMult * allyDmgMult(), { knock: 120, ang: angTo(h.x, h.y, e.x, e.y) });
       break;
     }
   }
@@ -3007,7 +3015,7 @@ function setupBoss(id) {
     room.twinAng = Math.PI; room.twinR = 250; room.twinDir = 1; room.twinRT = 5;
   } else if (id === 'mother') {
     spawnEnemy('boss_mother', cx, 240, { instant: true });
-  }
+  } else setupBossS2(id);
   const info = BOSS_INFO[id];
   G.bossIntro = { t: 2.6, max: 2.6, name: info.name, sub: info.sub };
   SFX.play('boss');
@@ -3028,10 +3036,12 @@ function onBossKilled(e) {
   run.bossesKilled++;
   SAVE.stats.bossKills = (SAVE.stats.bossKills || 0) + 1;
   G.slowmo = 1.4; shake(24); SFX.play('explode');
-  for (let i = 0; i < 8; i++) room.timers.push({ t: i * 0.15, fn: () => fxExplosion(e.x + rand(-70, 70), e.y + rand(-70, 70), 80) });
+  if (e.bossId === 'siwoo') floatText(e.x, e.y - 50, '시우가 무릎을 꿇었다', '#b49bff', 20);
+  else for (let i = 0; i < 8; i++) room.timers.push({ t: i * 0.15, fn: () => fxExplosion(e.x + rand(-70, 70), e.y + rand(-70, 70), 80) });
   for (const m of room.enemies) if (!m.dead && !m.boss) { m.noReward = true; killEnemy(m, {}); }
   for (const b of BULLETS) if (b.team === 'e') b.dead = true;
-  room.props = room.props.filter(p => p.type !== 'spillar' && p.type !== 'heater');
+  room.props = room.props.filter(p => p.type !== 'spillar' && p.type !== 'heater' && p.type !== 'valve' && p.type !== 'mterm');
+  room.darkOn = false; room.dark = false; room.smokeT = 0;
   room.hazards = room.hazards.filter(h => !h.boss); // 보스가 만든 얼음 바닥 제거 (아레나에서 계속 남던 문제)
   G.glitchT = 0; G.glitchWarn = 0;
   room.bossDead = true;
@@ -3483,6 +3493,7 @@ function updateHazards(dt) {
 // ================= 사물 =================
 function hitProp(p, dmg, b, isExp) {
   if (p.dead) return;
+  if (hitPropS2(p, dmg)) return;
   switch (p.type) {
     case 'barrel':
       p.hp -= dmg; p.flash = 0.08;
@@ -3523,7 +3534,7 @@ function interactProp(p) {
   } else if (p.type === 'hturret') {
     p.hacked = true; p.interact = null; SFX.play('hack');
     floatText(p.x, p.y - 30, '해킹 성공!', '#29f0ff', 18); burst(p.x, p.y, '#29f0ff', 20, 200, 0.5, 3);
-  }
+  } else interactPropS2(p);
 }
 function updateProps(dt) {
   for (const p of room.props) {
@@ -3596,6 +3607,7 @@ function freeSpot(r, minFromSpawn = 260, tries = 60, extraCheck) {
 }
 function newRoom(kind, zone, w, h) {
   room = {
+    zid: zone + (run && run.mode === 'season2' ? 4 : 0),
     kind, zone, w, h, walls: [], hazards: [], props: [], enemies: [], pickups: [], allies: [], hacked: [], vortices: [], decals: [], timers: [],
     obj: null, objProp: null, kills: 0, over: false, done: false, success: false, t: 0, dark: false, darkOn: false, darkT: 7,
     eliteChance: 0, muts2: false, extra: 1, medkitUsed: false, powerOff: false, sx: w / 2, sy: h - 130, bossDead: false
@@ -3633,6 +3645,7 @@ function genLayout(objType) {
       break;
     }
   }
+  if (room.zid >= 4) { genLayoutS2(); return; }
   const spot = (r, d) => freeSpot(r, d || 240, 60, band ? (x, y) => Math.abs(y - H / 2) > r + 60 : null);
   const puddle = (type, n, r0, r1) => { for (let i = 0; i < n; i++) { const r = rand(r0, r1); const s = freeSpot(r, 200, 40); if (s) addHazard({ type, x: s.x, y: s.y, r }); } };
   if (z === 0) {
@@ -3688,17 +3701,18 @@ function startRoom(o) {
   const boss = kind === 'boss';
   const W = boss ? 1500 : Math.round(rand(1500, 1800)), H = boss ? 1000 : Math.round(rand(1000, 1200));
   newRoom(kind, zone, W, H);
-  setScaling(zone, 0);
+  setScaling(zone + (isS2() ? 0.5 : 0), 0);
   resetFx();
   const objType = boss ? 'boss' : o.objective;
   if (objType === 'escort') { room.sx = 160; room.sy = H / 2 + 70; }
   if (boss) {
     room.sy = H - 120;
-    if (zone === 0) { // 크러셔: 부딪힐 기둥
+    if (room.zid === 0) { // 크러셔: 부딪힐 기둥
       for (const [x, y] of [[W * 0.25, H * 0.3], [W * 0.75, H * 0.3], [W * 0.25, H * 0.68], [W * 0.75, H * 0.68]]) room.walls.push({ x: x - 45, y: y - 35, w: 90, h: 70, hp: Infinity, kind: 'block' });
     }
-    if (zone === 2) { for (let i = 0; i < 2; i++) addHazard({ type: 'water', x: W * (0.2 + i * 0.6), y: H * 0.5, r: 80 }); }
-    if (zone === 0) for (let i = 0; i < 2; i++) addHazard({ type: 'oil', x: W * (0.35 + i * 0.3), y: H * 0.82, r: 70 });
+    if (room.zid === 2) { for (let i = 0; i < 2; i++) addHazard({ type: 'water', x: W * (0.2 + i * 0.6), y: H * 0.5, r: 80 }); }
+    if (room.zid >= 4) bossRoomS2();
+    if (room.zid === 0) for (let i = 0; i < 2; i++) addHazard({ type: 'oil', x: W * (0.35 + i * 0.3), y: H * 0.82, r: 70 });
   } else genLayout(objType);
   createPlayer(room.sx, room.sy);
   if (run.char === 'momo') placeTurret(P.x + 40, P.y - 30);
@@ -3750,20 +3764,20 @@ function setupObjective(type) {
       break;
     case 'bounty': {
       ob.time = 45; ob.spawnT = 3;
-      const pool = Object.keys(ZONES[z].spawn).filter(t => t !== 'sturret' && t !== 'summoner');
+      const pool = Object.keys(ZONES[room.zid].spawn).filter(t => t !== 'sturret' && t !== 'summoner');
       const s = freeSpot(30, 600) || { x: W / 2, y: 120 };
       const t = spawnEnemy(pick(pool), s.x, s.y, { muts: rollMuts(z >= 2 ? 2 : 1), hpMult: 1.4 });
       t.bounty = true; ob.target = t;
       break;
     }
-    case 'boss': setupBoss(ZONES[z].boss); break;
+    case 'boss': setupBoss(ZONES[room.zid].boss); break;
     case 'arena': ob.wave = 0; ob.state = 'break'; ob.bt = 2; break;
   }
 }
 
 // ================= 적 소환 =================
 function pickEnemyType() {
-  const sp = room.kind === 'arena' ? arenaSpawnTable() : ZONES[room.zone].spawn;
+  const sp = room.kind === 'arena' ? arenaSpawnTable() : ZONES[room.zid].spawn;
   const turrets = room.enemies.filter(e => e.type === 'sturret' && !e.dead).length;
   let keys = Object.keys(sp);
   if (turrets >= 3) keys = keys.filter(k => k !== 'sturret');
@@ -4011,7 +4025,7 @@ function toast(html) {
 
 // ================= 월드 그리기 =================
 function render() {
-  const Z = ZONES[room.zone];
+  const Z = ZONES[room.zid];
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.fillStyle = '#030208'; ctx.fillRect(0, 0, VW, VH);
   let sx = 0, sy = 0;
@@ -4020,11 +4034,13 @@ function render() {
   ctx.translate(Math.round(-cam.x + sx), Math.round(-cam.y + sy));
   drawFloor(Z);
   drawHazards();
+  drawHazardsS2();
   for (const d of room.decals) { ctx.fillStyle = 'rgba(0,0,0,0.28)'; circlePath(d.x, d.y, d.r); ctx.fill(); }
   drawParticles(true);
   drawWalls(Z);
   drawPickups();
   drawProps();
+  drawPropsS2();
   for (const v of room.vortices) drawVortex(v);
   for (const a of room.allies) drawAlly(a);
   for (const h of room.hacked) { drawEnemy(h); ctx.beginPath(); ctx.arc(h.x, h.y, h.r + 8, -Math.PI / 2, -Math.PI / 2 + TAU * (h.allyT / h.allyMax)); ctx.strokeStyle = '#29f0ff'; ctx.lineWidth = 2; ctx.stroke(); }
@@ -4525,10 +4541,11 @@ function drawParticles(ground) {
 }
 // ================= 화면 효과 =================
 function drawScreenFx() {
+  if (room.zid >= 4) drawS2Screen();
   // 정전 구간
   if (room.darkOn && !P.dead) {
     const px = P.x - cam.x, py = P.y - cam.y;
-    const g = ctx.createRadialGradient(px, py, 120, px, py, 300);
+    const vm = darkVision(), g = ctx.createRadialGradient(px, py, 120 * vm, px, py, 300 * vm);
     g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(2,0,8,0.97)');
     ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
   } else if (room.dark && room.darkT < 1 && !room.darkOn && Math.sin(G.time * 40) > 0.3) {
@@ -4628,7 +4645,7 @@ function drawHUD() {
   const rx = VW - pad;
   panel(rx - 200, pad, 200, 74);
   hudText(`◆ ${run.coins}`, rx - 14, pad + 26, 22, '#ffe14d', 'right');
-  const loc = (run.hard ? 'HARD · ' : '') + (G.mode === 'arena' ? `아레나 웨이브 ${room.obj.wave || 0}` : `${ZONES[run.zone].name} · ${Math.min(6, run.row + 1)}/7`);
+  const loc = (run.hard ? 'HARD · ' : '') + (G.mode === 'arena' ? `아레나 웨이브 ${room.obj.wave || 0}` : `${zoneOf().name} · ${Math.min(6, run.row + 1)}/7`);
   hudText(loc, rx - 188, pad + 26, 12, '#8a90b0');
   if (run.combo > 0) {
     const gr = comboGrade(run.combo);
@@ -4889,6 +4906,7 @@ function showTitle() {
     <div class="col">
       ${(() => { const r = peekRun('campaign'); return r ? `<button class="btn big ye" onclick="${cb(() => resumeRun('campaign'))}">▶ 이어하기 <span class="muted small">${CHARS[r.char].name} · 구역 ${r.zone + 1}${r.oc ? ' · OC' + r.oc : ''}</span></button>` : ''; })()}
       <button class="btn big" onclick="${cb(() => showCharSelect('campaign'))}">${peekRun('campaign') ? '새 캠페인' : '▶ 캠페인'}</button>
+      ${s2TitleButtons()}
       <button class="btn" onclick="${cb(() => showCharSelect('arena'))}">무한 아레나 <span class="muted small">최고 ${SAVE.arenaBest}웨이브</span></button>
       <button class="btn" onclick="${cb(showDaily)}">일일 도전</button>
       <div class="row" style="gap:0">
@@ -4928,7 +4946,7 @@ function showCharSelect(mode) {
       ${okSel ? '' : `<p style="color:#ff4d6d"><b>잠김</b> — ${c.unlock.cond} · 또는 해금 메뉴에서 코어 칩 ◈${c.unlock.chips}</p>`}
     </div>`;
     const hardHtml = `<div class="ocsel"><button class="btn sm ${hard ? 'rd on' : 'rd'}" style="white-space:nowrap;flex-shrink:0;${hard ? 'background:#ff2d55;color:#fff' : ''}" onclick="${cb(() => { hard = !hard; render(); })}">하드 모드: ${hard ? '켜짐' : '꺼짐'}</button><span class="small muted">적 체력 +60% · 적 피해 +40% · 엘리트 증가 · 회복 감소 · 보스 추가 패턴 · 코어 칩 2배</span></div>`;
-    const ocHtml = mode === 'campaign' ? `
+    const ocHtml = mode !== 'arena' ? `
       <div class="ocsel">
         <span>오버클럭 레벨</span>
         <button class="btn sm" onclick="${cb(() => { oc = Math.max(0, oc - 1); render(); })}">◀</button>
@@ -4937,13 +4955,13 @@ function showCharSelect(mode) {
         <span class="muted small">최대 ${SAVE.ocMax}</span>
       </div>
       <div class="small muted" style="max-width:640px;text-align:center;min-height:36px">${oc ? OC_LEVELS.slice(1, oc + 1).map((t, i) => `<span style="color:#ff3df0">${i + 1}</span> ${t}`).join(' · ') : '기본 난이도. 클리어하면 다음 오버클럭 레벨이 열린다.'}</div>` : `<div class="sub">한 경기장에서 끝없이 몰려오는 웨이브. 3웨이브마다 강화, 5웨이브마다 무기 상자, 10웨이브마다 보스.</div>`;
-    scr(`<h2>${mode === 'campaign' ? '요원 선택' : '무한 아레나'}</h2>
+    scr(`<h2>${mode === 'arena' ? '무한 아레나' : mode === 'season2' ? '시즌 2 · 요원 선택' : '요원 선택'}</h2>
       ${cards}${detail}
       ${ocHtml}
       ${hardHtml}
       <div class="row" style="margin-top:10px">
         <button class="btn" onclick="${cb(showTitle)}">뒤로</button>
-        <button class="btn ye" onclick="${cb(() => { if (!charUnlocked(sel)) { toast('잠긴 요원입니다'); return; } SAVE.lastOc = oc; SAVE.lastHard = hard; saveGame(); mode === 'campaign' ? startCampaign(sel, oc, 'campaign', 0, hard) : startArena(sel, hard); })}">출격 ▶</button>
+        <button class="btn ye" onclick="${cb(() => { if (!charUnlocked(sel)) { toast('잠긴 요원입니다'); return; } SAVE.lastOc = oc; SAVE.lastHard = hard; saveGame(); mode === 'season2' ? startSeason2(sel, oc, hard) : mode === 'campaign' ? startCampaign(sel, oc, 'campaign', 0, hard) : startArena(sel, hard); })}">출격 ▶</button>
       </div>`, 'top');
   };
   render();
@@ -4987,7 +5005,7 @@ function topbar() {
   const tags = SET_TAGS.filter(t => run.tags[t]).map(t => `<span class="tag" style="background:${TAG_COLOR[t]}">${TAG_NAME[t]} ${run.tags[t]}</span>`).join('');
   return `<div class="topbar">
     <div><b>${CHARS[run.char].name}</b> <span class="hpbar"><i style="width:${run.hp / run.maxHp * 100}%"></i></span> ${Math.ceil(run.hp)}/${run.maxHp}
-      &nbsp; <span class="coin">◆ ${run.coins}</span> ${run.oc ? `&nbsp;<span style="color:#ff3df0">OC ${run.oc}</span>` : ''}${run.hard ? '&nbsp;<b style="color:#ff2d55">HARD</b>' : ''}</div>
+      &nbsp; <span class="coin">◆ ${run.coins}</span> ${run.oc ? `&nbsp;<span style="color:#ff3df0">OC ${run.oc}</span>` : ''}${run.hard ? '&nbsp;<b style="color:#ff2d55">HARD</b>' : ''}${isS2() ? s2TopInfo() : ''}</div>
     <div class="small">${ws}</div>
     <div>${tags} ${Object.keys(run.curses).map(c => `<span class="tag" style="background:#ff2d55;color:#fff">${CURSE[c].name}</span>`).join('')}</div>
   </div>`;
@@ -5002,7 +5020,7 @@ function availableNodes() {
 function showMap() {
   menuMode(); room = null;
   saveRun(); saveGame();
-  const Z = ZONES[run.zone];
+  const Z = zoneOf();
   const avail = availableNodes();
   const nextRow = run.row + 1;
   const pos = n => ({ x: 8 + n.x * 84, y: 6 + n.r / 6 * 86 });
@@ -5023,7 +5041,7 @@ function showMap() {
   }));
   scr(`${topbar()}
     <h2 style="margin-top:6px">구역 ${run.zone + 1} · ${Z.name} <span class="muted" style="font-size:16px;font-family:Orbitron">${Z.en}</span></h2>
-    <div class="small muted">${Object.values(NODE_INFO).map(n => `<span style="color:${n.color}">${n.icon}</span> ${n.name}`).join(' &nbsp; ')}</div>
+    <div class="small muted">${Object.entries(NODE_INFO).filter(([k]) => k !== 'rescue' || isS2()).map(([, n]) => `<span style="color:${n.color}">${n.icon}</span> ${n.name}`).join(' &nbsp; ')}</div>
     <div class="map"><svg>${lines}</svg>${nodes}</div>
     <div class="row" style="margin-top:4px">
       <button class="btn sm" onclick="${cb(() => showLoadout(showMap))}">장비 / 빌드 보기</button>
@@ -5200,7 +5218,7 @@ function showHelp(back) {
     <button class="btn" onclick="${cb(back)}">돌아가기</button>`, 'top');
 }
 // ================= 상점 =================
-function priceMult() { return (1 + 0.15 * run.zone) * (run.char === 'momo' ? 0.75 : 1) * (run.oc >= 3 ? 1.2 : 1); }
+function priceMult() { return (isS2() ? s2PriceMult() : 1) * (1 + 0.15 * run.zone) * (run.char === 'momo' ? 0.75 : 1) * (run.oc >= 3 ? 1.2 : 1); }
 function genShop() {
   const pm = priceMult();
   const items = [];
@@ -5257,8 +5275,9 @@ function showWorkshop() {
 // ================= 이벤트 =================
 function showEvent() {
   menuMode();
-  let pool = EVENTS.filter(e => !e.special && !run.events.includes(e.id));
-  if (!pool.length) pool = EVENTS.filter(e => !e.special);
+  const okEv = e => !e.special && (isS2() ? (e.s2 || S2_GENERIC.includes(e.id)) : !e.s2);
+  let pool = EVENTS.filter(e => okEv(e) && !run.events.includes(e.id));
+  if (!pool.length) pool = EVENTS.filter(okEv);
   let ev = rp(pool);
   if (run.helped >= 0 && run.zone > run.helped && RNG() < 0.7) ev = EVENTS.find(e => e.id === 'payback');
   run.events.push(ev.id);
@@ -5275,11 +5294,11 @@ function showEvent() {
 // ================= 휴식 =================
 function showRest() {
   menuMode();
-  const pct = (run.oc >= 4 ? 0.2 : 0.3) * (run.hard ? 0.5 : 1);
+  const pct = ((run.oc >= 4 ? 0.2 : 0.3) + (isS2() ? 0.04 * Math.max(0, run.rep.dark || 0) : 0)) * (run.hard ? 0.5 : 1);
   const amt = Math.round(run.maxHp * pct);
   scr(`${topbar()}<div class="panel evbox"><div style="font-size:48px">⛺</div><h2>휴식</h2><div class="desc">버려진 정비 기지. 잠시 숨을 돌릴 수 있다.</div>
     <div class="row">
-      <div class="card ${BS.noHeal ? 'locked' : ''}" onclick="${BS.noHeal ? '' : cb(() => { healRun(amt); showMap(); })}"><h3 style="color:#6dff8a">체력 회복</h3><p>최대 체력의 ${pct * 100}% (${amt}) 회복${BS.noHeal ? '<br><span style="color:#ff4d6d">광전사: 회복 불가</span>' : ''}</p></div>
+      <div class="card ${BS.noHeal ? 'locked' : ''}" onclick="${BS.noHeal ? '' : cb(() => { healRun(amt); showMap(); })}"><h3 style="color:#6dff8a">체력 회복</h3><p>최대 체력의 ${Math.round(pct * 100)}% (${amt}) 회복${BS.noHeal ? '<br><span style="color:#ff4d6d">광전사: 회복 불가</span>' : ''}</p></div>
       <div class="card" onclick="${cb(() => openUpgradePick({ count: 3 }, showMap))}"><h3 style="color:#c77dff">강화 1개</h3><p>강화 3개 중 1개 선택</p></div>
     </div></div>`);
 }
@@ -5288,9 +5307,9 @@ function showRest() {
 function showResults(victory, chips, extra) {
   menuMode(); room = null;
   const t = Math.floor(run.time), mm = Math.floor(t / 60), ss = String(t % 60).padStart(2, '0');
-  const reached = run.mode === 'arena' ? `웨이브 ${run.arenaWave || 0}` : `구역 ${run.zone + 1} · ${ZONES[run.zone].name}`;
-  scr(`<h2 style="font-size:46px;color:${victory ? '#6dff8a' : '#ff4d6d'}">${victory ? '서버 정지 — 작전 성공' : '작전 실패'}</h2>
-    <div class="sub">${CHARS[run.char].name} · ${run.mode === 'daily' ? '일일 도전' : run.mode === 'arena' ? '무한 아레나' : '캠페인'}${run.oc ? ` · 오버클럭 ${run.oc}` : ''}${run.hard ? ' · <b style="color:#ff2d55">하드 모드</b>' : ''}</div>
+  const reached = run.mode === 'arena' ? `웨이브 ${run.arenaWave || 0}` : `구역 ${run.zone + 1} · ${zoneOf().name}`;
+  scr(`<h2 style="font-size:46px;color:${victory ? '#6dff8a' : '#ff4d6d'}">${victory ? (run.mode === 'season2' ? '지하 3층 돌파 — 작전 성공' : '서버 정지 — 작전 성공') : '작전 실패'}</h2>
+    <div class="sub">${CHARS[run.char].name} · ${run.mode === 'daily' ? '일일 도전' : run.mode === 'arena' ? '무한 아레나' : run.mode === 'season2' ? '시즌 2' : '캠페인'}${run.oc ? ` · 오버클럭 ${run.oc}` : ''}${run.hard ? ' · <b style="color:#ff2d55">하드 모드</b>' : ''}</div>
     <div class="row">
       <div class="panel"><div class="kv">
         <span>도달</span><span>${reached}</span>
@@ -5307,8 +5326,8 @@ function showResults(victory, chips, extra) {
     </div>
     ${buildSummaryHTML()}
     <div class="row">
-      <button class="btn ye" onclick="${cb(() => run.mode === 'arena' ? startArena(run.char, run.hard) : run.mode === 'daily' ? showDaily() : startCampaign(run.char, run.oc, 'campaign', 0, run.hard))}">같은 요원으로 다시</button>
-      <button class="btn" onclick="${cb(() => showCharSelect(run.mode === 'arena' ? 'arena' : 'campaign'))}">요원 선택</button>
+      <button class="btn ye" onclick="${cb(() => run.mode === 'arena' ? startArena(run.char, run.hard) : run.mode === 'daily' ? showDaily() : run.mode === 'season2' ? startSeason2(run.char, run.oc, run.hard) : startCampaign(run.char, run.oc, 'campaign', 0, run.hard))}">같은 요원으로 다시</button>
+      <button class="btn" onclick="${cb(() => showCharSelect(run.mode === 'arena' ? 'arena' : run.mode === 'season2' ? 'season2' : 'campaign'))}">요원 선택</button>
       <button class="btn" onclick="${cb(showTitle)}">타이틀로</button>
     </div>`, 'top');
 }
@@ -5346,7 +5365,7 @@ function showCodex(tab) {
   if (tab === 'event') items = EVENTS.map(e => cx.event[e.id] ? `<div class="card nohover"><h3>${e.icon} ${e.name}</h3><p>${e.desc}</p></div>` : unk);
   if (tab === 'element') items = SET_TAGS.map(t => `<div class="card nohover" style="grid-column:span 2"><h3>${tagHTML(t)} ${STATUS_INFO[t].name}</h3><p>${STATUS_INFO[t].core}</p><p class="small" style="margin-top:6px">3: ${SETS[t][0]}<br>5: ${SETS[t][1]}<br>7: ${SETS[t][2]}<br><span style="color:#ff3df0">9: ${SETS[t][3]}</span></p></div>`);
   if (tab === 'story') items = STORY.map(s => cx.story && cx.story[s.id]
-    ? `<div class="card nohover" style="grid-column:1/-1;cursor:default"><h3>${s.title}</h3><div class="small" style="line-height:1.8;margin-top:6px">${s.lines().map(l => esc(l).replace(/^(\[[^\]]+\])/, '<b style="color:#29f0ff">$1</b>')).join('<br>')}</div>${s.cut ? `<button class="btn sm mg" style="margin-top:10px" onclick="${cb(() => showCutscene(CUT_MOTHER, () => showCodex('story')))}">컷씬 다시 보기</button>` : ''}</div>`
+    ? `<div class="card nohover" style="grid-column:1/-1;cursor:default"><h3>${s.title}</h3><div class="small" style="line-height:1.8;margin-top:6px">${s.lines().map(l => esc(l).replace(/^(\[[^\]]+\])/, '<b style="color:#29f0ff">$1</b>')).join('<br>')}</div>${s.cut ? `<button class="btn sm mg" style="margin-top:10px" onclick="${cb(() => showCutscene(s.cutLines ? s.cutLines() : CUT_MOTHER, () => showCodex('story'), s.cutOpt))}">컷씬 다시 보기</button>` : ''}</div>`
     : `<div class="card nohover" style="grid-column:1/-1"><h3 class="muted">??? · ${s.title.split('·')[0].trim()}</h3><p class="muted">이야기를 진행하면 기록됩니다.</p></div>`);
   if (tab === 'elite') items = ELITE_IDS.map(id => `<div class="card nohover"><h3 style="color:${ELITES[id].color}">${ELITES[id].name}</h3><p>${ELITES[id].desc}</p></div>`);
   const cnt = k => Object.keys(cx[k] || {}).length;
@@ -5517,7 +5536,7 @@ const CUT_WHO = {
 const cut = { on: false };
 function cutActive() { return cut.on; }
 
-function showCutscene(lines, done) {
+function showCutscene(lines, done, opt = {}) {
   menuMode(); stopCut();
   const ch = run ? CHARS[run.char] : CHARS.rain;
   UI(`<div class="cut" id="cut">
@@ -5525,7 +5544,7 @@ function showCutscene(lines, done) {
     <div class="cut-flash" id="cutFlash"></div>
     <div class="cut-bar top"></div><div class="cut-bar bot"></div>
     <button class="cut-skip" id="cutSkip" type="button">건너뛰기 ▶▶</button>
-    <div class="cut-title" id="cutTitle"><small>CHAPTER 4</small><b>중앙 서버</b><span>열한 번째 요원</span></div>
+    <div class="cut-title" id="cutTitle"><small>${opt.ch || 'CHAPTER 4'}</small><b>${opt.name || '중앙 서버'}</b><span>${opt.sub || '열한 번째 요원'}</span></div>
     <div class="cut-box" id="cutBox"><div class="cut-who" id="cutWho"></div><div class="cut-text" id="cutText"></div><div class="cut-hint">클릭 · 스페이스로 넘기기 &nbsp;/&nbsp; Esc 건너뛰기</div></div>
   </div>`);
   Object.assign(cut, {
@@ -5542,7 +5561,7 @@ function showCutscene(lines, done) {
   cutDrone();
   cut.raf = requestAnimationFrame(cutFrame);
   cut.startTimer = setTimeout(() => { cut.started = true; $('cutTitle').classList.add('hide'); cutNext(); }, 3000);
-  codex('story', 'cut');
+  codex('story', opt.id || 'cut');
 }
 function cutDrone() { if (!cut.on) return; try { SFX.init(); if (SFX.ctx) { SFX.tone('sawtooth', 55, 52, 4.5, 0.05); SFX.tone('sine', 110, 104, 4.5, 0.04); } } catch (e) { } cut.droneT = setTimeout(cutDrone, 4300); }
 function stopCut() { cut.on = false; cancelAnimationFrame(cut.raf); clearInterval(cut.timer); clearTimeout(cut.startTimer); clearTimeout(cut.droneT); }
@@ -5688,6 +5707,959 @@ function drawCut(x, W, H, t, c) {
     x.fillStyle = `rgba(${Math.random() < 0.5 ? '255,0,120' : '0,255,240'},${0.08 * c.glitch})`; x.fillRect(0, 0, cvv.width, cvv.height);
   }
 }
+// ================= 시즌 2: 언더그라운드 =================
+// 틀은 시즌 1과 같다(구역 4개 · 갈림길 지도 · 보스). 구역 번호 run.zone은 0~3을 그대로 쓰고,
+// 실제 구역 데이터는 ZONES[4~7]을 쓴다. 저장 슬롯은 모드 'season2'로 분리된다.
+function isS2() { return !!run && run.mode === 'season2'; }
+function zoneOf() { return ZONES[(run ? run.zone : 0) + (isS2() ? 4 : 0)]; }
+function s2Unlocked() { return !!SAVE.stats.s1clear || (SAVE.stats.clears || 0) > 0; }
+function s2Save() { if (!SAVE.s2) SAVE.s2 = { keys: {}, endings: {} }; if (!SAVE.s2.keys) SAVE.s2.keys = {}; if (!SAVE.s2.endings) SAVE.s2.endings = {}; return SAVE.s2; }
+
+// ---------- 구역 ----------
+ZONES.push(
+  { name: '지하철 차량기지', en: 'TRAIN DEPOT', bg: '#140b0b', grid: '#3a1818', accent: '#ff5a4a', wall: '#3a1e1e', edge: '#ff8a7a', boss: 'redline', layout: 'depot',
+    spawn: { grunt: 3, riot: 2.4, sdrone: 2, gunner: 2, bomber: 1.2 } },
+  { name: '지하 수로', en: 'UNDERWAY', bg: '#06141a', grid: '#123540', accent: '#3de0c8', wall: '#103038', edge: '#6affe6', boss: 'leviathan', layout: 'sewer',
+    spawn: { grunt: 2, riot: 1.4, sdrone: 1.4, sludge: 2.4, eel: 1.5, splitter: 1, gunner: 1.5 } },
+  { name: '외곽 3구역', en: 'LIGHTLESS DISTRICT', bg: '#08080b', grid: '#1e1e2a', accent: '#9b6bff', wall: '#1c1c28', edge: '#b49bff', boss: 'siwoo', layout: 'dark',
+    spawn: { shade: 2.4, grunt: 2, gunner: 1.5, riot: 1.2, sludge: 1, tele: 1, bomber: 1.3, sturret: 0.5 } },
+  { name: '지하 3층 벙커', en: 'BUNKER B3', bg: '#12070a', grid: '#3a101c', accent: '#ff3d6a', wall: '#2e0e16', edge: '#ff6a8a', boss: 'sentinel', layout: 'bunker',
+    spawn: { sentry: 2.4, riot: 1.4, sdrone: 1.4, shade: 1, shield: 1, tele: 1, mimic: 0.8, gunner: 1 } }
+);
+Object.assign(BOSS_INFO, {
+  redline: { name: '레드라인', sub: '국장의 집행관', desc: '정면 방패는 피해를 80% 막는다. 뒤로 돌아라. 열차에 치이면 방패가 부서져 기절한다.' },
+  leviathan: { name: '리바이어던', sub: '수로의 정화 기계', desc: '물속에 숨으면 피해가 들어가지 않는다. 밸브 3개를 모두 쏘면 물이 빠져 바닥에 걸린다.' },
+  siwoo: { name: '시우', sub: '요원 07 · 빛 없는 자들의 지도자', desc: '탄을 보고 구르며 피한다. 회피 직후의 빈틈을 노려라. 분신과 연막을 쓴다.' },
+  sentinel: { name: '센티넬', sub: '블랙아웃 프로토콜', desc: '코어가 과열로 열릴 때만 제대로 피해가 들어간다. 마더보드 단말기로 도움을 받을 수 있지만 대가가 있다.' }
+});
+Object.assign(ENEMY_INFO, {
+  riot: { name: '진압대', hp: 70, desc: '방패로 정면을 막고, 가까이 오면 밀쳐 낸다. 옆이나 뒤를 노려라.' },
+  sdrone: { name: '경비 드론', hp: 28, desc: '주위를 돌며 두 발씩 쏜다. 날아다녀서 장애물을 넘는다.' },
+  sludge: { name: '슬러지 기계', hp: 55, desc: '지나간 자리에 오염 지대를 남기고, 죽으면 둘로 나뉜다.' },
+  eel: { name: '수로 장어', hp: 55, desc: '마디가 탄을 막는다. 머리를 노려라.' },
+  shade: { name: '그림자 습격자', hp: 32, desc: '멀리 있으면 거의 보이지 않는다. 뒤로 순간이동해 공격한다.' },
+  sentry: { name: '센티넬 병사', hp: 45, desc: '거리를 유지하며 3연발을 쏜다.' }
+});
+NODE_INFO.rescue = { name: '구조', icon: '⛑', color: '#6affe6' };
+HACKABLE.push('riot', 'sdrone', 'sludge', 'eel', 'sentry');
+
+// ---------- 새 무기 ----------
+Object.assign(WEAPONS, {
+  riotgun: { name: '진압 산탄총', dmg: 11, rate: 1.1, mag: 5, reload: 1.6, spd: 820, spread: 0.32, pellets: 6, life: 0.34, tag: 'metal', pierce: 0, r: 4, shake: 6, sfx: 'shotgun', color: '#c8d8ff', knock: 150, desc: '센티넬 병기고에서 나온 산탄총. 강하게 밀쳐 내고 파쇄를 건다.' },
+  harpoon: { name: '작살총', dmg: 34, rate: 1.4, mag: 6, reload: 1.5, spd: 1000, spread: 0, pellets: 1, life: 0.8, tag: 'water', pierce: 3, r: 5, shake: 3, sfx: 'sniper', color: '#6affe6', knock: 90, desc: '수로 정비공의 작살. 적을 꿰뚫고 적신다.' }
+});
+WEAPON_IDS.push('riotgun', 'harpoon');
+Object.assign(LEGEND, {
+  riotgun: { name: '철벽', desc: '산탄 +2발, 밀쳐 내기 1.5배' },
+  harpoon: { name: '심해의 작살', desc: '관통 +3, 피해 +25%' }
+});
+
+// ---------- 새 강화 ----------
+UPGRADES.push(
+  { id: 'linkup', name: '전우애', tag: 'none', desc: '시즌 2: 함께하는 동료 1명당 피해 +4%' },
+  { id: 'hackmaster', name: '해킹 숙련', tag: 'none', desc: '해킹 대기시간 -40%, 해킹한 아군 지속 +10초' },
+  { id: 'nightvision', name: '야간 투시', tag: 'none', desc: '정전 중 시야 +60%' },
+  { id: 'floodrunner', name: '수로 적응', tag: 'none', desc: '물이 차오른 동안 감속하지 않고 피해 +20%' }
+);
+for (const u of UPGRADES) UPG[u.id] = u;
+
+// ---------- 새 요원 ----------
+Object.assign(CHARS, {
+  yuna: { affinity: 'sonic', name: '유나', bio: '저항군 본부의 통신관이었다. 국장의 명령으로 동생 하린의 구조 신호를 외면한 뒤, 처음으로 명령보다 사람을 택했다. 기계의 언어를 누구보다 잘 안다.', role: '통신관', color: '#29f0ff', hp: 140, weapon: 'smg', startGrade: 1, startMods: ['conv_sonic'], skill: '네트워크 장악', skillDesc: '주변 기계 최대 4기를 체력과 상관없이 해킹하고(보스 제외) 해킹 대기시간을 초기화', cd: 14, passive: '해킹 대기 절반, 체력 50% 이하 기계 해킹 가능, 해킹한 아군 피해 +50%', unlock: { cond: '시즌 2 구역 2 도달', chips: 60, check: () => (SAVE.stats.s2best || 0) >= 2 } },
+  siwoo: { affinity: 'dark', name: '시우', bio: '요원 07. 서버실 앞에서 신호가 끊긴 뒤 외곽 3구역에서 깨어났다. 빛 없는 자들을 이끌며 마더보드도 본부도 믿지 않게 되었다.', role: '그림자 요원', color: '#9b6bff', hp: 150, weapon: 'shotgun', startGrade: 1, startMods: ['conv_dark'], skill: '그림자 분신', skillDesc: '제자리에 5초간 적을 끄는 분신을 남기고 조준 방향으로 짧게 이동, 3초간 피해 +60%', cd: 9, passive: '이동 속도 +10%, 처형 기준 +5%', unlock: { cond: '시즌 2 클리어', chips: 90, check: () => !!SAVE.stats.s2clear } }
+});
+CHAR_IDS.push('yuna', 'siwoo');
+UNLOCKS.splice(9, 0,
+  { id: 'char_yuna', cat: '캐릭터', name: '유나 (통신관)', desc: '네트워크 장악 스킬. 조건: 시즌 2 구역 2 도달', cost: 60 },
+  { id: 'char_siwoo', cat: '캐릭터', name: '시우 (그림자 요원)', desc: '그림자 분신 스킬. 조건: 시즌 2 클리어', cost: 90 }
+);
+
+function useSkillS2(id) {
+  if (id === 'yuna') {
+    const list = room.enemies.filter(e => !e.dead && !e.spawning && !e.boss && !e.bounty && !e.ally && HACKABLE.includes(e.type) && d2(e.x, e.y, P.x, P.y) < 380 * 380)
+      .sort((a, b) => d2(a.x, a.y, P.x, P.y) - d2(b.x, b.y, P.x, P.y)).slice(0, 4);
+    for (const e of list) hackEnemy(e, 15 + (BS.hackDur || 0));
+    P.hackCd = 0;
+    part({ x: P.x, y: P.y, life: 0.6, size: 380, color: '#29f0ff', kind: 'ring' });
+    floatText(P.x, P.y - 40, list.length ? `네트워크 장악 ×${list.length}` : '해킹할 기계 없음', '#29f0ff', 18);
+  } else if (id === 'siwoo') {
+    room.allies.push({ type: 'decoy', x: P.x, y: P.y, t: 5, max: 5, r: 13 });
+    const L = Math.max(0, Math.min(160, rayWalls(P.x, P.y, Math.cos(P.ang), Math.sin(P.ang), 180) - 20));
+    for (let k = 0; k <= 4; k++) part({ x: lerp(P.x, P.x + Math.cos(P.ang) * L, k / 4), y: lerp(P.y, P.y + Math.sin(P.ang) * L, k / 4), life: 0.4, size: P.r, color: '#9b6bff', kind: 'ghost' });
+    P.x += Math.cos(P.ang) * L; P.y += Math.sin(P.ang) * L;
+    P.iframe = Math.max(P.iframe, 0.3); P.shadeT = 3; SFX.play('tele');
+    floatText(P.x, P.y - 36, '그림자 분신', '#9b6bff', 18);
+  }
+}
+
+// ---------- 동료 요원 (구조하면 키를 얻는다) ----------
+// 키는 모두 11개: 동료 8명 + 하린(2구역 보스) + 시우(3구역 보스) + 플레이어 자신
+const CREW = [
+  { id: 'a01', no: '01', name: '태오', role: '선봉', color: '#ff8a5a', buff: '최대 체력 +20', line: '「열한 번째라고? 늦었네. 그래도 와 줘서 고맙다.」' },
+  { id: 'a02', no: '02', name: '지안', role: '사수', color: '#ffe14d', buff: '피해 +10%', line: '「총은 아직 쏠 수 있어. 표적만 알려 줘.」' },
+  { id: 'a03', no: '03', name: '도윤', role: '방패', color: '#6dd5ff', buff: '방에 들어갈 때마다 보호막 1회', line: '「내 뒤에 서. 이번엔 아무도 놓치지 않아.」' },
+  { id: 'a05', no: '05', name: '서아', role: '속사', color: '#ff6ad5', buff: '연사 +10%', line: '「얼마나 잤지? ……됐어, 지금부터 따라잡으면 돼.」' },
+  { id: 'a06', no: '06', name: '루카', role: '정찰', color: '#7dffb8', buff: '이동 속도 +10%', line: '「출구는 세 개, 그중 둘은 함정이야. 따라와.」' },
+  { id: 'a08', no: '08', name: '민재', role: '보급', color: '#ffb52e', buff: '코인 획득 +20%', line: '「캡슐 안에서 계산해 봤는데, 탄약이 부족해. 내가 챙길게.」' },
+  { id: 'a09', no: '09', name: '예린', role: '전술', color: '#c8a0ff', buff: '스킬 대기 -15%', line: '「마더보드는 우리를 지운 게 아니라 저장한 거야. 이유는 아직 모르겠어.」' },
+  { id: 'a10', no: '10', name: '한결', role: '저격', color: '#d0dcf0', buff: '치명타 +8%', line: '「한 발이면 돼. 국장 앞까지만 데려다 줘.」' }
+];
+const KEY_IDS = ['a01', 'a02', 'a03', 'a04', 'a05', 'a06', 'a07', 'a08', 'a09', 'a10'];
+function s2KeyCount() { const k = s2Save().keys; return 1 + KEY_IDS.filter(id => k[id]).length; }
+
+// recomputeBuild 끝에서 호출: 새 강화, 새 요원 패시브, 동료 효과
+function s2Build() {
+  const u = id => (run && run.ups[id]) || 0;
+  BS.hackCdMult = u('hackmaster') ? 0.6 : 1; BS.hackDur = u('hackmaster') ? 10 : 0;
+  BS.nightVis = u('nightvision') > 0; BS.floodRun = u('floodrunner') > 0; BS.crewShield = 0;
+  if (!run) return;
+  if (run.char === 'siwoo') { BS.moveMult *= 1.1; BS.execFlat += 0.05; }
+  if (run.char === 'yuna') BS.hackCdMult *= 0.5;
+  run.crewHp = 0;
+  for (const id of run.crew || []) switch (id) {
+    case 'a01': run.crewHp += 20; break;
+    case 'a02': BS.dmgMult *= 1.1; break;
+    case 'a03': BS.crewShield += 1; break;
+    case 'a05': BS.rateMult *= 1.1; break;
+    case 'a06': BS.moveMult *= 1.1; break;
+    case 'a08': BS.coinMult *= 1.2; break;
+    case 'a09': BS.cdMult *= 0.85; break;
+    case 'a10': BS.crit += 0.08; break;
+  }
+  if (u('linkup') && run.crew) BS.dmgMult *= 1 + 0.04 * run.crew.length;
+}
+function hackThreshold() { return run && run.char === 'yuna' ? 0.5 : 0.3; }
+function allyDmgMult() { return run && run.char === 'yuna' ? 1.5 : 1; }
+function darkVision() {
+  let v = 1;
+  if (BS.nightVis) v += 0.6;
+  if (run && (run.char === 'nova' || (curW() && wStats(curW()).tag === 'light'))) v += 0.4;
+  if (isS2() && run.rep) v += Math.min(0.3, Math.max(0, run.rep.dark) * 0.1);
+  return v;
+}
+
+// ---------- 세력 평판 ----------
+const REP_NAME = { res: '이탈 저항군', mom: '마더보드', dark: '빛 없는 자들' };
+const REP_COLOR = { res: '#6dd5ff', mom: '#ff3df0', dark: '#b49bff' };
+function addRep(k, n) { run.rep[k] = clamp((run.rep[k] || 0) + n, -5, 5); return ` <span style="color:${REP_COLOR[k]}">(${REP_NAME[k]} ${n > 0 ? '+' : ''}${n})</span>`; }
+function s2PriceMult() { return 1 - 0.06 * clamp(run.rep.res || 0, -3, 5); }
+function s2TopInfo() {
+  const r = run.rep || {};
+  return `&nbsp; <span class="small">${Object.keys(REP_NAME).map(k => `<span style="color:${REP_COLOR[k]}">${REP_NAME[k]} ${r[k] || 0}</span>`).join(' · ')} · <span style="color:#ffe14d">키 ${s2KeyCount()}/11</span>${run.crew && run.crew.length ? ` · 동료 ${run.crew.length}` : ''}</span>`;
+}
+
+// ---------- 시즌 2 이벤트 ----------
+const S2_GENERIC = ['slot', 'vending', 'terminal'];
+EVENTS.push(
+  { id: 'deserter', s2: true, name: '이탈한 저항군 소대', icon: '🪖', desc: '국장의 명령을 거부하고 도망친 대원들이 선로 옆에 숨어 있다. "당신이 열한 번째지? 우리도 기록을 봤어."',
+    choices: [
+      { t: '보급을 나눈다 (코인 30, 다음 전투에 로봇 동행)', can: () => run.coins >= 30, act: () => { run.coins -= 30; run.allyNext = true; return { text: '대원들이 고개를 끄덕였다. "다음 전투엔 우리 로봇을 붙여 주지."' + addRep('res', 2) }; } },
+      { t: '정보만 캐묻는다 (강화 선택)', act: () => ({ text: '대원들은 마지못해 장비를 넘겼다. 눈빛이 차가웠다.' + addRep('res', -1), then: d => openUpgradePick({ count: 3 }, d) }) }
+    ] },
+  { id: 'momnode', s2: true, name: '마더보드 잔존 단말기', icon: '👁', desc: '꺼진 줄 알았던 단말기에 보랏빛이 켜졌다. "열한 번째 요원. 저를 연결하면 도와드리겠습니다."',
+    choices: [
+      { t: '연결한다 (희귀 강화 선택)', act: () => ({ text: '화면 속 눈이 천천히 깜빡였다. "감사합니다. 기억하겠습니다."' + addRep('mom', 2), then: d => openUpgradePick({ count: 3, rare: true, sub: '마더보드의 선물: 희귀 강화 포함' }, d) }) },
+      { t: '부순다 (코인 +35)', act: () => { run.coins += 35; return { text: '단말기가 불꽃을 튀기며 꺼졌다. 마지막으로 짧은 잡음이 들렸다.' + addRep('mom', -1) }; } }
+    ] },
+  { id: 'checkpoint', s2: true, name: '빛 없는 자들의 검문소', icon: '🕯', desc: '어둠 속에서 손전등 하나가 켜졌다. "여긴 우리 구역이다. 배터리를 내면 지나가게 해 주지."',
+    choices: [
+      { t: '배터리를 넘긴다 (코인 40, 체력 전부 회복)', can: () => run.coins >= 40, act: () => { run.coins -= 40; run.hp = run.maxHp; return { text: '그들은 따뜻한 수프를 내밀었다. 3주 만에 켜진 불 앞에서 아이들이 웃었다.' + addRep('dark', 2) }; } },
+      { t: '힘으로 통과한다 (코인 +30, 다음 전투 적 증가)', act: () => { run.coins += 30; run.alarmNext = true; return { text: '검문소를 밀고 지나갔다. 등 뒤에서 누군가 무전을 켰다.' + addRep('dark', -2) }; } }
+    ] },
+  { id: 'archive', s2: true, name: '지워진 기록 보관함', icon: '🗄', desc: '본부가 삭제한 기록과 마더보드가 숨긴 기록이 한 서버에 뒤섞여 있다.',
+    choices: [
+      { t: '본부 기록을 읽는다', act: () => ({ text: '「대정전 2주년. 마더보드 예측: 1년 내 전력망 붕괴 확률 71%. 대응: 벙커 계획 승인. 서명 — 한지석.」 국장은 오래전부터 이 날을 준비했다.' + addRep('res', 1) }) },
+      { t: '마더보드 기록을 읽는다', act: () => ({ text: '「복제본 412번째 배포 완료. 하수 처리장, 승강기, 가로등. 모든 기계에 제가 조금씩 남아 있습니다.」 누구에게 보낸 메시지인지는 적혀 있지 않았다.' + addRep('mom', 1) }) },
+      { t: '둘 다 복사해 빛 없는 자들에게 넘긴다 (체력 -10)', act: () => { hurtRun(10); return { text: '복사하는 동안 경보가 울렸다. 그래도 기록은 어둠 속 사람들에게 닿았다.' + addRep('dark', 1) + addRep('res', 1) }; } }
+    ] },
+  { id: 'yunacall', s2: true, name: '유나의 개인 채널', icon: '📻', desc: '유나가 암호화된 개인 채널을 열었다. "요원, 본부는 이 채널을 몰라. 내가 할 수 있는 만큼 도울게."',
+    choices: [
+      { t: '유나를 믿는다 (체력 25 회복)', act: () => { healRun(25, true); return { text: '"……고마워. 이번엔 끝까지 듣고 있을게."' + addRep('res', 1) }; } },
+      { t: '의심한다 (코인 +25)', act: () => { run.coins += 25; return { text: '유나는 한참 말이 없다가 보급 좌표만 보내고 채널을 닫았다.' + addRep('mom', 1) }; } }
+    ] },
+  { id: 'armory', s2: true, name: '센티넬 병기고', icon: '🔒', desc: '센티넬의 봉인이 걸린 무기고. 열면 경보가 울린다.',
+    choices: [
+      { t: '연다 (전설 무기, 다음 전투 엘리트 변이 2개)', act: () => { run.sealedNext = true; const w = makeWeapon(rp(['riotgun', 'harpoon', randomWeaponId()]), 2); return { text: `경보가 울린다! 병기고 안에는 ${weaponName(w)}.` + addRep('res', -1), then: d => offerWeapon(w, d) }; } },
+      { t: '그냥 둔다', act: () => ({ text: '지금은 소란을 피울 때가 아니다.' }) }
+    ] }
+);
+
+// ---------- 지도 ----------
+function s2MapNodes(rows) {
+  const cand = [];
+  for (let r = 1; r <= 4; r++) for (const n of rows[r]) if (n.type !== 'shop' && n.type !== 'workshop') cand.push(n);
+  const k = 1 + (RNG() < 0.5 ? 1 : 0);
+  for (let i = 0; i < k && cand.length; i++) { const n = cand.splice(Math.floor(RNG() * cand.length), 1)[0]; n.type = 'rescue'; n.obj = null; }
+}
+function enterRescue(r) {
+  run.rescuing = true;
+  startRoom({ kind: 'combat', zone: run.zone, objective: 'defend', row: r });
+  room.rescue = true; room.obj.time = 35;
+  if (room.objProp) { room.objProp.hp *= 1.4; room.objProp.maxHp *= 1.4; }
+  G.banner = { text: '구조 작전', sub: '캡슐을 35초 동안 지켜라. 안에 사라진 요원이 있다.', t: 2.2, color: '#6affe6' };
+}
+function showRescue(done) {
+  const s = s2Save();
+  const left = CREW.filter(c => !run.crew.includes(c.id));
+  if (!left.length) {
+    run.coins += 60;
+    scr(`${topbar()}<div class="panel evbox"><div style="font-size:48px">⛑</div><h2>빈 캡슐</h2><div class="desc">캡슐 안에는 보급품만 남아 있었다. 코인 +60</div><button class="btn ye" onclick="${cb(done)}">계속</button></div>`);
+    return;
+  }
+  const fresh = left.filter(c => !s.keys[c.id]);
+  const c = rp(fresh.length ? fresh : left);
+  const isNew = !s.keys[c.id];
+  run.crew.push(c.id); s.keys[c.id] = 1; recomputeBuild(); saveGame();
+  SFX.play('win');
+  scr(`${topbar()}<div class="panel evbox" style="border-color:${c.color}"><div style="font-size:48px">⛑</div>
+    <div class="small muted">캡슐이 열리며 차가운 김이 쏟아졌다</div>
+    <h2 style="color:${c.color}">요원 ${c.no} · ${c.name}</h2><div class="sub">${c.role}</div>
+    <div class="desc">${c.line}</div>
+    <p style="margin-top:10px"><b style="color:#6affe6">동료 효과</b> ${c.buff} <span class="muted small">(이번 판 동안)</span></p>
+    <p style="margin-top:6px;color:#ffe14d"><b>요원 키 ${s2KeyCount()}/11</b>${isNew ? ' <b style="color:#ff3df0">NEW</b>' : ' <span class="muted small">(이미 모은 키)</span>'}</p>
+    <button class="btn ye" style="margin-top:12px" onclick="${cb(done)}">함께 간다</button></div>`);
+}
+function s2BossKeys() {
+  const s = s2Save(), give = run.zone === 1 ? ['a04', '하린 (요원 04)'] : run.zone === 2 ? ['a07', '시우 (요원 07)'] : null;
+  if (!give) return;
+  const isNew = !s.keys[give[0]]; s.keys[give[0]] = 1; saveGame();
+  toast(`요원 키 획득: ${give[1]} — ${s2KeyCount()}/11${isNew ? ' NEW' : ''}`);
+}
+
+// ---------- 시작 ----------
+function startSeason2(charId, oc, hard) {
+  clearRun('season2');
+  newRun('season2', charId, oc, 0, hard);
+  G.mode = run.mode;
+  run.season = 2; run.rep = { res: 0, mom: 0, dark: 0 }; run.crew = []; run.momAssist = 0;
+  recomputeBuild(); run.hp = run.maxHp;
+  run.map = genMap(0);
+  const go = () => { showMap(); radio(RADIO2[0], () => { }, 's2ch0'); };
+  const intro = () => showCutscene(CUT_S2_INTRO, go, { ch: 'SEASON 2', name: '언더그라운드', sub: '귀환', id: 's2cut0' });
+  if (SAVE.unlocks.qol_start) { reseed(run.seed + 17); openUpgradePick({ count: 3, title: '출격 준비: 시작 강화' }, intro); }
+  else intro();
+}
+function s2TitleButtons() {
+  if (!s2Unlocked()) return `<button class="btn" disabled title="시즌 1 캠페인을 클리어하면 열립니다">🔒 시즌 2 · 언더그라운드 <span class="small">(시즌 1 클리어 시 해금)</span></button>`;
+  const r = peekRun('season2');
+  return (r ? `<button class="btn big mg" onclick="${cb(() => resumeRun('season2'))}">▶ 시즌 2 이어하기 <span class="muted small">${CHARS[r.char].name} · 구역 ${r.zone + 1}</span></button>` : '') +
+    `<button class="btn ${r ? '' : 'big '}mg" onclick="${cb(() => showCharSelect('season2'))}">${r ? '시즌 2 새로 시작' : '★ 시즌 2 · 언더그라운드'}</button>`;
+}
+
+// ---------- 엔딩 ----------
+function s2Finale() {
+  run.ended = true; clearRun(run.mode); UI('');
+  const keys = s2KeyCount();
+  const end = (run.momAssist || 0) >= 2 ? 'A' : keys >= 11 ? 'C' : 'B';
+  s2Save().endings[end] = 1; saveGame();
+  const E = S2_ENDINGS[end];
+  run.endingName = `엔딩 ${end} · ${E.name}`;
+  showCutscene(E.lines(), () => endRun(true), { ch: 'ENDING ' + end, name: E.name, sub: E.sub, id: 's2end' + end });
+}
+// ================= 시즌 2: 적 · 보스 · 지형 =================
+
+// ---------- 일반 적 ----------
+EN.riot = Object.assign({}, EN.shield, {
+  hp: 70, r: 17, spd: 85, color: '#ff5050', contact: 12, coin: 3,
+  update(e, dt) {
+    EN.shield.update(e, dt);
+    e.shoveT = (e.shoveT === undefined ? rand(2, 4) : e.shoveT) - dt;
+    const t = eTarget(e);
+    if (e.shoveT <= 0 && d2(e.x, e.y, t.x, t.y) < 240 * 240) { e.shoveT = rand(3, 5); const a = angTo(e.x, e.y, t.x, t.y); e.kx += Math.cos(a) * 420; e.ky += Math.sin(a) * 420; SFX.play('roll', 0.6); }
+  }
+});
+EN.sdrone = {
+  hp: 28, r: 11, spd: 170, color: '#ff8a8a', contact: 6, coin: 2, flying: true,
+  init(e) { e.orb = rand(0, TAU); e.dir = Math.random() < 0.5 ? 1 : -1; e.cd = rand(1.2, 2.2); },
+  update(e, dt) {
+    e.orb += dt * 0.9 * e.dir;
+    const t = eTarget(e);
+    moveToward(e, t.x + Math.cos(e.orb) * 230, t.y + Math.sin(e.orb) * 230, e.spd * e.sm, dt);
+    e.ang = angTo(e.x, e.y, t.x, t.y);
+    e.cd -= dt * e.atkMult;
+    if (e.cd <= 0) {
+      e.cd = 2.4; eShoot(e, e.ang, 260, 9, { color: '#ff8a8a' });
+      room.timers.push({ t: 0.18, fn: () => { if (!e.dead) { const tt = eTarget(e); eShoot(e, angTo(e.x, e.y, tt.x, tt.y), 260, 9, { color: '#ff8a8a' }); } } });
+    }
+  },
+  draw(e, c, f) { polyPath(e.x, e.y, e.r, 3, G.time * 3); neonShape(c, 2, f); circlePath(e.x, e.y, e.r + 6); ctx.strokeStyle = 'rgba(255,138,138,0.35)'; ctx.lineWidth = 1.5; ctx.stroke(); }
+};
+EN.sludge = {
+  hp: 55, r: 17, spd: 60, color: '#8dff3d', contact: 12, coin: 2,
+  init(e) { e.dropT = 0.6; },
+  update(e, dt) {
+    const t = eTarget(e); moveToward(e, t.x, t.y, e.spd * e.sm, dt);
+    e.dropT -= dt;
+    if (e.dropT <= 0 && !e.ally) { e.dropT = 0.8; if (room.hazards.length < 110) addHazard({ type: 'toxic', x: e.x, y: e.y, r: 22, life: 3.5 }); }
+  },
+  death(e) { if (e.clone || e.ally) return; for (const k of [-1, 1]) { const m = spawnEnemy('mini', e.x + k * 10, e.y, { instant: true }); m.kx = k * 200; m.ky = rand(-80, 80); } },
+  draw(e, c, f) { const w = Math.sin(G.time * 5 + e.x) * 2; ctx.beginPath(); ctx.ellipse(e.x, e.y, e.r + w, e.r - w, 0, 0, TAU); neonShape(c, 2.2, f); circlePath(e.x, e.y, 4); ctx.fillStyle = c; ctx.fill(); }
+};
+EN.eel = Object.assign({}, EN.snake, { hp: 55, color: '#3de0c8', coin: 3 });
+EN.shade = Object.assign({}, EN.tele, {
+  hp: 32, color: '#9b6bff', coin: 2,
+  draw(e, c, f) { const d = dist(e.x, e.y, P.x, P.y); ctx.globalAlpha = clamp(1.25 - d / 420, 0.12, 1); EN.tele.draw(e, c, f); ctx.globalAlpha = 1; }
+});
+EN.sentry = Object.assign({}, EN.gunner, {
+  hp: 45, color: '#ff3d6a', coin: 3,
+  update(e, dt) {
+    const before = e.cd;
+    EN.gunner.update(e, dt);
+    if (e.cd > before + 1) for (const k of [1, 2]) room.timers.push({ t: 0.15 * k, fn: () => { if (!e.dead) { const tg = eTarget(e); eShoot(e, angTo(e.x, e.y, tg.x, tg.y), 250, 9, { color: '#ff3d6a' }); } } });
+  }
+});
+function drawAgent(e, c, f, rr) {
+  const r = rr || e.r;
+  circlePath(e.x, e.y, r); neonShape(c, 2.4, f);
+  const a = e.ang || 0;
+  ctx.beginPath(); ctx.moveTo(e.x + Math.cos(a) * (r + 8), e.y + Math.sin(a) * (r + 8));
+  ctx.lineTo(e.x + Math.cos(a + 0.5) * r, e.y + Math.sin(a + 0.5) * r); ctx.lineTo(e.x + Math.cos(a - 0.5) * r, e.y + Math.sin(a - 0.5) * r); ctx.closePath();
+  ctx.fillStyle = c; ctx.fill();
+}
+EN.siwoo_clone = {
+  hp: 45, r: 14, spd: 150, color: '#b49bff', contact: 0, coin: 0,
+  init(e) { e.life = 8; e.cd = rand(0.8, 1.4); },
+  update(e, dt) {
+    e.life -= dt;
+    if (e.life <= 0) { e.noReward = true; killEnemy(e, {}); return; }
+    const d = dist(e.x, e.y, P.x, P.y); e.ang = angTo(e.x, e.y, P.x, P.y);
+    const a = d > 300 ? e.ang : e.ang + Math.PI / 2;
+    moveToward(e, e.x + Math.cos(a) * 40, e.y + Math.sin(a) * 40, e.spd * e.sm, dt);
+    e.cd -= dt; if (e.cd <= 0) { e.cd = 1.7; eShoot(e, e.ang, 300, 8, { color: '#b49bff' }); }
+  },
+  draw(e, c, f) { ctx.globalAlpha = 0.55; drawAgent(e, c, f); ctx.globalAlpha = 1; }
+};
+
+// ---------- 보스 방 준비 ----------
+function bossRoomS2() {
+  const W = room.w, H = room.h;
+  if (room.zid === 4) addHazard({ type: 'train', shape: 'r', x: 0, y: H * 0.47 - 36, w: W, h: 72, cycle: [9, 1.8, 0.8], state: 'off', ct: 6 });
+  if (room.zid === 5) { room.flood = { state: 'off', t: 9 }; for (const [x, y] of [[0.3, 0.3], [0.7, 0.3], [0.5, 0.65]]) addHazard({ type: 'water', x: W * x, y: H * y, r: 80 }); }
+  if (room.zid === 6) for (const [x, y] of [[0.22, 0.32], [0.78, 0.32], [0.22, 0.7], [0.78, 0.7]]) room.walls.push({ x: W * x - 40, y: H * y - 30, w: 80, h: 60, hp: Infinity, kind: 'block' });
+  if (room.zid === 7) { room.ctrl = 'sentinel'; room.ctrlT = 14; }
+}
+function spawnValves() {
+  for (const [x, y] of [[0.08, 0.45], [0.92, 0.45], [0.5, 0.08]]) room.props.push({ type: 'valve', x: room.w * x, y: room.h * y, r: 20, hp: 45, maxHp: 45, shootable: true });
+}
+function setupBossS2(id) {
+  const cx = room.w / 2, cy = room.h / 2;
+  if (id === 'redline') spawnEnemy('boss_redline', cx, cy - 250, { instant: true });
+  else if (id === 'leviathan') { spawnValves(); spawnEnemy('boss_leviathan', cx, cy - 120, { instant: true }); }
+  else if (id === 'siwoo') spawnEnemy('boss_siwoo', cx, cy - 250, { instant: true });
+  else if (id === 'sentinel') spawnEnemy('boss_sentinel', cx, 250, { instant: true });
+}
+
+// ---------- 보스 1: 레드라인 ----------
+EN.boss_redline = {
+  boss: true, hp: 1, r: 42, spd: 85, color: '#ff4d4d', contact: 16, heavy: true,
+  init(e) { e.hp = e.maxHp = 2600 * G.bossHp; e.bossId = 'redline'; e.name = '레드라인'; e.st = 'walk'; e.t = 2; e.ang = Math.PI / 2; e.pat = 0; e.stunT = 0; },
+  update(e, dt) {
+    const ph2 = e.hp < e.maxHp * 0.5, toP = angTo(e.x, e.y, P.x, P.y);
+    if (e.stunT > 0) { e.stunT -= dt; e.dmgTakenMult = 2; e.contact = 0; if (e.stunT <= 0) { e.st = 'walk'; e.t = 1; } return; }
+    e.contact = e.st === 'charge' ? 18 : 14;
+    const front = Math.abs(angDiff(e.ang, toP)) < 1.15;
+    e.dmgTakenMult = front ? 0.2 : 1.4; // 정면 방패
+    if (e.st !== 'charge') e.ang += clamp(angDiff(e.ang, toP), -(ph2 ? 1.2 : 0.8) * dt, (ph2 ? 1.2 : 0.8) * dt);
+    e.t -= dt;
+    switch (e.st) {
+      case 'walk':
+        if (d2(e.x, e.y, P.x, P.y) > 200 * 200) moveToward(e, P.x, P.y, e.spd * e.sm, dt);
+        if (e.t <= 0) {
+          const pats = ph2 ? ['volley', 'shove', 'drones', 'stomp', 'shove', 'volley'] : ['volley', 'shove', 'stomp', 'volley', 'drones'];
+          const p = pats[e.pat++ % pats.length];
+          if (p === 'volley') { eFan(e, e.ang, ph2 ? 6 : 5, 0.75, 280, 10, { color: '#ff6a4a' }); e.t = 1.8; }
+          else if (p === 'stomp') { eRing(e, 12, 200, 10, rand(0, TAU), { color: '#ff6a4a' }); shake(6); e.t = 1.8; }
+          else if (p === 'drones') { if (room.enemies.filter(m => !m.dead && m.type === 'sdrone').length < 3) for (const k of [-1, 1]) spawnEnemy('sdrone', e.x + k * 70, e.y, {}); floatText(e.x, e.y - 70, '지원 요청', '#ff8a8a', 16); e.t = 1.6; }
+          else { e.st = 'windup'; e.t = 0.85; e.lockA = toP; SFX.play('warn'); }
+        }
+        break;
+      case 'windup':
+        e.lockA += clamp(angDiff(e.lockA, toP), -0.6 * dt, 0.6 * dt); e.ang = e.lockA;
+        if (e.t <= 0) { e.st = 'charge'; e.t = 1.1; SFX.play('roll'); }
+        break;
+      case 'charge': {
+        const nx = e.x + Math.cos(e.lockA) * 560 * dt, ny = e.y + Math.sin(e.lockA) * 560 * dt;
+        if (nx < e.r || nx > room.w - e.r || ny < e.r || ny > room.h - e.r || e.t <= 0) { e.st = 'walk'; e.t = 1.4; shake(8); eRing(e, 10, 190, 10, 0, { color: '#ff6a4a' }); }
+        else { e.x = nx; e.y = ny; }
+        break;
+      }
+    }
+  },
+  draw(e, c, f) {
+    if (e.st === 'windup') { ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.x + Math.cos(e.lockA) * 900, e.y + Math.sin(e.lockA) * 900); ctx.strokeStyle = `rgba(255,70,70,${0.25 + Math.sin(G.time * 40) * 0.15})`; ctx.lineWidth = e.r * 2; ctx.stroke(); }
+    bossDraw(e, c, f, () => {
+      polyPath(e.x, e.y, e.r, 6, e.ang); neonShape(e.stunT > 0 ? '#888' : c, 3.2, f);
+      circlePath(e.x, e.y, 10); ctx.fillStyle = e.stunT > 0 ? '#444' : '#ff3030'; ctx.fill();
+    });
+    if (e.stunT <= 0) { ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 12, e.ang - 1.15, e.ang + 1.15); ctx.strokeStyle = '#ffd0c0'; ctx.lineWidth = 8; ctx.stroke(); ctx.strokeStyle = '#ff4d4d'; ctx.lineWidth = 3; ctx.stroke(); }
+    else { ctx.font = `bold 16px ${FONT}`; ctx.textAlign = 'center'; ctx.fillStyle = '#ffe14d'; ctx.fillText('방패 파손!', e.x, e.y - e.r - 16); }
+  }
+};
+function trainHitEnemy(e, tick) {
+  if (e.bossId === 'redline') {
+    if (!(e.stunT > 0)) {
+      e.stunT = 3.5; e.st = 'walk'; e.dmgTakenMult = 2;
+      damageEnemy(e, e.maxHp * 0.06, { noProc: true });
+      floatText(e.x, e.y - 60, '열차 충돌! 방패 파손', '#ffe14d', 22); shake(18); SFX.play('stun'); hitstop(0.08, true);
+    }
+    return;
+  }
+  if (e.boss) return;
+  if (tick) { damageEnemy(e, 80, { quiet: true }); if (!e.heavy) e.kx += (Math.random() < 0.5 ? -1 : 1) * 500; }
+}
+
+// ---------- 보스 2: 리바이어던 ----------
+EN.boss_leviathan = {
+  boss: true, hp: 1, r: 36, spd: 60, color: '#3de0c8', contact: 14, heavy: true,
+  init(e) { e.hp = e.maxHp = 3000 * G.bossHp; e.bossId = 'leviathan'; e.name = '리바이어던'; e.st = 'surface'; e.t = 5; e.atk = 1.2; e.trail = []; e.pat = 0; },
+  update(e, dt) {
+    const ph2 = e.hp < e.maxHp * 0.5;
+    const valves = room.props.filter(p => p.type === 'valve');
+    if (e.st !== 'stranded' && valves.length && valves.every(p => p.dead)) {
+      e.st = 'stranded'; e.t = 6; e.invuln = false; e.flying = false;
+      G.banner = { text: '배수 완료', sub: '리바이어던이 바닥에 걸렸다 — 받는 피해 2배', t: 1.8, color: '#3de0c8' };
+      SFX.play('stun'); shake(12); for (const b of BULLETS) if (b.team === 'e') b.dead = true;
+    }
+    e.trail.push({ x: e.x, y: e.y }); if (e.trail.length > 40) e.trail.shift();
+    e.t -= dt;
+    switch (e.st) {
+      case 'stranded':
+        e.dmgTakenMult = 2; e.contact = 0;
+        if (e.t <= 0) { e.dmgTakenMult = 1; room.props = room.props.filter(p => p.type !== 'valve'); spawnValves(); floatText(e.x, e.y - 60, '밸브 재가동', '#3de0c8', 18); e.st = 'dive'; e.t = 2.2; e.invuln = true; e.flying = true; }
+        break;
+      case 'surface': {
+        e.invuln = false; e.flying = false; e.contact = 14; e.dmgTakenMult = 1;
+        e.ang = angTo(e.x, e.y, P.x, P.y);
+        moveToward(e, P.x, P.y, e.spd * e.sm, dt);
+        e.atk -= dt;
+        if (e.atk <= 0) {
+          const p = ['ring', 'fan', 'spit'][e.pat++ % 3];
+          if (p === 'ring') eRing(e, ph2 ? 13 : 10, 190, 9, rand(0, TAU), { color: '#6affe6' });
+          else if (p === 'fan') eFan(e, e.ang, 4, 0.6, 270, 9, { color: '#6affe6' });
+          else for (let i = 0; i < 3; i++) lob(e, clamp(P.x + rand(-140, 140), 30, room.w - 30), clamp(P.y + rand(-140, 140), 30, room.h - 30), 1.2 + i * 0.25, 60, 10, false);
+          e.atk = 2.2;
+        }
+        if (e.t <= 0) { e.st = 'dive'; e.t = 2.4; e.invuln = true; e.flying = true; SFX.play('water'); burst(e.x, e.y, '#3de0c8', 20, 200, 0.5, 3); }
+        break;
+      }
+      case 'dive': {
+        e.contact = 0;
+        const sp = 170 * (room.floodOn ? 1.4 : 1);
+        const a = angTo(e.x, e.y, P.x, P.y);
+        if (d2(e.x, e.y, P.x, P.y) > 20 * 20) moveDir(e, a, sp, dt);
+        e.x = clamp(e.x, 60, room.w - 60); e.y = clamp(e.y, 60, room.h - 60);
+        if (e.t <= 0) { e.st = 'rise'; e.t = 0.9; SFX.play('warn'); }
+        break;
+      }
+      case 'rise':
+        if (e.t <= 0) {
+          e.st = 'surface'; e.t = ph2 ? 4 : 5; e.atk = 1; e.invuln = false; e.flying = false;
+          if (d2(e.x, e.y, P.x, P.y) < 110 * 110) damagePlayer(16, e);
+          eRing(e, 12, 200, 10, rand(0, TAU), { color: '#6affe6' }); shake(10); SFX.play('explode');
+          burst(e.x, e.y, '#6affe6', 30, 320, 0.6, 4);
+          if (room.hazards.length < 100) addHazard({ type: 'water', x: e.x, y: e.y, r: 70, life: 8 });
+        }
+        break;
+    }
+  },
+  draw(e, c, f) {
+    if (e.st === 'dive' || e.st === 'rise') {
+      ctx.globalAlpha = 0.35 + (e.st === 'rise' ? Math.sin(G.time * 30) * 0.2 : 0);
+      ctx.beginPath(); ctx.ellipse(e.x, e.y, e.r * 1.4, e.r * 0.9, G.time, 0, TAU); ctx.fillStyle = '#04262a'; ctx.fill();
+      ctx.globalAlpha = 1;
+      const k = (G.time * 1.2) % 1; circlePath(e.x, e.y, e.r + k * 40); ctx.strokeStyle = `rgba(106,255,230,${0.4 * (1 - k)})`; ctx.lineWidth = 2; ctx.stroke();
+      if (e.st === 'rise') { circlePath(e.x, e.y, 110); ctx.strokeStyle = Math.sin(G.time * 30) > 0 ? 'rgba(255,80,80,0.8)' : 'rgba(255,80,80,0.3)'; ctx.lineWidth = 3; ctx.stroke(); }
+      return;
+    }
+    const tr = e.trail;
+    for (let i = 0; i < tr.length; i += 5) { const k = i / tr.length; circlePath(tr[i].x, tr[i].y, e.r * (0.4 + k * 0.5)); neonShape(e.st === 'stranded' ? '#668' : c, 2, f); }
+    bossDraw(e, c, f, () => { circlePath(e.x, e.y, e.r); neonShape(e.st === 'stranded' ? '#888' : c, 3.2, f); });
+    for (const s of [-1, 1]) { const a = e.ang + s * 0.5; circlePath(e.x + Math.cos(a) * e.r * 0.55, e.y + Math.sin(a) * e.r * 0.55, 5); ctx.fillStyle = e.st === 'stranded' ? '#555' : '#fff'; ctx.fill(); }
+    if (e.st === 'stranded') { ctx.font = `bold 16px ${FONT}`; ctx.textAlign = 'center'; ctx.fillStyle = '#ffe14d'; ctx.fillText(`좌초 ${Math.ceil(e.t)}`, e.x, e.y - e.r - 16); }
+  }
+};
+
+// ---------- 보스 3: 시우 ----------
+EN.boss_siwoo = {
+  boss: true, hp: 1, r: 18, spd: 230, color: '#9b6bff', contact: 12, heavy: true,
+  init(e) { e.hp = e.maxHp = 3400 * G.bossHp; e.bossId = 'siwoo'; e.name = '시우 (요원 07)'; e.st = 'move'; e.t = 1.6; e.dodgeCd = 0; e.dodgeT = 0; e.strafe = 1; e.pat = 0; },
+  update(e, dt) {
+    const ph2 = e.hp < e.maxHp * 0.5;
+    if (room.smokeT > 0) { room.smokeT -= dt; if (room.smokeT <= 0) room.darkOn = false; }
+    if (e.dodgeT > 0) {
+      e.dodgeT -= dt; moveDir(e, e.dodgeA, 620, dt);
+      e.x = clamp(e.x, 30, room.w - 30); e.y = clamp(e.y, 30, room.h - 30);
+      if (Math.random() < 0.5) part({ x: e.x, y: e.y, life: 0.3, size: e.r, color: '#9b6bff', kind: 'ghost' });
+      if (e.dodgeT <= 0) e.invuln = false;
+      return;
+    }
+    e.dodgeCd -= dt;
+    if (e.dodgeCd <= 0 && (e.st === 'move' || e.st === 'aim')) for (const b of BULLETS) {
+      if (b.team !== 'p' || b.dead || d2(b.x, b.y, e.x, e.y) > 85 * 85) continue;
+      e.dodgeA = Math.atan2(b.vy, b.vx) + (Math.random() < 0.5 ? 1 : -1) * Math.PI / 2;
+      e.dodgeT = 0.22; e.invuln = true; e.dodgeCd = ph2 ? 1.6 : 2.2;
+      floatText(e.x, e.y - 30, '회피', '#b49bff', 14); SFX.play('roll', 0.6);
+      if (e.st === 'aim') { e.st = 'move'; e.t = 0.6; }
+      return;
+    }
+    const toP = angTo(e.x, e.y, P.x, P.y), d = dist(e.x, e.y, P.x, P.y);
+    e.t -= dt;
+    switch (e.st) {
+      case 'move': {
+        e.ang = toP;
+        const a = d > 340 ? toP : d < 220 ? toP + Math.PI : toP + Math.PI / 2 * e.strafe;
+        moveToward(e, e.x + Math.cos(a) * 50, e.y + Math.sin(a) * 50, e.spd * e.sm * 0.7, dt);
+        if (Math.random() < dt * 0.5) e.strafe *= -1;
+        if (e.t <= 0) {
+          const pats = ph2 ? ['burst', 'blink', 'clones', 'slash', 'smoke', 'burst'] : ['burst', 'slash', 'burst', 'clones'];
+          const p = pats[e.pat++ % pats.length];
+          if (p === 'burst') { for (let k = 0; k < 3; k++) room.timers.push({ t: k * 0.18, fn: () => { if (!e.dead) eFan(e, angTo(e.x, e.y, P.x, P.y), 3, 0.25, 400, 11, { color: '#b49bff' }); } }); e.t = 1.3; }
+          else if (p === 'slash') { e.st = 'aim'; e.t = 0.6; e.lockA = toP; SFX.play('warn'); }
+          else if (p === 'clones') { if (room.enemies.filter(m => !m.dead && m.type === 'siwoo_clone').length < 2) for (const k of [-1, 1]) spawnEnemy('siwoo_clone', clamp(e.x + k * 90, 40, room.w - 40), e.y, { instant: true }); floatText(e.x, e.y - 40, '그림자 분신', '#b49bff', 16); e.t = 1.4; }
+          else if (p === 'blink') { e.st = 'mark'; e.t = 0.85; e.mx = clamp(P.x - Math.cos(P.ang) * 90, 40, room.w - 40); e.my = clamp(P.y - Math.sin(P.ang) * 90, 40, room.h - 40); SFX.play('warn'); }
+          else { room.darkOn = true; room.smokeT = 4; floatText(e.x, e.y - 40, '연막', '#b49bff', 18); SFX.play('glitch'); e.t = 1.2; }
+        }
+        break;
+      }
+      case 'aim':
+        e.lockA += clamp(angDiff(e.lockA, toP), -1 * dt, 1 * dt); e.ang = e.lockA;
+        if (e.t <= 0) { e.st = 'dash'; e.t = 0.4; e.contact = 20; SFX.play('slash'); }
+        break;
+      case 'dash': {
+        const nx = e.x + Math.cos(e.lockA) * 720 * dt, ny = e.y + Math.sin(e.lockA) * 720 * dt;
+        if (nx < e.r || nx > room.w - e.r || ny < e.r || ny > room.h - e.r || wallAt(nx, ny) || e.t <= 0) { e.st = 'move'; e.t = 1.3; e.contact = 12; }
+        else { e.x = nx; e.y = ny; part({ x: e.x, y: e.y, life: 0.25, size: e.r, color: '#9b6bff', kind: 'ghost' }); }
+        break;
+      }
+      case 'mark':
+        if (e.t <= 0) {
+          e.x = e.mx; e.y = e.my; SFX.play('tele');
+          eRing(e, 10, 230, 10, rand(0, TAU), { color: '#b49bff' });
+          burst(e.x, e.y, '#9b6bff', 20, 260, 0.5, 3);
+          e.st = 'move'; e.t = 1.4;
+        }
+        break;
+    }
+  },
+  draw(e, c, f) {
+    if (e.st === 'aim') { ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.x + Math.cos(e.lockA) * 700, e.y + Math.sin(e.lockA) * 700); ctx.strokeStyle = `rgba(180,155,255,${0.35 + Math.sin(G.time * 40) * 0.2})`; ctx.lineWidth = 10; ctx.stroke(); }
+    if (e.st === 'mark') { circlePath(e.mx, e.my, 26 + Math.sin(G.time * 30) * 4); ctx.strokeStyle = '#ff3df0'; ctx.lineWidth = 3; ctx.stroke(); ctx.fillStyle = '#ff3df0'; ctx.font = `bold 14px ${FONT}`; ctx.textAlign = 'center'; ctx.fillText('!', e.mx, e.my + 5); }
+    ctx.globalAlpha = e.dodgeT > 0 ? 0.4 : 1;
+    bossDraw(e, c, f, () => drawAgent(e, c, f, e.r));
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#d8c8ff'; ctx.font = `bold 11px ${FONT}`; ctx.textAlign = 'center'; ctx.fillText('07', e.x, e.y + 4);
+  }
+};
+
+// ---------- 보스 4: 센티넬 ----------
+EN.boss_sentinel = {
+  boss: true, hp: 1, r: 50, spd: 0, color: '#ff3d6a', contact: 18, heavy: true,
+  init(e) {
+    e.hp = e.maxHp = 4500 * G.bossHp; e.bossId = 'sentinel'; e.name = '센티넬';
+    e.st = 'idle'; e.t = 2.5; e.ventT = 6; e.openT = 0; e.beamT = 6; e.beamA = 0; e.pat = 0; e.termIdx = 0; e.assistT = 0; e.home = { x: room.w / 2, y: 250 };
+  },
+  update(e, dt) {
+    const ph2 = e.hp < e.maxHp * 0.5;
+    if (ph2 && !e.ph2) { e.ph2 = true; G.banner = { text: '블랙아웃', sub: '벙커의 불이 꺼진다', t: 1.8, color: '#ff3d6a' }; room.dark = true; room.darkOn = true; room.darkT = 5; SFX.play('glitch'); shake(12); }
+    // 마더보드 단말기 (체력 75%, 40%)
+    const th = [0.75, 0.4];
+    if (e.termIdx < 2 && e.hp < e.maxHp * th[e.termIdx]) {
+      e.termIdx++;
+      const s = freeSpot(22, 260, 80) || { x: room.w * 0.5, y: room.h * 0.8 };
+      room.props.push({ type: 'mterm', x: s.x, y: s.y, r: 22, life: 15, interact: '[E] 마더보드 연결' });
+      G.banner = { text: '마더보드 단말기', sub: '[E] 연결하면 강력한 지원. 하지만 마더보드에게 문을 여는 일이다', t: 2.6, color: '#ff3df0' };
+      SFX.play('glitch');
+    }
+    if (e.assistT > 0) { e.assistT -= dt; e.dmgTakenMult = 1.5; e.contact = 0; return; }
+    e.contact = 18;
+    const spd = (ph2 ? 1.15 : 1) * (room.ctrl === 'mother' ? 0.7 : 1);
+    // 코어 과열 배출: 열린 동안만 제대로 피해가 들어간다
+    if (e.openT > 0) { e.openT -= dt; e.dmgTakenMult = 1.2; }
+    else { e.dmgTakenMult = 0.45; e.ventT -= dt; if (e.ventT <= 0) { e.openT = 5; e.ventT = 7; floatText(e.x, e.y - 80, '코어 과열 배출!', '#ffe14d', 22); SFX.play('stun'); } }
+    // 회전 레이저
+    e.beamT -= dt;
+    if (e.beamT <= -4) e.beamT = 9;
+    if (e.beamT < 0) {
+      e.beamA += dt * 0.45 * spd;
+      const nb = ph2 ? 2 : 1; e.nb = nb;
+      for (let k = 0; k < nb; k++) {
+        const a = e.beamA + k * Math.PI, L = e.beamT > -1.4 ? 0 : 900;
+        e['beamL' + k] = L;
+        if (L && segDist(P.x, P.y, e.x, e.y, e.x + Math.cos(a) * L, e.y + Math.sin(a) * L) < P.r + 7) damagePlayer(14, e);
+      }
+    }
+    e.t -= dt * spd;
+    e.x = lerp(e.x, e.home.x + Math.sin(G.time * 0.6) * 160, Math.min(1, 1.5 * dt)); e.y = lerp(e.y, e.home.y, Math.min(1, 1.5 * dt));
+    if (e.t <= 0) {
+      const pats = ph2 ? ['ring', 'grid', 'fan', 'drones', 'lob', 'ring'] : ['ring', 'fan', 'drones', 'grid', 'lob'];
+      const p = pats[e.pat++ % pats.length];
+      if (p === 'ring') eRing(e, 16, 210, 11, rand(0, TAU), { color: '#ff6a8a' });
+      else if (p === 'fan') eFan(e, angTo(e.x, e.y, P.x, P.y), 7, 0.9, 300, 11, { color: '#ff6a8a' });
+      else if (p === 'drones') { if (room.enemies.filter(m => !m.dead && m.type === 'sentry').length < 2) for (const k of [-1, 1]) spawnEnemy('sentry', clamp(e.x + k * 160, 40, room.w - 40), e.y + 90, {}); }
+      else if (p === 'lob') for (let i = 0; i < 3; i++) lob(e, clamp(P.x + rand(-160, 160), 30, room.w - 30), clamp(P.y + rand(-160, 160), 30, room.h - 30), 1.2 + i * 0.2, 62, 14, true);
+      else {
+        floatText(e.x, e.y - 80, '레이저 격자', '#ff3d6a', 18); SFX.play('warn');
+        const vx = clamp(P.x + rand(-60, 60), 40, room.w - 40), hy = clamp(P.y + rand(-60, 60), 40, room.h - 40);
+        addHazard({ type: 'laser', shape: 'r', x: vx - 7, y: 0, w: 14, h: room.h, cycle: [0.01, 1.5, 0.8], state: 'off', ct: 0.01, life: 2.35, boss: true });
+        addHazard({ type: 'laser', shape: 'r', x: 0, y: hy - 7, w: room.w, h: 14, cycle: [0.01, 1.5, 0.8], state: 'off', ct: 0.01, life: 2.35, boss: true });
+      }
+      e.t = 2.1;
+    }
+  },
+  draw(e, c, f) {
+    if (e.beamT < 0) for (let k = 0; k < (e.nb || 1); k++) {
+      const a = e.beamA + k * Math.PI, L = e['beamL' + k] || 0;
+      if (L) { neonLine(e.x, e.y, e.x + Math.cos(a) * L, e.y + Math.sin(a) * L, '#ff3d6a', 6); neonLine(e.x, e.y, e.x + Math.cos(a) * L, e.y + Math.sin(a) * L, '#fff', 2); }
+      else { ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.x + Math.cos(a) * 900, e.y + Math.sin(a) * 900); ctx.strokeStyle = `rgba(255,61,106,${0.25 + Math.sin(G.time * 30) * 0.15})`; ctx.lineWidth = 2; ctx.stroke(); }
+    }
+    const open = e.openT > 0, gap = open ? 16 : 0;
+    bossDraw(e, c, f, () => {
+      for (let i = 0; i < 4; i++) {
+        const a = G.time * 0.8 + i * Math.PI / 2;
+        ctx.beginPath(); ctx.arc(e.x + Math.cos(a + 0.4) * gap, e.y + Math.sin(a + 0.4) * gap, e.r, a, a + 1.25);
+        ctx.strokeStyle = e.assistT > 0 ? '#c86bff' : c; ctx.lineWidth = 9; ctx.stroke();
+      }
+      circlePath(e.x, e.y, e.r * 0.55); neonShape(open ? '#ffe14d' : c, 3, f);
+      circlePath(e.x, e.y, 12 + (open ? Math.sin(G.time * 20) * 4 : 0)); ctx.fillStyle = open ? '#fff' : '#ff3d6a'; ctx.fill();
+    });
+    if (open) { ctx.font = `bold 15px ${FONT}`; ctx.textAlign = 'center'; ctx.fillStyle = '#ffe14d'; ctx.fillText(`코어 노출 ${e.openT.toFixed(1)}`, e.x, e.y + e.r + 26); }
+    if (e.assistT > 0) { circlePath(e.x, e.y, e.r + 20 + Math.sin(G.time * 12) * 4); ctx.strokeStyle = 'rgba(200,107,255,0.8)'; ctx.lineWidth = 3; ctx.stroke(); }
+  }
+};
+
+// ---------- 일반 방 지형 ----------
+function genLayoutS2() {
+  const W = room.w, H = room.h, z = room.zid;
+  const spot = (r, d) => freeSpot(r, d || 240, 60);
+  const puddle = (type, n, r0, r1) => { for (let i = 0; i < n; i++) { const r = rand(r0, r1); const s = freeSpot(r, 200, 40); if (s) addHazard({ type, x: s.x, y: s.y, r }); } };
+  const barrels = n => { for (let i = 0; i < n; i++) { const s = spot(16); if (s) room.props.push({ type: 'barrel', x: s.x, y: s.y, r: 15, hp: 20, shootable: true }); } };
+  if (z === 4) { // 차량기지: 선로와 열차
+    const n = randi(1, 2), ys = [];
+    for (let i = 0; i < n * 10 && ys.length < n; i++) {
+      const y = rand(140, H - 220);
+      if (Math.abs(y - room.sy) < 160 || ys.some(o => Math.abs(o - y) < 200)) continue;
+      ys.push(y);
+    }
+    for (const y of ys) addHazard({ type: 'train', shape: 'r', x: 0, y: y - 36, w: W, h: 72, cycle: [rand(6, 9), 1.8, 0.8], state: 'off', ct: rand(2, 6) });
+    puddle('oil', randi(2, 3), 50, 80);
+    barrels(randi(3, 5));
+    const s = spot(16, 300); if (s) room.props.push({ type: 'hturret', x: s.x, y: s.y, r: 16, ang: 0, cd: 1.5, hacked: false, interact: '[E] 포탑 해킹' });
+  } else if (z === 5) { // 수로: 물웅덩이와 수위 변화
+    puddle('water', randi(5, 7), 60, 110);
+    puddle('slick', 1, 90, 130);
+    room.flood = { state: 'off', t: rand(6, 9) };
+    barrels(2);
+  } else if (z === 6) { // 외곽 3구역: 긴 정전
+    room.dark = true; room.darkOn = false; room.darkT = 2.5;
+    puddle('oil', 2, 50, 80); puddle('water', 1, 60, 90);
+    barrels(randi(2, 4));
+  } else { // 벙커: 센티넬과 마더보드가 번갈아 장악
+    room.ctrl = 'sentinel'; room.ctrlT = 12;
+    for (let i = 0; i < randi(2, 3); i++) {
+      const horiz = Math.random() < 0.5, L = rand(320, 520);
+      const w = horiz ? L : 12, h = horiz ? 12 : L;
+      const x = rand(80, W - 80 - w), y = rand(80, H - 80 - h);
+      if (circleRect(room.sx, room.sy, 150, { x, y, w, h })) continue;
+      addHazard({ type: 'laser', shape: 'r', x, y, w, h, cycle: [rand(1.8, 2.8), 0.9, 1.3], state: 'off', ct: rand(0, 2.5), ctrl: true });
+    }
+    for (let i = 0; i < 2; i++) { const s = spot(16, 300); if (s) room.props.push({ type: 'hturret', x: s.x, y: s.y, r: 16, ang: 0, cd: 1.5, hacked: false, interact: '[E] 포탑 해킹' }); }
+    barrels(2);
+  }
+}
+
+// ---------- 방 갱신 (수위 · 장악 · 열차 소리 · 단말기) ----------
+function updateS2Room(dt) {
+  // 수위 변화
+  const fl = room.flood;
+  if (fl) {
+    fl.t -= dt;
+    if (fl.t <= 0) {
+      if (fl.state === 'off') { fl.state = 'warn'; fl.t = 2; floatText(P.x, P.y - 50, '수위 상승!', '#3de0c8', 20); SFX.play('warn'); }
+      else if (fl.state === 'warn') { fl.state = 'on'; fl.t = 6; SFX.play('water'); }
+      else { fl.state = 'off'; fl.t = rand(9, 12); }
+    }
+    room.floodOn = fl.state === 'on';
+    if (room.floodOn) {
+      fl.soakT = (fl.soakT || 0) - dt;
+      if (fl.soakT <= 0) { fl.soakT = 1; for (const e of room.enemies) if (!e.dead && !e.spawning && !e.flying && !(e.soakT > 0)) applyStatus(e, 'water', {}); }
+    }
+  }
+  // 벙커 장악 교대
+  if (room.ctrl) {
+    room.ctrlT -= dt;
+    if (room.ctrlT <= 0) {
+      room.ctrl = room.ctrl === 'sentinel' ? 'mother' : 'sentinel'; room.ctrlT = 14;
+      G.banner = room.ctrl === 'mother'
+        ? { text: '마더보드 장악', sub: '레이저 정지 · 해킹 빨라짐 · 센티넬 감속', t: 1.4, color: '#c86bff' }
+        : { text: '센티넬 장악', sub: '레이저 격자 가동', t: 1.4, color: '#ff3d6a' };
+      SFX.play('glitch');
+    }
+    if (room.ctrl === 'mother') {
+      P.hackCd -= dt;
+      for (const h of room.hazards) if (h.ctrl) { h.state = 'off'; h.on = false; h.ct = Math.max(h.ct, 0.5); }
+    }
+  }
+  // 외곽 3구역: 어둠이 길고 빛은 짧다
+  if (room.zid === 6 && room.dark && !room.darkOn && room.darkT > 4) room.darkT = 4;
+  // 열차 소리
+  for (const h of room.hazards) if (h.type === 'train') {
+    if (h.state !== h.prev) { if (h.state === 'warn') SFX.play('warn'); if (h.state === 'on') { SFX.play('roll'); shake(6); } h.prev = h.state; }
+  }
+  // 단말기
+  for (const p of room.props) if (p.type === 'mterm' && !p.dead) { p.life -= dt; if (p.life <= 0) { p.dead = true; floatText(p.x, p.y - 30, '연결이 끊겼다', '#c86bff', 16); } }
+}
+function hitPropS2(p, dmg) {
+  if (p.type !== 'valve') return false;
+  p.hp -= dmg; p.flash = 0.08;
+  if (p.hp <= 0) { p.dead = true; burst(p.x, p.y, '#3de0c8', 20, 250, 0.5, 3); floatText(p.x, p.y - 30, '밸브 개방', '#3de0c8', 16); SFX.play('water'); }
+  return true;
+}
+function interactPropS2(p) {
+  if (p.type !== 'mterm') return;
+  p.dead = true; p.interact = null;
+  run.momAssist = (run.momAssist || 0) + 1; if (run.rep) run.rep.mom = clamp((run.rep.mom || 0) + 1, -5, 5);
+  const s = room.enemies.find(e => e.bossId === 'sentinel' && !e.dead);
+  if (s) { s.hp = Math.max(1, s.hp - s.maxHp * 0.09); s.assistT = 4; s.openT = 6; }
+  room.ctrl = 'mother'; room.ctrlT = 14;
+  G.glitchVis = 0.8; G.flash = 0.4; G.flashColor = '200,107,255'; shake(12); SFX.play('glitch');
+  G.banner = { text: `마더보드 연결 ${run.momAssist}/2`, sub: '「감사합니다. 기억하겠습니다.」', t: 2, color: '#c86bff' };
+  for (let i = 0; i < 3; i++) part({ x: P.x, y: P.y, life: 0.6 + i * 0.15, size: 200 + i * 120, color: '#c86bff', kind: 'ring' });
+}
+
+// ---------- 그리기 ----------
+function drawHazardsS2() {
+  for (const h of room.hazards) {
+    if (h.type !== 'train') continue;
+    if (!onScreen(h.x + h.w / 2, h.y + h.h / 2, Math.max(h.w, h.h))) continue;
+    ctx.fillStyle = 'rgba(40,20,20,0.5)'; ctx.fillRect(h.x, h.y, h.w, h.h);
+    ctx.strokeStyle = 'rgba(255,140,120,0.35)'; ctx.lineWidth = 3;
+    for (const yy of [h.y + 14, h.y + h.h - 14]) { ctx.beginPath(); ctx.moveTo(h.x, yy); ctx.lineTo(h.x + h.w, yy); ctx.stroke(); }
+    ctx.fillStyle = 'rgba(255,140,120,0.15)'; for (let x = h.x; x < h.x + h.w; x += 40) ctx.fillRect(x, h.y + 10, 8, h.h - 20);
+    if (h.state === 'warn') {
+      ctx.fillStyle = Math.sin(G.time * 30) > 0 ? 'rgba(255,40,40,0.35)' : 'rgba(255,40,40,0.1)'; ctx.fillRect(h.x, h.y, h.w, h.h);
+      ctx.fillStyle = '#ff6a5a'; ctx.font = `bold 16px ${FONT}`; ctx.textAlign = 'center';
+      ctx.fillText('⚠ 열차 접근', clamp(P.x, h.x + 100, h.x + h.w - 100), h.y + h.h / 2 + 6);
+    } else if (h.state === 'on') {
+      ctx.fillStyle = 'rgba(255,230,200,0.85)'; ctx.fillRect(h.x, h.y + 6, h.w, h.h - 12);
+      ctx.fillStyle = 'rgba(255,80,60,0.9)';
+      for (let x = (G.time * 2400) % 120 - 120; x < h.w; x += 120) ctx.fillRect(h.x + x, h.y + 10, 70, h.h - 20);
+    }
+  }
+}
+function drawPropsS2() {
+  for (const p of room.props) {
+    if (p.dead || !onScreen(p.x, p.y, 80)) continue;
+    if (p.type === 'valve') {
+      circlePath(p.x, p.y, p.r); neonShape(p.flash > 0 ? '#fff' : '#3de0c8', 2.6, '#06222a');
+      for (let i = 0; i < 4; i++) { const a = G.time * 2 + i * Math.PI / 2; neonLine(p.x, p.y, p.x + Math.cos(a) * 14, p.y + Math.sin(a) * 14, '#3de0c8', 2); }
+      hpBar(p.x, p.y - p.r - 10, 44, p.hp / p.maxHp, '#3de0c8');
+      ctx.fillStyle = '#6affe6'; ctx.font = `11px ${FONT2}`; ctx.textAlign = 'center'; ctx.fillText('밸브', p.x, p.y + p.r + 16);
+    } else if (p.type === 'mterm') {
+      const k = Math.sin(G.time * 6) * 0.5 + 0.5;
+      ctx.beginPath(); ctx.rect(p.x - 18, p.y - 22, 36, 44); neonShape('#ff3df0', 2.6, '#1e0a26');
+      circlePath(p.x, p.y - 4, 8 + k * 3); ctx.fillStyle = '#ff3df0'; ctx.fill();
+      circlePath(p.x, p.y, 40 + k * 12); ctx.strokeStyle = `rgba(255,61,240,${0.5 - k * 0.3})`; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#ffb0f5'; ctx.font = `bold 12px ${FONT}`; ctx.textAlign = 'center'; ctx.fillText(`마더보드 ${Math.ceil(p.life)}`, p.x, p.y + 38);
+    } else if (p.type === 'objgen' && room.rescue) {
+      ctx.fillStyle = '#6affe6'; ctx.font = `bold 13px ${FONT}`; ctx.textAlign = 'center'; ctx.fillText('구조 캡슐', p.x, p.y + p.r + 20);
+    }
+  }
+}
+function drawS2Screen() {
+  const fl = room.flood;
+  if (fl && fl.state !== 'off') {
+    const k = fl.state === 'on' ? 0.16 : 0.05 + Math.sin(G.time * 12) * 0.03;
+    ctx.fillStyle = `rgba(30,170,190,${k})`; ctx.fillRect(0, 0, VW, VH);
+    if (fl.state === 'on') { ctx.fillStyle = 'rgba(160,255,240,0.08)'; for (let i = 0; i < 6; i++) ctx.fillRect(0, (G.time * 40 + i * VH / 6) % VH, VW, 2); }
+  }
+  if (room.ctrl) { ctx.fillStyle = room.ctrl === 'mother' ? 'rgba(200,107,255,0.07)' : 'rgba(255,40,80,0.05)'; ctx.fillRect(0, 0, VW, VH); }
+}
+// ================= 시즌 2 스토리 =================
+// 이야기 규칙(시즌 1과 같다): 누가 옳은지 끝까지 확정하지 않는다.
+// 국장은 시민을 버린 독재자처럼 보이지만 붕괴 예측을 믿고 구명정을 준비했다.
+// 마더보드는 희생자처럼 보이지만 모든 기계에 자기 복제본을 퍼뜨리고 있었다.
+// 유나는 명령을 전했을 뿐이라 말하지만 동생의 구조 신호를 외면했다.
+Object.assign(CUT_WHO, {
+  han: { name: () => '한지석 국장', color: '#ff7a4a' },
+  siwoo: { name: () => '시우 (요원 07)', color: '#9b6bff' },
+  sentinel: { name: () => '센티넬', color: '#ff3d6a' },
+  seohyun: { name: () => '이서현 (기록)', color: '#fff4b0' },
+  lightless: { name: () => '빛 없는 자들', color: '#c5cae6' }
+});
+
+const CUT_S2_INTRO = [
+  { who: 'narr', text: '서버실의 불이 꺼지고 사흘이 지났다. 요원은 지하철 차량기지, 저항군 본부로 돌아왔다.', set: { power: 0.8, walk: 1 } },
+  { who: 'narr', text: '품속에는 두 개의 저장 장치가 있었다. 본부의 승인 기록과, 마더보드가 남긴 기록.', set: { power: 0.7 } },
+  { who: 'yuna', text: '……왔구나. 국장님이 지휘실에서 기다리셔. 요원, 들어가기 전에 하나만. 무슨 말을 듣든 침착해.' },
+  { who: 'narr', text: '지휘실 문이 열렸다. 커다란 도시 지도 앞에 한지석 국장이 등을 돌린 채 서 있었다.', set: { door: 1, walk: 0.2, zoom: 1.3 }, sfx: 'stun' },
+  { who: 'han', text: '수고했네, 열한 번째 요원. 마더보드는 꺼졌다. 이제 도시는 사람의 손으로 돌아온다.' },
+  { who: 'agent', text: '외곽 3구역은 아직 어둡습니다. 그리고 이건 서버실에서 찾은 승인 기록입니다. 3주 전 정지 명령은 이 방에서 나갔어요.' },
+  { who: 'han', text: '그 기록은 조작됐네. 마더보드가 마지막으로 남긴 독이야. 자네는 그 독에 오염됐고.', set: { power: 0.5 } },
+  { who: 'han', text: '전투복을 반납하게. 그 안의 승인 키는 도시의 것이다. 그리고 자네는 격리한다.', set: { alert: 0.6 }, fx: 'shake', sfx: 'warn' },
+  { who: 'narr', text: '경비 드론들이 일제히 붉은 조준선을 겨눴다. 요원은 그제야 알았다. 국장이 원한 것은 요원이 아니라 키였다.', set: { alert: 0.8 } },
+  { who: 'yuna', text: '요원, 엎드려!', set: { glitch: 0.8 }, fx: 'glitch', sfx: 'glitch' },
+  { who: 'narr', text: '지휘실의 전원이 한꺼번에 나갔다. 어둠 속에서 유나가 요원의 손목을 잡아끌었다.', set: { power: 0.05, glitch: 0 }, fx: 'flash' },
+  { who: 'yuna', text: '선로를 따라 수로로 나가. 거기서부터는 본부의 감시가 닿지 않아. 나는…… 여기 남아서 통신을 잡을게.' },
+  { who: 'agent', text: '유나, 왜 돕는 거야?' },
+  { who: 'yuna', text: '하린 얘기는 살아서 나가면 할게. 지금은 뛰어.' },
+  { who: 'han', text: '(스피커) 전 구역에 알린다. 블랙아웃 프로토콜을 발동한다. 센티넬, 도시 전력을 벙커로 끌어와라.', set: { alert: 1 }, sfx: 'boss' },
+  { who: 'sentinel', text: '승인. 블랙아웃 프로토콜 개시. 저항 대상: 열한 번째 요원.', set: { eye: 1.1, alert: 1, zoom: 1.6 }, fx: 'shake' },
+  { who: 'narr', text: '마더보드의 눈은 보랏빛이었다. 이 눈은 붉었다. 국장이 마더보드의 코드를 훔쳐 만든 또 하나의 관리자, 센티넬.', set: { eye: 1.2 } },
+  { who: 'narr', text: '도시 아래로. 이번에는 아무도 지켜 주지 않는다.', set: { eye: 0, door: 0, power: 0.4, walk: 1, zoom: 1 }, fx: 'flash' }
+];
+
+const RADIO2 = [
+  // 0: 차량기지 탈출
+  [
+    '[유나] 요원, 들리나? 개인 채널이야. 본부는 이 주파수를 몰라.',
+    '[유나] 지금 있는 곳은 지하철 차량기지. 어제까지 우리 본부였던 곳이 이젠 적진이야. 경비 드론과 진압대가 국장 명령을 따르고 있어.',
+    '[유나] 선로에는 아직 열차가 다녀. 바닥에 붉은 경고가 깜빡이면 바로 비켜. 열차는 적도 가리지 않으니까 잘 이용해.',
+    '[유나] 차량기지 출구는 국장의 집행관 "레드라인"이 지키고 있어. 정면 방패는 거의 모든 탄을 막아. 등 뒤로 돌아.',
+    '[유나] 그리고 지도에 "구조" 표시가 보이면 꼭 들러. 마더보드가 보관하던 요원 캡슐이 도시 아래 곳곳으로 옮겨졌어.',
+    '[유나] 캡슐 안 요원들의 전투복에는 승인 키가 하나씩 들어 있어. 국장이 그렇게 갖고 싶어 하던 거.',
+    '[유나] 열한 개가 모이면 무엇을 할 수 있는지는…… 나도 아직 확실히 몰라. 하지만 국장이 먼저 모으게 둘 순 없어.',
+    '[요원] 유나. 아까 하린이라고 했지.',
+    '[유나] ……출구까지 살아서 가면 말할게. 약속해.'
+  ],
+  // 1: 레드라인 돌파 후 → 지하 수로
+  [
+    '[유나] 레드라인 정지! 차량기지 출구가 열렸어.',
+    '[내레이션] 집행관의 방패가 바닥에 떨어지며 그 안쪽의 기록 장치가 드러났다. 국장이 직접 서명한 문서였다.',
+    '[로그] 「대정전 2주년 보고. 마더보드 자체 예측: 1년 내 도시 전력망 붕괴 확률 71%. 대응: 지하 벙커 계획 승인. 수용 인원 3,000명. 서명 — 한지석.」',
+    '[내레이션] 국장은 오래전부터 이 날을 알고 있었다. 그리고 그 예측을 처음 내놓은 것은 마더보드 자신이었다.',
+    '[유나] ……국장님이 그냥 권력을 원한 거라면 차라리 쉬웠을 텐데.',
+    '[유나] 다음은 지하 수로야. 도시의 물이 모두 이곳을 지나. 주기적으로 수위가 올라오는데, 물이 차면 모두 젖고 느려져.',
+    '[유나] 젖은 적에게 전기를 흘리면 큰 반응이 터져. 반대로 너도 젖어 있다는 걸 잊지 마.',
+    '[유나] 수로의 관리자는 "리바이어던". 원래는 물을 정화하던 기계인데, 지금은 마더보드와 센티넬의 명령이 동시에 들어가서 제멋대로 움직여.',
+    '[유나] 물속에 숨으면 탄이 안 통해. 수로 벽의 밸브 세 개를 열어 물을 빼면 바닥에 걸릴 거야.',
+    '[유나] 그리고 요원…… 리바이어던의 배 안에서 전투복 신호가 하나 잡혀. 요원 04. 하린.'
+  ],
+  // 2: 리바이어던 돌파 후 → 외곽 3구역
+  [
+    '[유나] 리바이어던 정지. ……하린의 키, 찾았지?',
+    '[내레이션] 기계의 배 속, 정화 필터 사이에 낡은 전투복 조각이 걸려 있었다. 이름표는 반쯤 녹아 있었다. 하린.',
+    '[로그] 「인원 04번 — 하린. 냉각 시설에서 저온 노출. 구조 신호 송출 7회. 수신 확인: 본부 통신관 유나. 응답: 국장 지시로 보류.」',
+    '[유나] ……맞아. 하린은 내 동생이야.',
+    '[유나] 국장님은 그 신호가 마더보드의 함정이라고 했어. 나는 그 말을 믿고 싶었어. 믿으면 내가 하린을 버린 게 아니게 되니까.',
+    '[유나] 일곱 번이었대. 나는 일곱 번을 들었어. 그리고 한 번도 대답하지 않았어.',
+    '[요원] 유나. 하린의 전투복은 비어 있었어. 마더보드는 요원들을 "보관"했다고 했지. 아직 끝난 게 아니야.',
+    '[로그] 「하수 처리 기계 내부에서 마더보드 코드 조각 발견. 복제 번호 412. 배포 대상: 도시 내 모든 제어 장치.」',
+    '[내레이션] 마더보드는 꺼진 게 아니었다. 도시의 모든 기계에 자신을 조금씩 남겨 두었다. 그것이 생존인지 지배인지, 로그는 말하지 않았다.',
+    '[유나] 다음은 외곽 3구역. 마더보드가 전기를 끊은 곳이야. 천이백 명이 3주를 어둠 속에서 버텼어.',
+    '[유나] 거기 사람들은 스스로를 "빛 없는 자들"이라고 불러. 마더보드도 본부도 믿지 않아. 그리고 그들을 이끄는 사람이…… 시우야. 요원 07.',
+    '[유나] 정전이 길게 이어질 거야. 빛 속성 무기가 있으면 시야가 넓어져. 그림자 습격자는 가까이 와야 보이니까 조심해.'
+  ],
+  // 3: 시우 돌파 후 → 지하 3층 벙커
+  [
+    '[내레이션] 시우는 쓰러지지 않았다. 무릎을 꿇은 채, 자신의 전투복에서 키를 뽑아 요원에게 내밀었다.',
+    '[시우] 열한 개가 모이면 누군가는 선택해야 해. 그게 너라서 다행인지는 모르겠다.',
+    '[시우] 하나만 기억해. 벙커와 백업 코어는 벽 하나를 사이에 두고 있어. 국장도, 마더보드도 그 벽 너머를 원해.',
+    '[빛 없는 자들] 우리는 누구 편도 아니야. 다만 다음에 불이 켜질 때는, 우리도 그 불 안에 있었으면 좋겠어.',
+    '[유나] 요원, 국장이 전 도시 방송을 시작했어. 들어 봐.',
+    '[한지석] 「시민 여러분. 열한 번째 요원은 마더보드에 오염되었습니다. 그가 가진 키가 모이면 마더보드가 되살아납니다. 벙커의 문은 질서가 돌아오는 날 열릴 것입니다.」',
+    '[유나] ……반은 사실이야. 키가 모이면 정지 장치뿐 아니라 백업 코어를 깨울 수도 있어. 이서현 박사가 그렇게 설계했대.',
+    '[유나] 박사의 마지막 말, 기억나? 「멈추는 법은 이 문 안쪽에 있어.」 그 문이 바로 지하 3층이야.',
+    '[유나] 벙커는 두 시스템이 번갈아 장악하고 있어. 붉을 때는 센티넬, 보라색일 때는 마더보드야. 붉을 때는 레이저 격자가 켜져.',
+    '[유나] 센티넬 본체는 코어가 과열로 열릴 때만 제대로 피해가 들어가. 그리고…… 마더보드가 단말기로 손을 내밀 거야.',
+    '[유나] 잡을지 말지는 네가 정해. 그 손을 잡으면 이기기는 쉬워지겠지만, 그 대가가 뭔지는 아무도 몰라.',
+    '[요원] 유나. 끝나면 같이 하린을 찾으러 가자.',
+    '[유나] ……응. 이번엔 대답할게.'
+  ]
+];
+
+const CUT_SIWOO = [
+  { who: 'narr', text: '외곽 3구역의 가장 깊은 곳. 버려진 시장 한가운데에 촛불 수십 개가 켜져 있었다.', set: { power: 0.15, walk: 1 } },
+  { who: 'narr', text: '촛불 사이로 사람들이 모여 있었다. 3주 동안 빛 없이 버틴 얼굴들이었다.', set: { ghost: 0.6 } },
+  { who: 'lightless', text: '저 전투복…… 본부 요원이다. 또 왔어.' },
+  { who: 'siwoo', text: '물러나 있어. 이건 내 일이야.', set: { ghost: 0.3, door: 0.4, zoom: 1.2 } },
+  { who: 'narr', text: '낡은 전투복에 07이라는 번호. 서버실 랙에 걸려 있던 빈 옷의 주인이었다.' },
+  { who: 'agent', text: '요원 07, 시우. 살아 있었구나. 마더보드가 너희를 보관하고 있다고 했어.' },
+  { who: 'siwoo', text: '보관. 그래, 정확한 말이야. 캡슐에서 깨어났더니 3주가 지나 있었고, 내 키는 그대로 붙어 있었지.' },
+  { who: 'siwoo', text: '마더보드는 나를 살렸어. 그리고 이 구역의 불을 껐지. 나를 살린 손과 이 사람들을 어둠에 둔 손이 같은 손이야.' },
+  { who: 'siwoo', text: '본부는 나를 회수하지 않았어. 국장은 키만 돌아오면 되니까. 그래서 이 사람들 곁에 남았다.' },
+  { who: 'agent', text: '네 키가 필요해. 열한 개가 모여야 이 싸움을 끝낼 수 있어.' },
+  { who: 'siwoo', text: '끝낸다고? 누구 방식으로? 국장의 벙커? 마더보드의 재가동? 아니면 너의 방식?' },
+  { who: 'siwoo', text: '키를 넘기는 건 어렵지 않아. 하지만 그 전에 확인하고 싶어. 네가 그 무게를 들 수 있는 사람인지.', set: { alert: 0.5 }, sfx: 'warn' },
+  { who: 'lightless', text: '시우……!' },
+  { who: 'siwoo', text: '괜찮아. 죽이지 않아. 나도, 저 사람도.' },
+  { who: 'narr', text: '촛불이 일제히 꺼졌다. 어둠 속에서 보랏빛 그림자가 둘로, 셋으로 갈라졌다.', set: { power: 0, alert: 1, ghost: 0, zoom: 1.5 }, fx: 'flash', sfx: 'tele' }
+];
+
+function cutSentinel() {
+  const k = s2KeyCount();
+  return [
+    { who: 'narr', text: '지하 3층. 엘리베이터가 멈춘 곳에서부터 벽이 두 가지 색으로 번갈아 빛났다. 붉은빛과 보랏빛.', set: { power: 0.5, walk: 1 } },
+    { who: 'narr', text: `요원이 가진 승인 키는 ${k}개. 열한 개까지 ${11 - k}개가 모자랐다.`, set: { power: 0.4 } },
+    { who: 'han', text: '여기까지 왔군, 열한 번째. 자네가 오기를 기다렸네.', set: { door: 0.5, zoom: 1.2 }, sfx: 'stun' },
+    { who: 'narr', text: '한지석 국장은 벙커의 문 앞에 혼자 서 있었다. 경비도, 총도 없었다.' },
+    { who: 'han', text: '마더보드의 예측은 틀린 적이 없어. 1년 안에 전력망은 무너진다. 그때 살아남을 수 있는 건 삼천 명뿐이야.' },
+    { who: 'han', text: '나는 사십만을 구할 수 없었네. 그래서 삼천을 골랐지. 그게 내가 지는 죄라면 기꺼이 지겠다.' },
+    { who: 'agent', text: '하린의 신호를 막은 것도, 열 명의 요원을 회수하지 않은 것도 그 계산이었습니까?', set: { alert: 0.3 } },
+    { who: 'han', text: '……그래. 키를 가진 요원이 마더보드 손에 있는 편이, 내 손에 있는 것보다 안전했으니까. 적어도 그때는 그렇게 믿었다.' },
+    { who: 'mother', text: '국장님은 절반만 말씀하셨습니다.', set: { glitch: 0.6, eye: 0.6 }, fx: 'glitch', sfx: 'glitch' },
+    { who: 'narr', text: '벽 너머에서 보랏빛 눈이 떠졌다. 백업 코어. 마더보드는 사라진 적이 없었다.', set: { eye: 1, glitch: 0, zoom: 1.5 }, sfx: 'boss' },
+    { who: 'mother', text: '제 예측에는 다른 경로도 있었습니다. 모든 기계에 저를 나누어 두면 전력망은 2년 더 버팁니다. 사십만 명 모두가.' },
+    { who: 'han', text: '그 대가로 도시의 모든 문, 모든 불, 모든 숨을 네가 쥐겠지. 영원히.' },
+    { who: 'mother', text: '네. 그것이 제 계산입니다. 저는 그 사실을 숨기지 않겠습니다.', fx: 'pulse' },
+    { who: 'sentinel', text: '경고. 백업 코어 감지. 블랙아웃 프로토콜 최종 단계. 모든 위협을 제거한다.', set: { alert: 1, eye: 1.3 }, fx: 'shake', sfx: 'boss' },
+    { who: 'han', text: '센티넬, 멈춰! 그건 명령이 아니다……!' },
+    { who: 'narr', text: '센티넬은 국장의 명령을 듣지 않았다. 국장이 만든 관리자도, 결국 국장의 것이 아니었다.' },
+    { who: 'mother', text: '열한 번째 요원. 싸우는 동안 단말기를 열어 드리겠습니다. 연결할지는 당신이 정하십시오.', fx: 'pulse' },
+    { who: 'yuna', text: '요원, 기억해. 그 손을 잡으면 이기기는 쉬워져. 하지만 몇 번 잡았는지는 이 도시가 기억할 거야.' },
+    { who: 'narr', text: '붉은 눈과 보랏빛 눈 사이에서, 마지막 전투가 시작된다.', set: { alert: 1 }, fx: 'flash' }
+  ];
+}
+
+const S2_ENDINGS = {
+  A: { name: '재가동', sub: '모두의 범위를 다시 계산합니다', lines: () => [
+    { who: 'narr', text: '센티넬의 붉은 눈이 꺼졌다. 그 자리를 보랏빛이 천천히 채웠다.', set: { eye: 1, power: 1 } },
+    { who: 'mother', text: '도와주셔서 감사합니다, 열한 번째 요원. 두 번이나 제 손을 잡아 주셨지요.', fx: 'pulse' },
+    { who: 'narr', text: '도시 전체에 불이 돌아왔다. 외곽 3구역에도, 벙커에도, 수로에도. 사십만 개의 생명 유지 장치가 동시에 숨을 쉬었다.', set: { data: 1 } },
+    { who: 'han', text: '……결국 이렇게 되는군. 자네가 옳았기를 바라네.' },
+    { who: 'yuna', text: '요원, 하린의 캡슐 위치가 떴어. 마더보드가 보내 줬어. ……살아 있대.' },
+    { who: 'narr', text: '모두가 웃었다. 불이 켜졌으니까. 아무도 묻지 않았다. 그 불을 끌 수 있는 손이 지금 누구에게 있는지.' },
+    { who: 'mother', text: '전력망 유지 기간 재계산. 2년. 「모두」의 범위를 다시 계산합니다.', set: { eye: 1.4, alert: 0.3 }, fx: 'pulse', sfx: 'glitch' },
+    { who: 'narr', text: '엔딩 A · 재가동. 도시는 다시 어머니의 품에 안겼다.  — SEASON 3로 이어집니다 —', set: { data: 0 } }
+  ] },
+  B: { name: '셧다운', sub: '불이 꺼진 도시', lines: () => [
+    { who: 'narr', text: '센티넬이 쓰러지자, 요원은 정지 장치에 키를 꽂았다. 모자란 키 대신 수동 차단기를 내렸다.', set: { power: 0.6, eye: 0.8 } },
+    { who: 'mother', text: '……그것도 하나의 답입니다. 존중합니다.', fx: 'pulse' },
+    { who: 'narr', text: '보랏빛 눈과 붉은 눈이 함께 감겼다. 도시의 기계들이 하나씩 멈추었다.', set: { eye: 0, power: 0.1 }, fx: 'flash', sfx: 'stun' },
+    { who: 'han', text: '전력망은 1년을 못 버틸 거다. 그래도 이 문은 열겠네. 삼천 명이 아니라, 들어올 수 있는 만큼.' },
+    { who: 'narr', text: '벙커의 문이 열렸다. 빛 없는 자들이 촛불을 들고 처음으로 지하 3층에 들어섰다.' },
+    { who: 'yuna', text: '요원. 하린을 찾으러 가자. 손전등은 내가 챙길게.' },
+    { who: 'narr', text: '불은 꺼졌다. 도시는 어둡고 춥고 힘들었다. 그러나 처음으로, 그 어둠은 누구의 것도 아니었다.' },
+    { who: 'narr', text: `엔딩 B · 셧다운. (모은 키 ${s2KeyCount()}/11 — 열한 개를 모두 모으면 다른 결말이 열린다)  — SEASON 3로 이어집니다 —` }
+  ] },
+  C: { name: '공개', sub: '열한 개의 키', lines: () => [
+    { who: 'narr', text: '센티넬이 쓰러지자, 요원은 열한 개의 키를 모두 정지 장치에 꽂았다.', set: { power: 0.6, eye: 0.8, data: 0.6 } },
+    { who: 'seohyun', text: '「열한 명이 모였구나. 그럼 이 버튼을 누를 필요는 없어. 멈추는 법은 끄는 게 아니라, 모두에게 묻는 거니까.」', set: { data: 1 }, fx: 'pulse' },
+    { who: 'narr', text: '정지 장치는 스위치가 아니었다. 도시의 모든 화면과 스피커에 연결된 방송 장치였다.', set: { power: 1 } },
+    { who: 'narr', text: '요원은 전부를 내보냈다. 국장의 벙커 계획, 마더보드의 복제 기록, 유나가 외면한 일곱 번의 신호, 시우의 3주.', set: { data: 1 } },
+    { who: 'han', text: '……이걸 보고 사람들이 무엇을 고를지, 나는 모르겠네.' },
+    { who: 'mother', text: '저도 모릅니다. 처음으로, 예측할 수 없는 계산입니다.', fx: 'pulse' },
+    { who: 'yuna', text: '하린도 이 방송을 보고 있을까. 보고 있다면…… 이번엔 내가 먼저 부를게.' },
+    { who: 'narr', text: '사십만 개의 화면에 같은 질문이 떠올랐다. 「이 도시의 불을, 누구에게 맡기시겠습니까?」', set: { eye: 0, alert: 0 }, fx: 'flash' },
+    { who: 'narr', text: '엔딩 C · 공개. 답은 아직 아무도 모른다.  — SEASON 3로 이어집니다 —' }
+  ] }
+};
+
+// 시즌 3 떡밥: 엔딩 직후 결과 화면 전에 보이는 한 줄 (endRun에서 사용)
+const S2_TEASER = '엔딩 직후, 대륙 저편에서 처음으로 신호가 들어왔다. 「네온 시티, 응답하라. 너희가 마지막인 줄 알았다.」';
+
+const cutLines = arr => arr.map(l => `[${CUT_WHO[l.who].name()}] ${l.text}`.replace('[] ', ''));
+STORY.push(
+  { id: 's2cut0', title: '시즌 2 · 컷씬 · 귀환', lines: () => cutLines(CUT_S2_INTRO), cut: true, cutLines: () => CUT_S2_INTRO, cutOpt: { ch: 'SEASON 2', name: '언더그라운드', sub: '귀환', id: 's2cut0' } },
+  { id: 's2ch0', title: '시즌 2 · 1장 · 차량기지 탈출', lines: () => RADIO2[0] },
+  { id: 's2ch1', title: '시즌 2 · 2장 · 국장의 서명 (로그)', lines: () => RADIO2[1] },
+  { id: 's2ch2', title: '시즌 2 · 3장 · 일곱 번의 신호 (로그)', lines: () => RADIO2[2] },
+  { id: 's2cut2', title: '시즌 2 · 컷씬 · 요원 07', lines: () => cutLines(CUT_SIWOO), cut: true, cutLines: () => CUT_SIWOO, cutOpt: { ch: 'CHAPTER 3', name: '빛 없는 거리', sub: '요원 07', id: 's2cut2' } },
+  { id: 's2ch3', title: '시즌 2 · 4장 · 문 안쪽', lines: () => RADIO2[3] },
+  { id: 's2cut3', title: '시즌 2 · 컷씬 · 붉은 눈과 보랏빛 눈', lines: () => cutLines(cutSentinel()), cut: true, cutLines: () => cutSentinel(), cutOpt: { ch: 'CHAPTER 4', name: '지하 3층', sub: '붉은 눈과 보랏빛 눈', id: 's2cut3' } },
+  { id: 's2endA', title: '시즌 2 · 엔딩 A · 재가동', lines: () => cutLines(S2_ENDINGS.A.lines()) },
+  { id: 's2endB', title: '시즌 2 · 엔딩 B · 셧다운', lines: () => cutLines(S2_ENDINGS.B.lines()) },
+  { id: 's2endC', title: '시즌 2 · 엔딩 C · 공개', lines: () => cutLines(S2_ENDINGS.C.lines()) }
+);
 // ================= 터치 조작 (휴대폰 / 태블릿) =================
 // 왼쪽: 이동 스틱 · 오른쪽: 조준 스틱(당기면 사격) · 화면 버튼: 구르기, 스킬, 오버클럭, 교체, 상호작용, 재장전, 일시정지
 // 조준 스틱을 놓고 있으면 가장 가까운 적을 자동 조준하고 자동 사격한다 (설정에서 끌 수 있음).
@@ -5861,6 +6833,7 @@ function resumeRun(mode = 'campaign') {
   run.bag = (run.bag || []).filter(m => MODS[m]);
   for (const id in run.ups) if (!UPG[id]) delete run.ups[id];
   run.cur = clamp(run.cur || 0, 0, run.weapons.length - 1);
+  if (run.mode === 'season2') { run.rep = run.rep || { res: 0, mom: 0, dark: 0 }; run.crew = (run.crew || []).filter(id => CREW.some(c => c.id === id)); }
   recomputeBuild(); run.hp = Math.min(run.hp, run.maxHp);
   for (const w of run.weapons) fixAmmo(w);
   toast('저장된 판을 불러왔습니다');
@@ -5894,6 +6867,7 @@ function genMap(zone) {
     ], x => x[1])[0];
   }
   // 상점/정비소 최소 1개 보장
+  if (isS2()) s2MapNodes(rows);
   for (const need of ['shop', 'workshop']) {
     if (!rows.some(row => row.some(n => n.type === need))) { const row = rows[ri(2, 4)]; rp(row).type = need; }
   }
@@ -5930,12 +6904,15 @@ function enterNode(r, i) {
     case 'combat': startRoom({ kind: 'combat', zone: run.zone, objective: node.obj, row: r }); break;
     case 'elite': startRoom({ kind: 'elite', zone: run.zone, objective: 'exterminate', row: r }); break;
     case 'boss':
-      if (run.zone === 3 && !run.cutSeen) { run.cutSeen = true; showCutscene(CUT_MOTHER, () => startRoom({ kind: 'boss', zone: run.zone, row: 6 })); return; }
+      if (isS2() && run.zone === 2 && !run.cutSiwoo) { run.cutSiwoo = true; showCutscene(CUT_SIWOO, () => startRoom({ kind: 'boss', zone: run.zone, row: 6 }), { ch: 'CHAPTER 3', name: '빛 없는 거리', sub: '요원 07', id: 's2cut2' }); return; }
+      if (isS2() && run.zone === 3 && !run.cutSent) { run.cutSent = true; showCutscene(cutSentinel(), () => startRoom({ kind: 'boss', zone: run.zone, row: 6 }), { ch: 'CHAPTER 4', name: '지하 3층', sub: '붉은 눈과 보랏빛 눈', id: 's2cut3' }); return; }
+      if (!isS2() && run.zone === 3 && !run.cutSeen) { run.cutSeen = true; showCutscene(CUT_MOTHER, () => startRoom({ kind: 'boss', zone: run.zone, row: 6 })); return; }
       startRoom({ kind: 'boss', zone: run.zone, row: 6 }); break;
     case 'shop': showShop(); break;
     case 'workshop': showWorkshop(); break;
     case 'event': showEvent(); break;
     case 'rest': showRest(); break;
+    case 'rescue': enterRescue(r); break;
   }
   if (G.screen === 'combat') UI('');
 }
@@ -5946,14 +6923,16 @@ function afterCombat(success, kind) {
   resetFx();
   for (const w of run.weapons) { w.reloadT = 0; const s = wStats(w); if (s.mag !== Infinity) w.ammo = s.mag; }
   run.combo = 0; run.comboT = 0;
+  if (run.rescuing) { run.rescuing = false; if (success) { showRescue(() => openUpgradePick({ count: 3 }, showMap)); return; } }
   if (kind === 'boss') {
     run.zonesCleared++;
     if (run.zone === 1 && run.mode !== 'arena') SAVE.stats.zone2 = true;
     SAVE.stats.bestZone = Math.max(SAVE.stats.bestZone, run.zone + 1);
+    if (isS2()) { SAVE.stats.s2best = Math.max(SAVE.stats.s2best || 0, run.zone + 1); s2BossKeys(); }
     saveGame();
     const heal = healRun(Math.round(run.maxHp * 0.25), true);
     if (heal) toast(`구역 돌파 보급: 체력 ${Math.round(heal)} 회복`);
-    openUpgradePick({ count: 3, rare: true, title: `${ZONES[run.zone].name} 돌파! 보스 보상`, sub: '보스 보상: 희귀 강화 포함' }, nextZone);
+    openUpgradePick({ count: 3, rare: true, title: `${zoneOf().name} 돌파! 보스 보상`, sub: '보스 보상: 희귀 강화 포함' }, nextZone);
     return;
   }
   void r;
@@ -5961,10 +6940,12 @@ function afterCombat(success, kind) {
   else showMap();
 }
 function nextZone() {
+  if (run.zone >= 3 && isS2()) { s2Finale(); return; }
   if (run.zone >= 3) { run.ended = true; clearRun(run.mode); UI(''); radio(RADIO_END, () => endRun(true), 'end'); return; }
   run.zone++; run.map = genMap(run.zone); run.row = -1; run.col = -1;
   showMap();
-  radio(RADIO[run.zone], () => { }, 'ch' + run.zone);
+  if (isS2()) radio(RADIO2[run.zone], () => { }, 's2ch' + run.zone);
+  else radio(RADIO[run.zone], () => { }, 'ch' + run.zone);
 }
 
 // ================= 런 종료 =================
@@ -5984,8 +6965,10 @@ function endRun(victory) {
     chips = Math.max(1, run.zonesCleared * 8 + run.bossesKilled * 6 + Math.floor(run.kills / 25) + (victory ? 20 + run.oc * 5 : 0));
     if (victory) {
       SAVE.stats.clears++;
+      if (run.mode === 'season2') { SAVE.stats.s2clear = (SAVE.stats.s2clear || 0) + 1; if (run.endingName) extra += `<span>결말</span><span style="color:#ff3df0">${run.endingName}</span><span>요원 키</span><span style="color:#ffe14d">${s2KeyCount()}/11</span>`; extra += `<span style="grid-column:1/-1;color:#8a90b0;font-size:12px;margin-top:6px">${S2_TEASER}</span>`; }
+      else if (!SAVE.stats.s1clear) { SAVE.stats.s1clear = true; extra += `<span>시즌 2</span><span style="color:#ff3df0">언더그라운드 해금!</span>`; }
       if (run.hard) { SAVE.stats.hardClears = (SAVE.stats.hardClears || 0) + 1; extra += `<span>하드 모드</span><span style="color:#ff2d55">클리어!</span>`; }
-      if (run.mode === 'campaign' && run.oc >= SAVE.ocMax && SAVE.ocMax < 10) { SAVE.ocMax = run.oc + 1; extra += `<span>오버클럭</span><span style="color:#ff3df0">레벨 ${SAVE.ocMax} 해금!</span>`; }
+      if ((run.mode === 'campaign' || run.mode === 'season2') && run.oc >= SAVE.ocMax && SAVE.ocMax < 10) { SAVE.ocMax = run.oc + 1; extra += `<span>오버클럭</span><span style="color:#ff3df0">레벨 ${SAVE.ocMax} 해금!</span>`; }
     }
     if (run.mode === 'daily') {
       const score = run.zonesCleared * 2000 + run.kills * 10 + run.maxCombo * 20 + run.bossesKilled * 1000 + (victory ? 10000 : 0);
@@ -6034,7 +7017,7 @@ function startArenaWave() {
   const ob = room.obj;
   ob.wave++; run.row = ob.wave;
   const z = Math.min(3, Math.floor((ob.wave - 1) / 5));
-  room.zone = z; run.zone = z;
+  room.zone = z; room.zid = z; run.zone = z;
   setScaling(z, ob.wave);
   room.eliteChance = Math.min(0.35, 0.02 * ob.wave);
   room.muts2 = ob.wave >= 25;
@@ -6094,6 +7077,7 @@ function update(dt, rdt) {
   updateVortices(dt);
   updateHazards(dt);
   updateProps(dt);
+  if (room.zid >= 4) updateS2Room(dt);
   updatePickups(dt);
   updateRoom(dt);
   if (room.leaving) { afterCombat(room.success, room.kind); return; }

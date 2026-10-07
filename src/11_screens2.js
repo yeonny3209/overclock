@@ -1,5 +1,5 @@
 // ================= 상점 =================
-function priceMult() { return (1 + 0.15 * run.zone) * (run.char === 'momo' ? 0.75 : 1) * (run.oc >= 3 ? 1.2 : 1); }
+function priceMult() { return (isS2() ? s2PriceMult() : 1) * (1 + 0.15 * run.zone) * (run.char === 'momo' ? 0.75 : 1) * (run.oc >= 3 ? 1.2 : 1); }
 function genShop() {
   const pm = priceMult();
   const items = [];
@@ -56,8 +56,9 @@ function showWorkshop() {
 // ================= 이벤트 =================
 function showEvent() {
   menuMode();
-  let pool = EVENTS.filter(e => !e.special && !run.events.includes(e.id));
-  if (!pool.length) pool = EVENTS.filter(e => !e.special);
+  const okEv = e => !e.special && (isS2() ? (e.s2 || S2_GENERIC.includes(e.id)) : !e.s2);
+  let pool = EVENTS.filter(e => okEv(e) && !run.events.includes(e.id));
+  if (!pool.length) pool = EVENTS.filter(okEv);
   let ev = rp(pool);
   if (run.helped >= 0 && run.zone > run.helped && RNG() < 0.7) ev = EVENTS.find(e => e.id === 'payback');
   run.events.push(ev.id);
@@ -74,11 +75,11 @@ function showEvent() {
 // ================= 휴식 =================
 function showRest() {
   menuMode();
-  const pct = (run.oc >= 4 ? 0.2 : 0.3) * (run.hard ? 0.5 : 1);
+  const pct = ((run.oc >= 4 ? 0.2 : 0.3) + (isS2() ? 0.04 * Math.max(0, run.rep.dark || 0) : 0)) * (run.hard ? 0.5 : 1);
   const amt = Math.round(run.maxHp * pct);
   scr(`${topbar()}<div class="panel evbox"><div style="font-size:48px">⛺</div><h2>휴식</h2><div class="desc">버려진 정비 기지. 잠시 숨을 돌릴 수 있다.</div>
     <div class="row">
-      <div class="card ${BS.noHeal ? 'locked' : ''}" onclick="${BS.noHeal ? '' : cb(() => { healRun(amt); showMap(); })}"><h3 style="color:#6dff8a">체력 회복</h3><p>최대 체력의 ${pct * 100}% (${amt}) 회복${BS.noHeal ? '<br><span style="color:#ff4d6d">광전사: 회복 불가</span>' : ''}</p></div>
+      <div class="card ${BS.noHeal ? 'locked' : ''}" onclick="${BS.noHeal ? '' : cb(() => { healRun(amt); showMap(); })}"><h3 style="color:#6dff8a">체력 회복</h3><p>최대 체력의 ${Math.round(pct * 100)}% (${amt}) 회복${BS.noHeal ? '<br><span style="color:#ff4d6d">광전사: 회복 불가</span>' : ''}</p></div>
       <div class="card" onclick="${cb(() => openUpgradePick({ count: 3 }, showMap))}"><h3 style="color:#c77dff">강화 1개</h3><p>강화 3개 중 1개 선택</p></div>
     </div></div>`);
 }
@@ -87,9 +88,9 @@ function showRest() {
 function showResults(victory, chips, extra) {
   menuMode(); room = null;
   const t = Math.floor(run.time), mm = Math.floor(t / 60), ss = String(t % 60).padStart(2, '0');
-  const reached = run.mode === 'arena' ? `웨이브 ${run.arenaWave || 0}` : `구역 ${run.zone + 1} · ${ZONES[run.zone].name}`;
-  scr(`<h2 style="font-size:46px;color:${victory ? '#6dff8a' : '#ff4d6d'}">${victory ? '서버 정지 — 작전 성공' : '작전 실패'}</h2>
-    <div class="sub">${CHARS[run.char].name} · ${run.mode === 'daily' ? '일일 도전' : run.mode === 'arena' ? '무한 아레나' : '캠페인'}${run.oc ? ` · 오버클럭 ${run.oc}` : ''}${run.hard ? ' · <b style="color:#ff2d55">하드 모드</b>' : ''}</div>
+  const reached = run.mode === 'arena' ? `웨이브 ${run.arenaWave || 0}` : `구역 ${run.zone + 1} · ${zoneOf().name}`;
+  scr(`<h2 style="font-size:46px;color:${victory ? '#6dff8a' : '#ff4d6d'}">${victory ? (run.mode === 'season2' ? '지하 3층 돌파 — 작전 성공' : '서버 정지 — 작전 성공') : '작전 실패'}</h2>
+    <div class="sub">${CHARS[run.char].name} · ${run.mode === 'daily' ? '일일 도전' : run.mode === 'arena' ? '무한 아레나' : run.mode === 'season2' ? '시즌 2' : '캠페인'}${run.oc ? ` · 오버클럭 ${run.oc}` : ''}${run.hard ? ' · <b style="color:#ff2d55">하드 모드</b>' : ''}</div>
     <div class="row">
       <div class="panel"><div class="kv">
         <span>도달</span><span>${reached}</span>
@@ -106,8 +107,8 @@ function showResults(victory, chips, extra) {
     </div>
     ${buildSummaryHTML()}
     <div class="row">
-      <button class="btn ye" onclick="${cb(() => run.mode === 'arena' ? startArena(run.char, run.hard) : run.mode === 'daily' ? showDaily() : startCampaign(run.char, run.oc, 'campaign', 0, run.hard))}">같은 요원으로 다시</button>
-      <button class="btn" onclick="${cb(() => showCharSelect(run.mode === 'arena' ? 'arena' : 'campaign'))}">요원 선택</button>
+      <button class="btn ye" onclick="${cb(() => run.mode === 'arena' ? startArena(run.char, run.hard) : run.mode === 'daily' ? showDaily() : run.mode === 'season2' ? startSeason2(run.char, run.oc, run.hard) : startCampaign(run.char, run.oc, 'campaign', 0, run.hard))}">같은 요원으로 다시</button>
+      <button class="btn" onclick="${cb(() => showCharSelect(run.mode === 'arena' ? 'arena' : run.mode === 'season2' ? 'season2' : 'campaign'))}">요원 선택</button>
       <button class="btn" onclick="${cb(showTitle)}">타이틀로</button>
     </div>`, 'top');
 }
@@ -145,7 +146,7 @@ function showCodex(tab) {
   if (tab === 'event') items = EVENTS.map(e => cx.event[e.id] ? `<div class="card nohover"><h3>${e.icon} ${e.name}</h3><p>${e.desc}</p></div>` : unk);
   if (tab === 'element') items = SET_TAGS.map(t => `<div class="card nohover" style="grid-column:span 2"><h3>${tagHTML(t)} ${STATUS_INFO[t].name}</h3><p>${STATUS_INFO[t].core}</p><p class="small" style="margin-top:6px">3: ${SETS[t][0]}<br>5: ${SETS[t][1]}<br>7: ${SETS[t][2]}<br><span style="color:#ff3df0">9: ${SETS[t][3]}</span></p></div>`);
   if (tab === 'story') items = STORY.map(s => cx.story && cx.story[s.id]
-    ? `<div class="card nohover" style="grid-column:1/-1;cursor:default"><h3>${s.title}</h3><div class="small" style="line-height:1.8;margin-top:6px">${s.lines().map(l => esc(l).replace(/^(\[[^\]]+\])/, '<b style="color:#29f0ff">$1</b>')).join('<br>')}</div>${s.cut ? `<button class="btn sm mg" style="margin-top:10px" onclick="${cb(() => showCutscene(CUT_MOTHER, () => showCodex('story')))}">컷씬 다시 보기</button>` : ''}</div>`
+    ? `<div class="card nohover" style="grid-column:1/-1;cursor:default"><h3>${s.title}</h3><div class="small" style="line-height:1.8;margin-top:6px">${s.lines().map(l => esc(l).replace(/^(\[[^\]]+\])/, '<b style="color:#29f0ff">$1</b>')).join('<br>')}</div>${s.cut ? `<button class="btn sm mg" style="margin-top:10px" onclick="${cb(() => showCutscene(s.cutLines ? s.cutLines() : CUT_MOTHER, () => showCodex('story'), s.cutOpt))}">컷씬 다시 보기</button>` : ''}</div>`
     : `<div class="card nohover" style="grid-column:1/-1"><h3 class="muted">??? · ${s.title.split('·')[0].trim()}</h3><p class="muted">이야기를 진행하면 기록됩니다.</p></div>`);
   if (tab === 'elite') items = ELITE_IDS.map(id => `<div class="card nohover"><h3 style="color:${ELITES[id].color}">${ELITES[id].name}</h3><p>${ELITES[id].desc}</p></div>`);
   const cnt = k => Object.keys(cx[k] || {}).length;

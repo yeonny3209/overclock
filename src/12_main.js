@@ -26,6 +26,7 @@ function resumeRun(mode = 'campaign') {
   run.bag = (run.bag || []).filter(m => MODS[m]);
   for (const id in run.ups) if (!UPG[id]) delete run.ups[id];
   run.cur = clamp(run.cur || 0, 0, run.weapons.length - 1);
+  if (run.mode === 'season2') { run.rep = run.rep || { res: 0, mom: 0, dark: 0 }; run.crew = (run.crew || []).filter(id => CREW.some(c => c.id === id)); }
   recomputeBuild(); run.hp = Math.min(run.hp, run.maxHp);
   for (const w of run.weapons) fixAmmo(w);
   toast('저장된 판을 불러왔습니다');
@@ -59,6 +60,7 @@ function genMap(zone) {
     ], x => x[1])[0];
   }
   // 상점/정비소 최소 1개 보장
+  if (isS2()) s2MapNodes(rows);
   for (const need of ['shop', 'workshop']) {
     if (!rows.some(row => row.some(n => n.type === need))) { const row = rows[ri(2, 4)]; rp(row).type = need; }
   }
@@ -95,12 +97,15 @@ function enterNode(r, i) {
     case 'combat': startRoom({ kind: 'combat', zone: run.zone, objective: node.obj, row: r }); break;
     case 'elite': startRoom({ kind: 'elite', zone: run.zone, objective: 'exterminate', row: r }); break;
     case 'boss':
-      if (run.zone === 3 && !run.cutSeen) { run.cutSeen = true; showCutscene(CUT_MOTHER, () => startRoom({ kind: 'boss', zone: run.zone, row: 6 })); return; }
+      if (isS2() && run.zone === 2 && !run.cutSiwoo) { run.cutSiwoo = true; showCutscene(CUT_SIWOO, () => startRoom({ kind: 'boss', zone: run.zone, row: 6 }), { ch: 'CHAPTER 3', name: '빛 없는 거리', sub: '요원 07', id: 's2cut2' }); return; }
+      if (isS2() && run.zone === 3 && !run.cutSent) { run.cutSent = true; showCutscene(cutSentinel(), () => startRoom({ kind: 'boss', zone: run.zone, row: 6 }), { ch: 'CHAPTER 4', name: '지하 3층', sub: '붉은 눈과 보랏빛 눈', id: 's2cut3' }); return; }
+      if (!isS2() && run.zone === 3 && !run.cutSeen) { run.cutSeen = true; showCutscene(CUT_MOTHER, () => startRoom({ kind: 'boss', zone: run.zone, row: 6 })); return; }
       startRoom({ kind: 'boss', zone: run.zone, row: 6 }); break;
     case 'shop': showShop(); break;
     case 'workshop': showWorkshop(); break;
     case 'event': showEvent(); break;
     case 'rest': showRest(); break;
+    case 'rescue': enterRescue(r); break;
   }
   if (G.screen === 'combat') UI('');
 }
@@ -111,14 +116,16 @@ function afterCombat(success, kind) {
   resetFx();
   for (const w of run.weapons) { w.reloadT = 0; const s = wStats(w); if (s.mag !== Infinity) w.ammo = s.mag; }
   run.combo = 0; run.comboT = 0;
+  if (run.rescuing) { run.rescuing = false; if (success) { showRescue(() => openUpgradePick({ count: 3 }, showMap)); return; } }
   if (kind === 'boss') {
     run.zonesCleared++;
     if (run.zone === 1 && run.mode !== 'arena') SAVE.stats.zone2 = true;
     SAVE.stats.bestZone = Math.max(SAVE.stats.bestZone, run.zone + 1);
+    if (isS2()) { SAVE.stats.s2best = Math.max(SAVE.stats.s2best || 0, run.zone + 1); s2BossKeys(); }
     saveGame();
     const heal = healRun(Math.round(run.maxHp * 0.25), true);
     if (heal) toast(`구역 돌파 보급: 체력 ${Math.round(heal)} 회복`);
-    openUpgradePick({ count: 3, rare: true, title: `${ZONES[run.zone].name} 돌파! 보스 보상`, sub: '보스 보상: 희귀 강화 포함' }, nextZone);
+    openUpgradePick({ count: 3, rare: true, title: `${zoneOf().name} 돌파! 보스 보상`, sub: '보스 보상: 희귀 강화 포함' }, nextZone);
     return;
   }
   void r;
@@ -126,10 +133,12 @@ function afterCombat(success, kind) {
   else showMap();
 }
 function nextZone() {
+  if (run.zone >= 3 && isS2()) { s2Finale(); return; }
   if (run.zone >= 3) { run.ended = true; clearRun(run.mode); UI(''); radio(RADIO_END, () => endRun(true), 'end'); return; }
   run.zone++; run.map = genMap(run.zone); run.row = -1; run.col = -1;
   showMap();
-  radio(RADIO[run.zone], () => { }, 'ch' + run.zone);
+  if (isS2()) radio(RADIO2[run.zone], () => { }, 's2ch' + run.zone);
+  else radio(RADIO[run.zone], () => { }, 'ch' + run.zone);
 }
 
 // ================= 런 종료 =================
@@ -149,8 +158,10 @@ function endRun(victory) {
     chips = Math.max(1, run.zonesCleared * 8 + run.bossesKilled * 6 + Math.floor(run.kills / 25) + (victory ? 20 + run.oc * 5 : 0));
     if (victory) {
       SAVE.stats.clears++;
+      if (run.mode === 'season2') { SAVE.stats.s2clear = (SAVE.stats.s2clear || 0) + 1; if (run.endingName) extra += `<span>결말</span><span style="color:#ff3df0">${run.endingName}</span><span>요원 키</span><span style="color:#ffe14d">${s2KeyCount()}/11</span>`; extra += `<span style="grid-column:1/-1;color:#8a90b0;font-size:12px;margin-top:6px">${S2_TEASER}</span>`; }
+      else if (!SAVE.stats.s1clear) { SAVE.stats.s1clear = true; extra += `<span>시즌 2</span><span style="color:#ff3df0">언더그라운드 해금!</span>`; }
       if (run.hard) { SAVE.stats.hardClears = (SAVE.stats.hardClears || 0) + 1; extra += `<span>하드 모드</span><span style="color:#ff2d55">클리어!</span>`; }
-      if (run.mode === 'campaign' && run.oc >= SAVE.ocMax && SAVE.ocMax < 10) { SAVE.ocMax = run.oc + 1; extra += `<span>오버클럭</span><span style="color:#ff3df0">레벨 ${SAVE.ocMax} 해금!</span>`; }
+      if ((run.mode === 'campaign' || run.mode === 'season2') && run.oc >= SAVE.ocMax && SAVE.ocMax < 10) { SAVE.ocMax = run.oc + 1; extra += `<span>오버클럭</span><span style="color:#ff3df0">레벨 ${SAVE.ocMax} 해금!</span>`; }
     }
     if (run.mode === 'daily') {
       const score = run.zonesCleared * 2000 + run.kills * 10 + run.maxCombo * 20 + run.bossesKilled * 1000 + (victory ? 10000 : 0);
@@ -199,7 +210,7 @@ function startArenaWave() {
   const ob = room.obj;
   ob.wave++; run.row = ob.wave;
   const z = Math.min(3, Math.floor((ob.wave - 1) / 5));
-  room.zone = z; run.zone = z;
+  room.zone = z; room.zid = z; run.zone = z;
   setScaling(z, ob.wave);
   room.eliteChance = Math.min(0.35, 0.02 * ob.wave);
   room.muts2 = ob.wave >= 25;
@@ -259,6 +270,7 @@ function update(dt, rdt) {
   updateVortices(dt);
   updateHazards(dt);
   updateProps(dt);
+  if (room.zid >= 4) updateS2Room(dt);
   updatePickups(dt);
   updateRoom(dt);
   if (room.leaving) { afterCombat(room.success, room.kind); return; }

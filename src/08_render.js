@@ -69,7 +69,7 @@ function toast(html) {
 
 // ================= 월드 그리기 =================
 function render() {
-  const Z = ZONES[room.zone];
+  const Z = ZONES[room.zid];
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.fillStyle = '#030208'; ctx.fillRect(0, 0, VW, VH);
   let sx = 0, sy = 0;
@@ -78,11 +78,13 @@ function render() {
   ctx.translate(Math.round(-cam.x + sx), Math.round(-cam.y + sy));
   drawFloor(Z);
   drawHazards();
+  drawHazardsS2();
   for (const d of room.decals) { ctx.fillStyle = 'rgba(0,0,0,0.28)'; circlePath(d.x, d.y, d.r); ctx.fill(); }
   drawParticles(true);
   drawWalls(Z);
   drawPickups();
   drawProps();
+  drawPropsS2();
   for (const v of room.vortices) drawVortex(v);
   for (const a of room.allies) drawAlly(a);
   for (const h of room.hacked) { drawEnemy(h); ctx.beginPath(); ctx.arc(h.x, h.y, h.r + 8, -Math.PI / 2, -Math.PI / 2 + TAU * (h.allyT / h.allyMax)); ctx.strokeStyle = '#29f0ff'; ctx.lineWidth = 2; ctx.stroke(); }

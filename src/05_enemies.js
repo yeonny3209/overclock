@@ -467,6 +467,7 @@ function enemyHazards(e, dt) {
       case 'venom': if (tick) applyStatus(e, 'poison', {}); break;
       case 'elecfloor': if (h.state === 'on' && tick) { damageEnemy(e, 15, { quiet: true, dot: true }); applyStatus(e, 'elec', { noChain: true }); } break;
       case 'laser': if (h.state === 'on' && tick) damageEnemy(e, 20, { quiet: true, dot: true }); break;
+      case 'train': if (h.state === 'on') trainHitEnemy(e, tick); break;
       case 'steam': if (h.on && tick) applyStatus(e, 'ice', {}); break;
       case 'frostfloor': if (tick) applyStatus(e, 'ice', {}); break;
       case 'conveyor': if (!e.heavy) { e.x += h.dx * 140 * dt; e.y += h.dy * 140 * dt; } break;
@@ -506,7 +507,7 @@ function updateHacked(dt) {
     if (h.contactCd <= 0) for (const e of room.enemies) {
       if (e.dead || e.spawning || d2(e.x, e.y, h.x, h.y) > (e.r + h.r + 2) ** 2) continue;
       h.contactCd = 0.45;
-      damageEnemy(e, Math.max(8, h.contact * 1.6) * BS.dmgMult, { knock: 120, ang: angTo(h.x, h.y, e.x, e.y) });
+      damageEnemy(e, Math.max(8, h.contact * 1.6) * BS.dmgMult * allyDmgMult(), { knock: 120, ang: angTo(h.x, h.y, e.x, e.y) });
       break;
     }
   }
