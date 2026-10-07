@@ -225,7 +225,7 @@ function startSeason2(charId, oc, hard) {
   run.season = 2; run.rep = { res: 0, mom: 0, dark: 0 }; run.crew = []; run.momAssist = 0;
   recomputeBuild(); run.hp = run.maxHp;
   run.map = genMap(0);
-  const go = () => { showMap(); radio(RADIO2[0], () => { }, 's2ch0'); };
+  const go = () => showChapter(2, 0, showMap);
   const intro = () => showCutscene(CUT_S2_INTRO, go, { ch: 'SEASON 2', name: '언더그라운드', sub: '귀환', id: 's2cut0' });
   if (SAVE.unlocks.qol_start) { reseed(run.seed + 17); openUpgradePick({ count: 3, title: '출격 준비: 시작 강화' }, intro); }
   else intro();

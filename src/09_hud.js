@@ -4,7 +4,7 @@ function drawScreenFx() {
   // 정전 구간
   if (room.darkOn && !P.dead) {
     const px = P.x - cam.x, py = P.y - cam.y;
-    const vm = darkVision(), g = ctx.createRadialGradient(px, py, 120 * vm, px, py, 300 * vm);
+    const vm = darkVision() || 1, g = ctx.createRadialGradient(px, py, 120 * vm, px, py, 300 * vm);
     g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(2,0,8,0.97)');
     ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
   } else if (room.dark && room.darkT < 1 && !room.darkOn && Math.sin(G.time * 40) > 0.3) {

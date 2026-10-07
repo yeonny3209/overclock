@@ -37,7 +37,7 @@ function startCampaign(charId, oc, mode, seed, hard) {
   newRun(mode || 'campaign', charId, oc, seed, hard);
   G.mode = run.mode;
   run.map = genMap(0);
-  const go = () => { showMap(); radio(RADIO[0], () => { }, 'ch0'); };
+  const go = () => showChapter(1, 0, showMap);
   if (SAVE.unlocks.qol_start) { reseed(run.seed + 17); openUpgradePick({ count: 3, title: '출격 준비: 시작 강화' }, go); }
   else go();
 }
@@ -134,11 +134,10 @@ function afterCombat(success, kind) {
 }
 function nextZone() {
   if (run.zone >= 3 && isS2()) { s2Finale(); return; }
-  if (run.zone >= 3) { run.ended = true; clearRun(run.mode); UI(''); radio(RADIO_END, () => endRun(true), 'end'); return; }
+  if (run.zone >= 3) { run.ended = true; clearRun(run.mode); UI(''); showS1Ending(() => endRun(true)); return; }
   run.zone++; run.map = genMap(run.zone); run.row = -1; run.col = -1;
-  showMap();
-  if (isS2()) radio(RADIO2[run.zone], () => { }, 's2ch' + run.zone);
-  else radio(RADIO[run.zone], () => { }, 'ch' + run.zone);
+  saveRun();
+  showChapter(isS2() ? 2 : 1, run.zone, showMap);
 }
 
 // ================= 런 종료 =================

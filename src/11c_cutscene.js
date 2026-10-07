@@ -64,8 +64,9 @@ function showCutscene(lines, done, opt = {}) {
   </div>`);
   Object.assign(cut, {
     on: true, lines, done, i: -1, ch: 0, typing: false, timer: 0, raf: 0, t0: performance.now(), fin: false, started: false,
-    tgt: { power: 1, walk: 0, door: 0, eye: 0, ghost: 0, data: 0, alert: 0, glitch: 0, zoom: 1, pulse: 0 },
-    cur: { power: 1, walk: 0, door: 0, eye: 0, ghost: 0, data: 0, alert: 0, glitch: 0, zoom: 1, pulse: 0 },
+    tgt: { power: 1, walk: 0, door: 0, eye: 0, ghost: 0, data: 0, alert: 0, glitch: 0, zoom: 1, pulse: 0, redeye: 0 },
+    cur: { power: 1, walk: 0, door: 0, eye: 0, ghost: 0, data: 0, alert: 0, glitch: 0, zoom: 1, pulse: 0, redeye: 0 },
+    scene: opt.scene || (lines[0] && lines[0].scene) || 'corridor', pending: null, fadeT: 0, fadeMax: 1, por: { L: null, R: null, active: null },
     color: ch.color, rain: Array.from({ length: 60 }, () => ({ x: Math.random(), y: Math.random(), v: 0.15 + Math.random() * 0.5, c: Math.random() < 0.5 ? '0' : '1' })),
     box: $('cutBox'), cv: $('cutCv'), shakeT: 0
   });
@@ -75,7 +76,7 @@ function showCutscene(lines, done, opt = {}) {
   SFX.play('boss');
   cutDrone();
   cut.raf = requestAnimationFrame(cutFrame);
-  cut.startTimer = setTimeout(() => { cut.started = true; $('cutTitle').classList.add('hide'); cutNext(); }, 3000);
+  cut.startTimer = setTimeout(() => { cut.started = true; $('cutTitle').classList.add('hide'); cutNext(); }, opt.titleMs || 3000);
   codex('story', opt.id || 'cut');
 }
 function cutDrone() { if (!cut.on) return; try { SFX.init(); if (SFX.ctx) { SFX.tone('sawtooth', 55, 52, 4.5, 0.05); SFX.tone('sine', 110, 104, 4.5, 0.04); } } catch (e) { } cut.droneT = setTimeout(cutDrone, 4300); }
@@ -87,6 +88,8 @@ function cutNext() {
   if (cut.i >= cut.lines.length) return cutEnd();
   const l = cut.lines[cut.i];
   Object.assign(cut.tgt, l.set || {});
+  if (l.scene) cutSceneTo(l.scene);
+  cutPortraitFor(l.who);
   if (l.fx === 'flash') { const f = $('cutFlash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); }
   if (l.fx === 'shake') { const c = $('cut'); c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake'); }
   if (l.fx === 'glitch') cut.glitchBoost = 1;
@@ -94,7 +97,7 @@ function cutNext() {
   const w = CUT_WHO[l.who];
   const nm = w.name(); const col = w.color || cut.color;
   const who = $('cutWho'); who.textContent = nm; who.style.color = col; who.style.display = nm ? 'block' : 'none';
-  cut.box.style.opacity = 1; cut.box.classList.toggle('narr', l.who === 'narr'); cut.box.style.setProperty('--cc', col);
+  cut.box.style.opacity = l.who === 'log' ? 0 : 1; cut.box.classList.toggle('narr', l.who === 'narr'); cut.box.style.setProperty('--cc', col);
   const tx = $('cutText'); tx.textContent = ''; cut.ch = 0; cut.typing = true; cut.speaker = l.who;
   clearInterval(cut.timer);
   cut.timer = setInterval(() => {
@@ -128,7 +131,7 @@ function cutFrame(now) {
   if (cut.glitchBoost) { cut.cur.glitch = Math.max(cut.cur.glitch, 0.9 * cut.glitchBoost); cut.glitchBoost *= 0.93; if (cut.glitchBoost < 0.05) cut.glitchBoost = 0; }
   const talking = cut.typing && cut.speaker === 'mother';
   cut.cur.pulse += ((talking ? 1 : 0) - cut.cur.pulse) * 0.15;
-  drawCut(x, W, H, t, cut.cur);
+  drawCutFrame(x, W, H, t, cut.cur);
   cut.raf = requestAnimationFrame(cutFrame);
 }
 
