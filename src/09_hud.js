@@ -1,6 +1,6 @@
 // ================= 화면 효과 =================
 function drawScreenFx() {
-  if (room.zid >= 4) drawS2Screen();
+  if (room.zid >= 8) drawS3Screen(); else if (room.zid >= 4) drawS2Screen();
   // 정전 구간
   if (room.darkOn && !P.dead) {
     const px = P.x - cam.x, py = P.y - cam.y;

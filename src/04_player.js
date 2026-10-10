@@ -11,7 +11,7 @@ function createPlayer(x, y) {
 
 function updatePlayer(dt) {
   if (P.dead) return;
-  P.iframe -= dt; P.hurtT -= dt; P.overT -= dt; P.slowT -= dt; P.chillT -= dt; P.skillCd -= dt; P.swapT -= dt; P.momT -= dt; P.odT -= dt; P.hackCd -= dt; P.shadeT = (P.shadeT || 0) - dt; P.novaT -= dt; P.fortT -= dt;
+  P.iframe -= dt; P.hurtT -= dt; P.overT -= dt; P.slowT -= dt; P.chillT -= dt; P.skillCd -= dt; P.swapT -= dt; P.momT -= dt; P.odT -= dt; P.moveBoostT = (P.moveBoostT || 0) - dt; P.hackCd -= dt; P.shadeT = (P.shadeT || 0) - dt; P.novaT -= dt; P.fortT -= dt;
   const rm = rollMax();
   if (P.rollCharges < rm) { P.rollRe -= dt; if (P.rollRe <= 0) { P.rollCharges++; P.rollRe = 0.75 * BS.rollCdMult; } }
   const gp = Input.gp;
@@ -56,7 +56,7 @@ function updatePlayer(dt) {
       if (run.char === 'kai') P.momT = 1.5;
     }
   } else {
-    const spd = 235 * BS.moveMult * (P.chillT > 0 ? 0.7 : 1) * hz.slow * (P.odT > 0 ? 1.25 : 1) * (room.floodOn && !BS.floodRun ? 0.82 : 1);
+    const spd = 235 * BS.moveMult * (P.chillT > 0 ? 0.7 : 1) * hz.slow * (P.odT > 0 ? 1.25 : 1) * (room.floodOn && !BS.floodRun ? 0.82 : 1) * (P.moveBoostT > 0 ? 1.2 : 1);
     const acc = hz.slick ? 2.5 : 14;
     P.vx = lerp(P.vx, mx * spd, Math.min(1, acc * dt));
     P.vy = lerp(P.vy, my * spd, Math.min(1, acc * dt));
@@ -190,6 +190,7 @@ function useSkill() {
       break;
     }
     case 'yuna': case 'siwoo': useSkillS2(run.char); break;
+    case 'harin': case 'doyun': useSkillS3(run.char); break;
     case 'iron': P.fortT = 4; floatText(P.x, P.y - 36, '강철 요새!', '#a9b8cc', 20); part({ x: P.x, y: P.y, life: 0.5, size: 60, color: '#a9b8cc', kind: 'ring' }); break;
   }
   if (BS.discharge) {
@@ -441,8 +442,10 @@ function playerHazards() {
       case 'laser': if (h.state === 'on') damagePlayer(h.boss ? 9 : 15, null); break;
       case 'conveyor': r.px += h.dx * 140; r.py += h.dy * 140; break;
       case 'train': if (h.state === 'on') damagePlayer(20, null); break;
+      case 'static': damagePlayer(5, null); break;
     }
   }
+  if (room.storm && room.storm.on) { r.px += room.storm.dx * 110; }
   return r;
 }
 

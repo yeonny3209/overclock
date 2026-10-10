@@ -194,7 +194,7 @@ function freeSpot(r, minFromSpawn = 260, tries = 60, extraCheck) {
 }
 function newRoom(kind, zone, w, h) {
   room = {
-    zid: zone + (run && run.mode === 'season2' ? 4 : 0),
+    zid: zone + (run ? zoneBase() : 0),
     kind, zone, w, h, walls: [], hazards: [], props: [], enemies: [], pickups: [], allies: [], hacked: [], vortices: [], decals: [], timers: [],
     obj: null, objProp: null, kills: 0, over: false, done: false, success: false, t: 0, dark: false, darkOn: false, darkT: 7,
     eliteChance: 0, muts2: false, extra: 1, medkitUsed: false, powerOff: false, sx: w / 2, sy: h - 130, bossDead: false
@@ -232,6 +232,7 @@ function genLayout(objType) {
       break;
     }
   }
+  if (room.zid >= 8) { genLayoutS3(); return; }
   if (room.zid >= 4) { genLayoutS2(); return; }
   const spot = (r, d) => freeSpot(r, d || 240, 60, band ? (x, y) => Math.abs(y - H / 2) > r + 60 : null);
   const puddle = (type, n, r0, r1) => { for (let i = 0; i < n; i++) { const r = rand(r0, r1); const s = freeSpot(r, 200, 40); if (s) addHazard({ type, x: s.x, y: s.y, r }); } };
@@ -288,7 +289,7 @@ function startRoom(o) {
   const boss = kind === 'boss';
   const W = boss ? 1500 : Math.round(rand(1500, 1800)), H = boss ? 1000 : Math.round(rand(1000, 1200));
   newRoom(kind, zone, W, H);
-  setScaling(zone + (isS2() ? 0.5 : 0), 0);
+  setScaling(zone + (isS2() ? 0.5 : isS3() ? 0.6 : 0), 0);
   resetFx();
   const objType = boss ? 'boss' : o.objective;
   if (objType === 'escort') { room.sx = 160; room.sy = H / 2 + 70; }
@@ -298,7 +299,7 @@ function startRoom(o) {
       for (const [x, y] of [[W * 0.25, H * 0.3], [W * 0.75, H * 0.3], [W * 0.25, H * 0.68], [W * 0.75, H * 0.68]]) room.walls.push({ x: x - 45, y: y - 35, w: 90, h: 70, hp: Infinity, kind: 'block' });
     }
     if (room.zid === 2) { for (let i = 0; i < 2; i++) addHazard({ type: 'water', x: W * (0.2 + i * 0.6), y: H * 0.5, r: 80 }); }
-    if (room.zid >= 4) bossRoomS2();
+    if (room.zid >= 8) bossRoomS3(); else if (room.zid >= 4) bossRoomS2();
     if (room.zid === 0) for (let i = 0; i < 2; i++) addHazard({ type: 'oil', x: W * (0.35 + i * 0.3), y: H * 0.82, r: 70 });
   } else genLayout(objType);
   createPlayer(room.sx, room.sy);

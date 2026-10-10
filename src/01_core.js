@@ -232,7 +232,7 @@ function saveRun() {
   try { if (run && run.mode !== 'arena' && run.map && !run.ended) localStorage.setItem(runKey(run.mode), JSON.stringify(run)); } catch (e) { }
 }
 function clearRun(mode) { try { localStorage.removeItem(runKey(mode)); if ((mode || 'campaign') === 'campaign') localStorage.removeItem(RUN_KEY); } catch (e) { } }
-function clearAllRuns() { for (const m of ['campaign', 'daily', 'season2']) clearRun(m); }
+function clearAllRuns() { for (const m of ['campaign', 'daily', 'season2', 'season3']) clearRun(m); }
 function peekRun(mode = 'campaign') {
   try {
     let r = JSON.parse(localStorage.getItem(runKey(mode)));

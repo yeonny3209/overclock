@@ -79,12 +79,14 @@ function render() {
   drawFloor(Z);
   drawHazards();
   drawHazardsS2();
+  drawHazardsS3();
   for (const d of room.decals) { ctx.fillStyle = 'rgba(0,0,0,0.28)'; circlePath(d.x, d.y, d.r); ctx.fill(); }
   drawParticles(true);
   drawWalls(Z);
   drawPickups();
   drawProps();
   drawPropsS2();
+  drawPropsS3();
   for (const v of room.vortices) drawVortex(v);
   for (const a of room.allies) drawAlly(a);
   for (const h of room.hacked) { drawEnemy(h); ctx.beginPath(); ctx.arc(h.x, h.y, h.r + 8, -Math.PI / 2, -Math.PI / 2 + TAU * (h.allyT / h.allyMax)); ctx.strokeStyle = '#29f0ff'; ctx.lineWidth = 2; ctx.stroke(); }

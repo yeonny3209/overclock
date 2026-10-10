@@ -27,6 +27,7 @@ function resumeRun(mode = 'campaign') {
   for (const id in run.ups) if (!UPG[id]) delete run.ups[id];
   run.cur = clamp(run.cur || 0, 0, run.weapons.length - 1);
   if (run.mode === 'season2') { run.rep = run.rep || { res: 0, mom: 0, dark: 0 }; run.crew = (run.crew || []).filter(id => CREW.some(c => c.id === id)); }
+  if (run.mode === 'season3') { run.rep = run.rep || { mer: 0, car: 0, fer: 0 }; run.crew = run.crew || []; }
   recomputeBuild(); run.hp = Math.min(run.hp, run.maxHp);
   for (const w of run.weapons) fixAmmo(w);
   toast('저장된 판을 불러왔습니다');
@@ -61,6 +62,7 @@ function genMap(zone) {
   }
   // 상점/정비소 최소 1개 보장
   if (isS2()) s2MapNodes(rows);
+  if (isS3()) s3MapNodes(rows);
   for (const need of ['shop', 'workshop']) {
     if (!rows.some(row => row.some(n => n.type === need))) { const row = rows[ri(2, 4)]; rp(row).type = need; }
   }
@@ -99,13 +101,15 @@ function enterNode(r, i) {
     case 'boss':
       if (isS2() && run.zone === 2 && !run.cutSiwoo) { run.cutSiwoo = true; showCutscene(CUT_SIWOO, () => startRoom({ kind: 'boss', zone: run.zone, row: 6 }), { ch: 'CHAPTER 3', name: '빛 없는 거리', sub: '요원 07', id: 's2cut2' }); return; }
       if (isS2() && run.zone === 3 && !run.cutSent) { run.cutSent = true; showCutscene(cutSentinel(), () => startRoom({ kind: 'boss', zone: run.zone, row: 6 }), { ch: 'CHAPTER 4', name: '지하 3층', sub: '붉은 눈과 보랏빛 눈', id: 's2cut3' }); return; }
-      if (!isS2() && run.zone === 3 && !run.cutSeen) { run.cutSeen = true; showCutscene(CUT_MOTHER, () => startRoom({ kind: 'boss', zone: run.zone, row: 6 })); return; }
+      if (isS3() && run.zone === 3 && !run.cutCouncil) { run.cutCouncil = true; showCutscene(cutCouncil(), () => startRoom({ kind: 'boss', zone: run.zone, row: 6 }), { ch: 'CHAPTER 4', name: '자오선 탑', sub: '세 개의 눈', id: 's3cut3' }); return; }
+      if (!isS2() && !isS3() && run.zone === 3 && !run.cutSeen) { run.cutSeen = true; showCutscene(CUT_MOTHER, () => startRoom({ kind: 'boss', zone: run.zone, row: 6 })); return; }
       startRoom({ kind: 'boss', zone: run.zone, row: 6 }); break;
     case 'shop': showShop(); break;
     case 'workshop': showWorkshop(); break;
     case 'event': showEvent(); break;
     case 'rest': showRest(); break;
     case 'rescue': enterRescue(r); break;
+    case 'caravan': showCaravan(); break;
   }
   if (G.screen === 'combat') UI('');
 }
@@ -121,6 +125,7 @@ function afterCombat(success, kind) {
     run.zonesCleared++;
     if (run.zone === 1 && run.mode !== 'arena') SAVE.stats.zone2 = true;
     SAVE.stats.bestZone = Math.max(SAVE.stats.bestZone, run.zone + 1);
+    if (isS3()) SAVE.stats.s3best = Math.max(SAVE.stats.s3best || 0, run.zone + 1);
     if (isS2()) { SAVE.stats.s2best = Math.max(SAVE.stats.s2best || 0, run.zone + 1); s2BossKeys(); }
     saveGame();
     const heal = healRun(Math.round(run.maxHp * 0.25), true);
@@ -133,11 +138,12 @@ function afterCombat(success, kind) {
   else showMap();
 }
 function nextZone() {
+  if (run.zone >= 3 && isS3()) { s3Finale(); return; }
   if (run.zone >= 3 && isS2()) { s2Finale(); return; }
   if (run.zone >= 3) { run.ended = true; clearRun(run.mode); UI(''); showS1Ending(() => endRun(true)); return; }
   run.zone++; run.map = genMap(run.zone); run.row = -1; run.col = -1;
   saveRun();
-  showChapter(isS2() ? 2 : 1, run.zone, showMap);
+  showChapter(isS3() ? 3 : isS2() ? 2 : 1, run.zone, showMap);
 }
 
 // ================= 런 종료 =================
@@ -157,10 +163,11 @@ function endRun(victory) {
     chips = Math.max(1, run.zonesCleared * 8 + run.bossesKilled * 6 + Math.floor(run.kills / 25) + (victory ? 20 + run.oc * 5 : 0));
     if (victory) {
       SAVE.stats.clears++;
-      if (run.mode === 'season2') { SAVE.stats.s2clear = (SAVE.stats.s2clear || 0) + 1; if (run.endingName) extra += `<span>결말</span><span style="color:#ff3df0">${run.endingName}</span><span>요원 키</span><span style="color:#ffe14d">${s2KeyCount()}/11</span>`; extra += `<span style="grid-column:1/-1;color:#8a90b0;font-size:12px;margin-top:6px">${S2_TEASER}</span>`; }
+      if (run.mode === 'season3') { SAVE.stats.s3clear = (SAVE.stats.s3clear || 0) + 1; if (run.endingName) extra += `<span>결말</span><span style="color:#ffe14d">${run.endingName}</span><span>요원 키</span><span style="color:#ffe14d">${s2KeyCount()}/11</span>`; extra += `<span style="grid-column:1/-1;color:#8a90b0;font-size:12px;margin-top:6px">${S3_TEASER}</span>`; }
+      else if (run.mode === 'season2') { SAVE.stats.s2clear = (SAVE.stats.s2clear || 0) + 1; if (run.endingName) extra += `<span>결말</span><span style="color:#ff3df0">${run.endingName}</span><span>요원 키</span><span style="color:#ffe14d">${s2KeyCount()}/11</span>`; extra += `<span style="grid-column:1/-1;color:#8a90b0;font-size:12px;margin-top:6px">${S2_TEASER}</span>`; }
       else if (!SAVE.stats.s1clear) { SAVE.stats.s1clear = true; extra += `<span>시즌 2</span><span style="color:#ff3df0">언더그라운드 해금!</span>`; }
       if (run.hard) { SAVE.stats.hardClears = (SAVE.stats.hardClears || 0) + 1; extra += `<span>하드 모드</span><span style="color:#ff2d55">클리어!</span>`; }
-      if ((run.mode === 'campaign' || run.mode === 'season2') && run.oc >= SAVE.ocMax && SAVE.ocMax < 10) { SAVE.ocMax = run.oc + 1; extra += `<span>오버클럭</span><span style="color:#ff3df0">레벨 ${SAVE.ocMax} 해금!</span>`; }
+      if ((run.mode === 'campaign' || run.mode === 'season2' || run.mode === 'season3') && run.oc >= SAVE.ocMax && SAVE.ocMax < 10) { SAVE.ocMax = run.oc + 1; extra += `<span>오버클럭</span><span style="color:#ff3df0">레벨 ${SAVE.ocMax} 해금!</span>`; }
     }
     if (run.mode === 'daily') {
       const score = run.zonesCleared * 2000 + run.kills * 10 + run.maxCombo * 20 + run.bossesKilled * 1000 + (victory ? 10000 : 0);
@@ -269,7 +276,7 @@ function update(dt, rdt) {
   updateVortices(dt);
   updateHazards(dt);
   updateProps(dt);
-  if (room.zid >= 4) updateS2Room(dt);
+  if (room.zid >= 8) updateS3Room(dt); else if (room.zid >= 4) updateS2Room(dt);
   updatePickups(dt);
   updateRoom(dt);
   if (room.leaving) { afterCombat(room.success, room.kind); return; }

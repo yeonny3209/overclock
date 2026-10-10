@@ -2,7 +2,7 @@
 // 틀은 시즌 1과 같다(구역 4개 · 갈림길 지도 · 보스). 구역 번호 run.zone은 0~3을 그대로 쓰고,
 // 실제 구역 데이터는 ZONES[4~7]을 쓴다. 저장 슬롯은 모드 'season2'로 분리된다.
 function isS2() { return !!run && run.mode === 'season2'; }
-function zoneOf() { return ZONES[(run ? run.zone : 0) + (isS2() ? 4 : 0)]; }
+function zoneOf() { return ZONES[(run ? run.zone : 0) + zoneBase()]; }
 function s2Unlocked() { return !!SAVE.stats.s1clear || (SAVE.stats.clears || 0) > 0; }
 function s2Save() { if (!SAVE.s2) SAVE.s2 = { keys: {}, endings: {} }; if (!SAVE.s2.keys) SAVE.s2.keys = {}; if (!SAVE.s2.endings) SAVE.s2.endings = {}; return SAVE.s2; }
 
@@ -119,8 +119,8 @@ function s2Build() {
   }
   if (u('linkup') && run.crew) BS.dmgMult *= 1 + 0.04 * run.crew.length;
 }
-function hackThreshold() { return run && run.char === 'yuna' ? 0.5 : 0.3; }
-function allyDmgMult() { return run && run.char === 'yuna' ? 1.5 : 1; }
+function hackThreshold() { return (run && run.char === 'yuna' ? 0.5 : 0.3) + (BS.hackThr || 0); }
+function allyDmgMult() { return (run && run.char === 'yuna' ? 1.5 : 1) * (BS.allyBoost || 1); }
 function darkVision() {
   let v = 1;
   if (BS.nightVis) v += 0.6;
@@ -242,7 +242,7 @@ function s2Finale() {
   run.ended = true; clearRun(run.mode); UI('');
   const keys = s2KeyCount();
   const end = (run.momAssist || 0) >= 2 ? 'A' : keys >= 11 ? 'C' : 'B';
-  s2Save().endings[end] = 1; saveGame();
+  s2Save().endings[end] = 1; s2Save().last = end; saveGame();
   const E = S2_ENDINGS[end];
   run.endingName = `엔딩 ${end} · ${E.name}`;
   showCutscene(E.lines(), () => endRun(true), { ch: 'ENDING ' + end, name: E.name, sub: E.sub, id: 's2end' + end });

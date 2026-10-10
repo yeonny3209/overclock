@@ -21,6 +21,7 @@ function showTitle() {
       ${(() => { const r = peekRun('campaign'); return r ? `<button class="btn big ye" onclick="${cb(() => resumeRun('campaign'))}">▶ 이어하기 <span class="muted small">${CHARS[r.char].name} · 구역 ${r.zone + 1}${r.oc ? ' · OC' + r.oc : ''}</span></button>` : ''; })()}
       <button class="btn big" onclick="${cb(() => showCharSelect('campaign'))}">${peekRun('campaign') ? '새 캠페인' : '▶ 캠페인'}</button>
       ${s2TitleButtons()}
+      ${s3TitleButtons()}
       <button class="btn" onclick="${cb(() => showCharSelect('arena'))}">무한 아레나 <span class="muted small">최고 ${SAVE.arenaBest}웨이브</span></button>
       <button class="btn" onclick="${cb(showDaily)}">일일 도전</button>
       <div class="row" style="gap:0">
@@ -69,13 +70,13 @@ function showCharSelect(mode) {
         <span class="muted small">최대 ${SAVE.ocMax}</span>
       </div>
       <div class="small muted" style="max-width:640px;text-align:center;min-height:36px">${oc ? OC_LEVELS.slice(1, oc + 1).map((t, i) => `<span style="color:#ff3df0">${i + 1}</span> ${t}`).join(' · ') : '기본 난이도. 클리어하면 다음 오버클럭 레벨이 열린다.'}</div>` : `<div class="sub">한 경기장에서 끝없이 몰려오는 웨이브. 3웨이브마다 강화, 5웨이브마다 무기 상자, 10웨이브마다 보스.</div>`;
-    scr(`<h2>${mode === 'arena' ? '무한 아레나' : mode === 'season2' ? '시즌 2 · 요원 선택' : '요원 선택'}</h2>
+    scr(`<h2>${mode === 'arena' ? '무한 아레나' : mode === 'season3' ? '시즌 3 · 요원 선택' : mode === 'season2' ? '시즌 2 · 요원 선택' : '요원 선택'}</h2>
       ${cards}${detail}
       ${ocHtml}
       ${hardHtml}
       <div class="row" style="margin-top:10px">
         <button class="btn" onclick="${cb(showTitle)}">뒤로</button>
-        <button class="btn ye" onclick="${cb(() => { if (!charUnlocked(sel)) { toast('잠긴 요원입니다'); return; } SAVE.lastOc = oc; SAVE.lastHard = hard; saveGame(); mode === 'season2' ? startSeason2(sel, oc, hard) : mode === 'campaign' ? startCampaign(sel, oc, 'campaign', 0, hard) : startArena(sel, hard); })}">출격 ▶</button>
+        <button class="btn ye" onclick="${cb(() => { if (!charUnlocked(sel)) { toast('잠긴 요원입니다'); return; } SAVE.lastOc = oc; SAVE.lastHard = hard; saveGame(); mode === 'season3' ? startSeason3(sel, oc, hard) : mode === 'season2' ? startSeason2(sel, oc, hard) : mode === 'campaign' ? startCampaign(sel, oc, 'campaign', 0, hard) : startArena(sel, hard); })}">출격 ▶</button>
       </div>`, 'top');
   };
   render();
@@ -119,7 +120,7 @@ function topbar() {
   const tags = SET_TAGS.filter(t => run.tags[t]).map(t => `<span class="tag" style="background:${TAG_COLOR[t]}">${TAG_NAME[t]} ${run.tags[t]}</span>`).join('');
   return `<div class="topbar">
     <div><b>${CHARS[run.char].name}</b> <span class="hpbar"><i style="width:${run.hp / run.maxHp * 100}%"></i></span> ${Math.ceil(run.hp)}/${run.maxHp}
-      &nbsp; <span class="coin">◆ ${run.coins}</span> ${run.oc ? `&nbsp;<span style="color:#ff3df0">OC ${run.oc}</span>` : ''}${run.hard ? '&nbsp;<b style="color:#ff2d55">HARD</b>' : ''}${isS2() ? s2TopInfo() : ''}</div>
+      &nbsp; <span class="coin">◆ ${run.coins}</span> ${run.oc ? `&nbsp;<span style="color:#ff3df0">OC ${run.oc}</span>` : ''}${run.hard ? '&nbsp;<b style="color:#ff2d55">HARD</b>' : ''}${isS2() ? s2TopInfo() : isS3() ? s3TopInfo() : ''}</div>
     <div class="small">${ws}</div>
     <div>${tags} ${Object.keys(run.curses).map(c => `<span class="tag" style="background:#ff2d55;color:#fff">${CURSE[c].name}</span>`).join('')}</div>
   </div>`;
@@ -155,7 +156,7 @@ function showMap() {
   }));
   scr(`${topbar()}
     <h2 style="margin-top:6px">구역 ${run.zone + 1} · ${Z.name} <span class="muted" style="font-size:16px;font-family:Orbitron">${Z.en}</span></h2>
-    <div class="small muted">${Object.entries(NODE_INFO).filter(([k]) => k !== 'rescue' || isS2()).map(([, n]) => `<span style="color:${n.color}">${n.icon}</span> ${n.name}`).join(' &nbsp; ')}</div>
+    <div class="small muted">${Object.entries(NODE_INFO).filter(([k]) => (k !== 'rescue' || isS2()) && (k !== 'caravan' || isS3())).map(([, n]) => `<span style="color:${n.color}">${n.icon}</span> ${n.name}`).join(' &nbsp; ')}</div>
     <div class="map"><svg>${lines}</svg>${nodes}</div>
     <div class="row" style="margin-top:4px">
       <button class="btn sm" onclick="${cb(() => showLoadout(showMap))}">장비 / 빌드 보기</button>

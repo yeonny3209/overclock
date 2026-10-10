@@ -1,5 +1,5 @@
 // ================= 상점 =================
-function priceMult() { return (isS2() ? s2PriceMult() : 1) * (1 + 0.15 * run.zone) * (run.char === 'momo' ? 0.75 : 1) * (run.oc >= 3 ? 1.2 : 1); }
+function priceMult() { return (isS2() ? s2PriceMult() : isS3() ? s3PriceMult() : 1) * (1 + 0.15 * run.zone) * (run.char === 'momo' ? 0.75 : 1) * (run.oc >= 3 ? 1.2 : 1); }
 function genShop() {
   const pm = priceMult();
   const items = [];
@@ -56,7 +56,7 @@ function showWorkshop() {
 // ================= 이벤트 =================
 function showEvent() {
   menuMode();
-  const okEv = e => !e.special && (isS2() ? (e.s2 || S2_GENERIC.includes(e.id)) : !e.s2);
+  const okEv = e => !e.special && (isS2() ? (e.s2 || S2_GENERIC.includes(e.id)) : isS3() ? (e.s3 || S2_GENERIC.includes(e.id)) : !(e.s2 || e.s3));
   let pool = EVENTS.filter(e => okEv(e) && !run.events.includes(e.id));
   if (!pool.length) pool = EVENTS.filter(okEv);
   let ev = rp(pool);
@@ -75,7 +75,7 @@ function showEvent() {
 // ================= 휴식 =================
 function showRest() {
   menuMode();
-  const pct = ((run.oc >= 4 ? 0.2 : 0.3) + (isS2() ? 0.04 * Math.max(0, run.rep.dark || 0) : 0)) * (run.hard ? 0.5 : 1);
+  const pct = ((run.oc >= 4 ? 0.2 : 0.3) + (isS2() ? 0.04 * Math.max(0, run.rep.dark || 0) : isS3() ? 0.03 * Math.max(0, run.rep.car || 0) + (run.carry === 'C' ? 0.05 : 0) : 0)) * (run.hard ? 0.5 : 1);
   const amt = Math.round(run.maxHp * pct);
   scr(`${topbar()}<div class="panel evbox"><div style="font-size:48px">⛺</div><h2>휴식</h2><div class="desc">버려진 정비 기지. 잠시 숨을 돌릴 수 있다.</div>
     <div class="row">
@@ -89,8 +89,8 @@ function showResults(victory, chips, extra) {
   menuMode(); room = null;
   const t = Math.floor(run.time), mm = Math.floor(t / 60), ss = String(t % 60).padStart(2, '0');
   const reached = run.mode === 'arena' ? `웨이브 ${run.arenaWave || 0}` : `구역 ${run.zone + 1} · ${zoneOf().name}`;
-  scr(`<h2 style="font-size:46px;color:${victory ? '#6dff8a' : '#ff4d6d'}">${victory ? (run.mode === 'season2' ? '지하 3층 돌파 — 작전 성공' : '서버 정지 — 작전 성공') : '작전 실패'}</h2>
-    <div class="sub">${CHARS[run.char].name} · ${run.mode === 'daily' ? '일일 도전' : run.mode === 'arena' ? '무한 아레나' : run.mode === 'season2' ? '시즌 2' : '캠페인'}${run.oc ? ` · 오버클럭 ${run.oc}` : ''}${run.hard ? ' · <b style="color:#ff2d55">하드 모드</b>' : ''}</div>
+  scr(`<h2 style="font-size:46px;color:${victory ? '#6dff8a' : '#ff4d6d'}">${victory ? (run.mode === 'season3' ? '자오선 탑 돌파 — 작전 성공' : run.mode === 'season2' ? '지하 3층 돌파 — 작전 성공' : '서버 정지 — 작전 성공') : '작전 실패'}</h2>
+    <div class="sub">${CHARS[run.char].name} · ${run.mode === 'daily' ? '일일 도전' : run.mode === 'arena' ? '무한 아레나' : run.mode === 'season3' ? '시즌 3' : run.mode === 'season2' ? '시즌 2' : '캠페인'}${run.oc ? ` · 오버클럭 ${run.oc}` : ''}${run.hard ? ' · <b style="color:#ff2d55">하드 모드</b>' : ''}</div>
     <div class="row">
       <div class="panel"><div class="kv">
         <span>도달</span><span>${reached}</span>
@@ -107,8 +107,8 @@ function showResults(victory, chips, extra) {
     </div>
     ${buildSummaryHTML()}
     <div class="row">
-      <button class="btn ye" onclick="${cb(() => run.mode === 'arena' ? startArena(run.char, run.hard) : run.mode === 'daily' ? showDaily() : run.mode === 'season2' ? startSeason2(run.char, run.oc, run.hard) : startCampaign(run.char, run.oc, 'campaign', 0, run.hard))}">같은 요원으로 다시</button>
-      <button class="btn" onclick="${cb(() => showCharSelect(run.mode === 'arena' ? 'arena' : run.mode === 'season2' ? 'season2' : 'campaign'))}">요원 선택</button>
+      <button class="btn ye" onclick="${cb(() => run.mode === 'arena' ? startArena(run.char, run.hard) : run.mode === 'daily' ? showDaily() : run.mode === 'season3' ? startSeason3(run.char, run.oc, run.hard) : run.mode === 'season2' ? startSeason2(run.char, run.oc, run.hard) : startCampaign(run.char, run.oc, 'campaign', 0, run.hard))}">같은 요원으로 다시</button>
+      <button class="btn" onclick="${cb(() => showCharSelect(run.mode === 'arena' ? 'arena' : run.mode === 'season3' ? 'season3' : run.mode === 'season2' ? 'season2' : 'campaign'))}">요원 선택</button>
       <button class="btn" onclick="${cb(showTitle)}">타이틀로</button>
     </div>`, 'top');
 }

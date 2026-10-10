@@ -82,6 +82,7 @@ function recomputeBuild() {
   };
   BS.execFlat = 0;
   s2Build();
+  s3Build();
   if (run) {
     // 캐릭터 패시브
     switch (run.char) {
@@ -174,6 +175,8 @@ function wStats(w) {
     if (w.id === 'hydro') s.pierce += 3;
     if (w.id === 'riotgun') { s.pellets += 2; s.knock *= 1.5; }
     if (w.id === 'harpoon') { s.pierce += 3; s.dmg *= 1.25; }
+    if (w.id === 'railgun') s.dmg *= 1.35;
+    if (w.id === 'sandblaster') { s.pellets += 3; s.life *= 1.4; }
     if (w.id === 'needler') s.stacks = 2;
     if (w.id === 'chrono') { s.pierce += 3; s.life *= 2; }
     if (w.id === 'sonicgun') s.pellets += 3;
@@ -960,6 +963,7 @@ function damagePlayer(dmg, src) {
   if (src && (src.bossId === 'mother' || src.momMinion)) dmg *= 0.6; // 4층 보스(마더보드)와 그가 소환한 적의 피해 -40%
   dmg *= G.eDmgMult * BS.takenMult * (P.fortT > 0 ? 0.2 : 1);
   if (src && src.poisonT > 0) dmg *= 1 - BS.weaken;
+  if (!src) dmg *= BS.envResist || 1;
   if (P.fortT > 0 && src && !src.dead && src.type && !src.ally) applyStatus(src, 'metal', { stacks: 3 });
   run.hp -= dmg; P.iframe = 0.75; P.hurtT = 0.25;
   breakCombo();

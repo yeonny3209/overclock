@@ -338,12 +338,12 @@ const CHAPTER_SCENES = {
   2: [['tracks', null, null], ['tracks', 'sewer', '지하 수로야'], ['sewer', 'market', '다음은 외곽 3구역'], ['market', 'bunker', '벙커는 두 시스템']]
 };
 function chapterCut(season, zone) {
-  const src = season === 2 ? RADIO2 : RADIO, m = CHAPTER_SCENES[season][zone];
+  const src = season === 3 ? RADIO3 : season === 2 ? RADIO2 : RADIO, m = CHAPTER_SCENES[season][zone];
   return radioToCut(src[zone], m[0], m[1], m[2]);
 }
 function showChapter(season, zone, done) {
-  const Z = ZONES[zone + (season === 2 ? 4 : 0)];
-  showCutscene(chapterCut(season, zone), done, { ch: `${season === 2 ? 'SEASON 2 · ' : ''}CHAPTER ${zone + 1}`, name: Z.name, sub: Z.en, id: (season === 2 ? 's2ch' : 'ch') + zone, titleMs: 2200 });
+  const Z = ZONES[zone + (season - 1) * 4];
+  showCutscene(chapterCut(season, zone), done, { ch: `${season > 1 ? 'SEASON ' + season + ' · ' : ''}CHAPTER ${zone + 1}`, name: Z.name, sub: Z.en, id: (season === 1 ? 'ch' : 's' + season + 'ch') + zone, titleMs: 2200 });
 }
 function showS1Ending(done) {
   showCutscene(radioToCut(RADIO_END, 'server', 'city', '가로등', { 0: { set: { eye: 1 } }, 1: { set: { eye: 0.2 } } }), done, { ch: 'EPILOGUE', name: '오버클럭', sub: '서버 정지', id: 'end', titleMs: 2200 });

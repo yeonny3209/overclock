@@ -84,6 +84,7 @@ function spawnValves() {
   for (const [x, y] of [[0.08, 0.45], [0.92, 0.45], [0.5, 0.08]]) room.props.push({ type: 'valve', x: room.w * x, y: room.h * y, r: 20, hp: 45, maxHp: 45, shootable: true });
 }
 function setupBossS2(id) {
+  if (['warden', 'roadreaper', 'relay', 'council'].includes(id)) { setupBossS3(id); return; }
   const cx = room.w / 2, cy = room.h / 2;
   if (id === 'redline') spawnEnemy('boss_redline', cx, cy - 250, { instant: true });
   else if (id === 'leviathan') { spawnValves(); spawnEnemy('boss_leviathan', cx, cy - 120, { instant: true }); }
