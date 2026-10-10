@@ -110,7 +110,8 @@ function showResults(victory, chips, extra) {
       <button class="btn ye" onclick="${cb(() => run.mode === 'arena' ? startArena(run.char, run.hard) : run.mode === 'daily' ? showDaily() : run.mode === 'season3' ? startSeason3(run.char, run.oc, run.hard) : run.mode === 'season2' ? startSeason2(run.char, run.oc, run.hard) : startCampaign(run.char, run.oc, 'campaign', 0, run.hard))}">같은 요원으로 다시</button>
       <button class="btn" onclick="${cb(() => showCharSelect(run.mode === 'arena' ? 'arena' : run.mode === 'season3' ? 'season3' : run.mode === 'season2' ? 'season2' : 'campaign'))}">요원 선택</button>
       <button class="btn" onclick="${cb(showTitle)}">타이틀로</button>
-    </div>`, 'top');
+    </div>
+    <div class="row"><button class="btn mg" onclick="${cb(() => saveRecordCard())}">기록 카드 저장</button></div>`, 'top');
 }
 
 // ================= 해금 =================
