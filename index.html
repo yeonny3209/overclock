@@ -990,6 +990,7 @@ function recomputeBuild() {
   BS.execFlat = 0;
   s2Build();
   s3Build();
+  arsenalBuild();
   if (run) {
     // 캐릭터 패시브
     switch (run.char) {
@@ -1006,7 +1007,7 @@ function recomputeBuild() {
   }
   if (run) {
     const old = run.maxHp || 0;
-    let mh = run.baseMaxHp + 15 * u('armor') + (BS.surv3 ? 40 : 0) + (run.crewHp || 0);
+    let mh = run.baseMaxHp + 15 * u('armor') + (BS.surv3 ? 40 : 0) + (run.crewHp || 0) + (BS.hpAdd || 0);
     if (c.glass) mh *= 0.7;
     if (run.oc >= 9) mh *= 0.85;
     run.maxHp = Math.max(10, Math.round(mh));
@@ -1084,6 +1085,11 @@ function wStats(w) {
     if (w.id === 'harpoon') { s.pierce += 3; s.dmg *= 1.25; }
     if (w.id === 'railgun') s.dmg *= 1.35;
     if (w.id === 'sandblaster') { s.pellets += 3; s.life *= 1.4; }
+    if (w.id === 'crossbow') { s.pierce += 2; s.dmg *= 1.2; }
+    if (w.id === 'napalm') { s.aoe *= 1.3; s.dmg *= 1.2; }
+    if (w.id === 'icicle') s.pellets += 3;
+    if (w.id === 'arcgauntlet') s.chain += 2;
+    if (w.id === 'toxinspray') { s.dmg *= 1.4; s.life *= 1.3; }
     if (w.id === 'needler') s.stacks = 2;
     if (w.id === 'chrono') { s.pierce += 3; s.life *= 2; }
     if (w.id === 'sonicgun') s.pellets += 3;
@@ -5407,6 +5413,7 @@ function showSettings(back) {
       <span>터치 자동 사격</span><span><button class="btn sm ${s.touchAutoFire !== false ? 'on' : ''}" onclick="${cb(() => { s.touchAutoFire = s.touchAutoFire === false; saveGame(); render(); })}">${s.touchAutoFire !== false ? '켜짐' : '꺼짐'}</button></span>
       <span>피해 숫자</span><span><button class="btn sm ${s.dmgNum ? 'on' : ''}" onclick="${cb(() => { s.dmgNum = !s.dmgNum; saveGame(); render(); })}">${s.dmgNum ? '켜짐' : '꺼짐'}</button></span>
       <span>음량</span><span><input type="range" min="0" max="1" step="0.05" value="${s.vol}" oninput="SAVE.settings.vol=+this.value;SFX.setVol(+this.value)" onchange="saveGame();SFX.play('coin')"></span>
+      <span>배경음악</span><span><input type="range" min="0" max="1" step="0.05" value="${s.music === undefined ? 0.5 : s.music}" oninput="SAVE.settings.music=+this.value" onchange="saveGame();SFX.play('coin')"></span>
     </div></div>
     <div class="panel" style="width:min(520px,94vw)"><b>저장 백업</b> <span class="muted small">다른 기기나 앱으로 진행 상황 옮기기</span>
       <div class="row" style="margin-top:8px;gap:6px"><button class="btn sm" onclick="${cb(() => showSaveCode(render))}">저장 코드 보기</button><button class="btn sm" onclick="${cb(() => showSaveImport(render))}">저장 코드 불러오기</button></div></div>
@@ -8451,6 +8458,45 @@ const S3_TEASER = '엔딩 직후, 탑의 가장 높은 안테나 끝에서 마�
     ...['A', 'B', 'C'].map(k => ({ id: 's3end' + k, title: `시즌 3 · 엔딩 ${k} · ${S3_ENDINGS[k].name}`, lines: () => cl(S3_ENDINGS[k].lines()), cut: true, cutLines: () => S3_ENDINGS[k].lines(), cutOpt: { ch: 'ENDING ' + k, name: S3_ENDINGS[k].name, sub: S3_ENDINGS[k].sub, id: 's3end' + k } }))
   );
 }
+// ================= 신규 무기 5종 · 강화 8종 =================
+// 기존 탄 종류(관통탄 · 유탄 · 산탄 · 연쇄 번개 · 분무)를 그대로 쓰되, 속성과 손맛을 바꿨다.
+Object.assign(WEAPONS, {
+  crossbow: { name: '석궁', dmg: 38, rate: 1.7, mag: 8, reload: 1.4, spd: 1600, spread: 0.01, pellets: 1, life: 0.8, tag: 'bullet', pierce: 2, r: 4, shake: 2.5, sfx: 'sniper', color: '#d9c7a0', knock: 55, desc: '조용하고 빠른 화살. 적 두 명까지 꿰뚫는다.' },
+  napalm: { name: '소이탄 발사기', dmg: 24, rate: 1.1, mag: 5, reload: 1.9, spd: 560, spread: 0.03, pellets: 1, life: 1.0, tag: 'fire', pierce: 0, r: 7, shake: 3, sfx: 'grenade', color: '#ff7a2a', type: 'grenade', aoe: 72, knock: 0, desc: '터지는 자리에 불을 붙이는 소이탄. 화상 부여.' },
+  icicle: { name: '고드름 산탄총', dmg: 6, rate: 1.5, mag: 6, reload: 1.5, spd: 880, spread: 0.42, pellets: 8, life: 0.38, tag: 'ice', pierce: 0, r: 3.5, shake: 4, sfx: 'shotgun', color: '#bff4ff', knock: 45, desc: '얼음 파편 8발. 맞은 적을 느리게 만든다.' },
+  arcgauntlet: { name: '아크 건틀릿', dmg: 11, rate: 3, mag: 18, reload: 1.4, spd: 0, spread: 0, pellets: 1, life: 0, tag: 'elec', pierce: 0, r: 0, shake: 1.5, sfx: 'tesla', color: '#9ff2ff', type: 'tesla', range: 320, chain: 5, knock: 0, desc: '사거리는 짧지만 번개가 5명까지 튄다.' },
+  toxinspray: { name: '독안개 분무기', dmg: 3, rate: 12, mag: 70, reload: 1.7, spd: 560, spread: 0.16, pellets: 1, life: 0.5, tag: 'poison', pierce: 2, r: 7, shake: 0.3, sfx: 'water', color: '#9bff5a', type: 'stream', knock: 0, desc: '녹색 안개를 뿜어 중독을 쌓는다.' }
+});
+WEAPON_IDS.push('crossbow', 'napalm', 'icicle', 'arcgauntlet', 'toxinspray');
+Object.assign(LEGEND, {
+  crossbow: { name: '관통의 화살비', desc: '관통 +2, 피해 +20%' },
+  napalm: { name: '불바다', desc: '폭발 범위 +30%, 피해 +20%' },
+  icicle: { name: '빙하 폭풍', desc: '파편 +3발' },
+  arcgauntlet: { name: '천둥의 손', desc: '연쇄 +2명' },
+  toxinspray: { name: '맹독 구름', desc: '피해 +40%, 분사 거리 +30%' }
+});
+UPGRADES.push(
+  { id: 'steadyhand', name: '안정 조준', tag: 'none', desc: '탄 퍼짐 -25%', max: 2 },
+  { id: 'longbarrel', name: '긴 총열', tag: 'none', desc: '탄속 +15%, 피해 +5%', max: 2 },
+  { id: 'rollplate', name: '구르기 정비', tag: 'none', desc: '구르기 재사용 시간 -15%', max: 2 },
+  { id: 'lightarmor', name: '경량 장갑', tag: 'none', desc: '이동속도 +6%, 받는 피해 -3%', max: 3 },
+  { id: 'grit', name: '근성', tag: 'none', desc: '최대 체력 +25', max: 3 },
+  { id: 'fastmag', name: '속전 탄창', tag: 'none', desc: '재장전 시간 -15%', max: 2 },
+  { id: 'tactician', name: '전술 분석', tag: 'none', desc: '스킬 재사용 -10%, 콤보 유지 +1초', max: 2 },
+  { id: 'bounty', name: '현상금 감각', tag: 'none', desc: '코인 획득 +15%, 행운 +10%', max: 2 }
+);
+UPGRADES.forEach(u => UPG[u.id] = u);
+function arsenalBuild() {
+  const u = id => (run && run.ups[id]) || 0;
+  BS.spreadMult *= Math.pow(0.75, u('steadyhand'));
+  BS.bulletSpd *= Math.pow(1.15, u('longbarrel')); BS.dmgMult *= Math.pow(1.05, u('longbarrel'));
+  BS.rollCdMult *= Math.pow(0.85, u('rollplate'));
+  BS.moveMult *= Math.pow(1.06, u('lightarmor')); BS.takenMult *= Math.pow(0.97, u('lightarmor'));
+  BS.hpAdd = 25 * u('grit');
+  BS.reloadMult *= Math.pow(0.85, u('fastmag'));
+  BS.cdMult *= Math.pow(0.9, u('tactician')); BS.comboTime += u('tactician');
+  BS.coinMult *= Math.pow(1.15, u('bounty')); BS.lucky += 0.1 * u('bounty');
+}
 // ================= 기록 카드 (이벤트 인증용) =================
 // 결과 화면의 [기록 카드 저장]: 기록을 이미지로 만들고, 기록 값에서 계산한 인증 코드를 함께 새긴다.
 function cardHash(str, seed) {
@@ -8523,6 +8569,103 @@ function saveRecordCard() {
   ov.querySelector('#cardCl').onclick = () => ov.remove();
   return code;
 }
+// ================= 시즌별 배경음악 (Web Audio 합성) =================
+// 시즌 1 네온 시티(신스웨이브), 시즌 2 언더그라운드(어둡고 금속적인 맥박), 시즌 3 황무지(바람과 하나의 선율).
+// 장면마다 분위기가 바뀐다: 타이틀 · 지도(calm) · 전투(fight) · 보스(boss).
+const MUSIC = {
+  gain: null, timer: null, sched: null, key: '', want: '', nextT: 0, step: 0, bar: 0, cfg: null, level: 'calm', seed: 1,
+  mid: m => 440 * Math.pow(2, (m - 69) / 12),
+  // 코드: [근음 MIDI, 종류]. minor = 단3도, major = 장3도, sus = 4도
+  CFG: {
+    title: { bpm: { calm: 70 }, chords: [[57, 'm'], [53, 'M'], [48, 'M'], [55, 'M']], pad: 0.5, arp: 'soft', drums: 0, bass: 0 },
+    1: { bpm: { calm: 92, fight: 116, boss: 132 }, chords: [[57, 'm'], [53, 'M'], [48, 'M'], [55, 'M']], pad: 0.35, arp: 'synth', drums: 1, bass: 1 },
+    2: { bpm: { calm: 70, fight: 88, boss: 104 }, chords: [[50, 'm'], [46, 'M'], [43, 'm'], [45, 'M']], pad: 0.5, arp: 'sparse', drums: 2, bass: 2 },
+    3: { bpm: { calm: 66, fight: 84, boss: 102 }, chords: [[50, 's'], [48, 'M'], [43, 'M'], [45, 's']], pad: 0.55, arp: 'pluck', drums: 3, bass: 3 }
+  },
+  rnd() { this.seed = (this.seed * 1664525 + 1013904223) >>> 0; return this.seed / 4294967296; },
+  vol() { const m = SAVE.settings.music === undefined ? 0.5 : SAVE.settings.music; return 0.38 * m * (G.paused ? 0.35 : 1); },
+  pick() {
+    if (!SFX.ctx) return '';
+    if (!run || run.ended) return 'title';
+    const s = isS3() ? 3 : isS2() ? 2 : 1;
+    if (G.screen === 'combat') return s + (room && room.kind === 'boss' ? ':boss' : ':fight');
+    return s + ':calm';
+  },
+  start() {
+    if (this.timer || !SFX.ctx) return;
+    this.gain = SFX.ctx.createGain(); this.gain.gain.value = 0; this.gain.connect(SFX.master);
+    this.timer = setInterval(() => this.tick(), 120);
+  },
+  tick() {
+    if (!SFX.ctx) return;
+    const c = SFX.ctx, now = c.currentTime, m = this.vol();
+    if (m <= 0.001) { this.gain.gain.setTargetAtTime(0, now, 0.15); return; }
+    const k = this.pick();
+    if (k !== this.want) { this.want = k; this.gain.gain.setTargetAtTime(0, now, 0.18); this.switchAt = performance.now() + 700; return; }
+    if (this.key !== this.want) {
+      if (performance.now() < (this.switchAt || 0)) return;
+      const [s, lv] = String(k).split(':'); this.cfg = this.CFG[s === 'title' ? 'title' : s]; this.level = lv || 'calm'; if (k === 'title') this.level = 'calm';
+      this.key = k; this.step = 0; this.bar = 0; this.nextT = now + 0.12; this.seed = 7 + (this.cfg === this.CFG[3] ? 3 : 0);
+    }
+    this.gain.gain.setTargetAtTime(m, now, 0.25);
+    const bpm = this.cfg.bpm[this.level] || this.cfg.bpm.calm, sd = 60 / bpm / 4;
+    while (this.nextT < now + 0.45) { this.play(this.nextT, this.step, this.bar, sd); this.nextT += sd; if (++this.step >= 16) { this.step = 0; this.bar = (this.bar + 1) % 4; } }
+  },
+  // 하나의 소리: 파형, 주파수, 길이, 음량, (필터), 시작/끝 어택
+  note(type, f, t, dur, vol, lp, atk = 0.01) {
+    const c = SFX.ctx, o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.value = f; let out = o;
+    if (lp) { const fl = c.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = lp; o.connect(fl); out = fl; }
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + atk); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    out.connect(g); g.connect(this.gain); o.start(t); o.stop(t + dur + 0.05);
+  },
+  hit(kind, t, vol) {
+    const c = SFX.ctx;
+    if (kind === 'kick') { const o = c.createOscillator(), g = c.createGain(); o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.14); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2); o.connect(g); g.connect(this.gain); o.start(t); o.stop(t + 0.22); return; }
+    if (!SFX.noiseBuf) return;
+    const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(); s.buffer = SFX.noiseBuf;
+    const [ft, fq, dur] = kind === 'hat' ? ['highpass', 7500, 0.04] : kind === 'snare' ? ['bandpass', 1900, 0.13] : kind === 'tick' ? ['bandpass', 4200, 0.03] : ['lowpass', 700, 0.25];
+    f.type = ft; f.frequency.value = fq; g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(this.gain); s.start(t, this.rnd() * 0.5); s.stop(t + dur + 0.02);
+  },
+  play(t, st, bar, sd) {
+    const C = this.cfg, ch = C.chords[bar], root = ch[0], q = ch[1], lv = this.level, hard = lv === 'fight' ? 1 : lv === 'boss' ? 2 : 0;
+    const tones = [0, q === 'm' ? 3 : q === 's' ? 5 : 4, 7, 12];
+    // 패드: 한 마디에 한 번
+    if (st === 0) {
+      const len = sd * 16;
+      for (const iv of tones.slice(0, 3)) {
+        this.note('sawtooth', this.mid(root + 12 + iv), t, len * 1.05, 0.05 * C.pad, 900 + hard * 300, len * 0.35);
+        this.note('triangle', this.mid(root + iv - 12 + 12), t, len * 1.05, 0.06 * C.pad, 600, len * 0.3);
+      }
+      if (C.bass === 3) this.hit('wind', t, 0.05 + 0.03 * Math.sin(bar));
+    }
+    // 베이스
+    if (C.bass === 1 && st % 2 === 0 && lv !== 'calm') this.note('square', this.mid(root - 12), t, sd * 1.7, 0.07, 420 + (st % 8 === 0 ? 400 : 0));
+    if (C.bass === 2 && (st === 0 || (hard && st === 8) || (hard === 2 && st % 4 === 2))) this.note('sawtooth', this.mid(root - 24), t, sd * (st === 0 ? 7 : 3), 0.09, 260, 0.02);
+    if (C.bass === 3 && (st === 0 || st === 8)) this.note('triangle', this.mid(root - 12), t, sd * 6, 0.11, 500, 0.03);
+    // 드럼
+    if (C.drums === 1 && lv !== 'calm') {
+      if (st % 4 === 0) this.hit('kick', t, 0.34); if (st === 4 || st === 12) this.hit('snare', t, 0.12); if (st % 4 === 2) this.hit('hat', t, 0.05); if (lv === 'boss' && st % 2 === 1) this.hit('hat', t, 0.03);
+    }
+    if (C.drums === 2) {
+      if (lv !== 'calm' && st % 4 === 2) this.hit('tick', t, 0.07); if (hard && (st === 0 || st === 10)) this.hit('kick', t, 0.3); if (lv === 'boss' && st % 4 === 0) this.hit('snare', t, 0.1);
+    }
+    if (C.drums === 3) {
+      if (lv !== 'calm' && (st === 0 || st === 8)) this.hit('kick', t, 0.3); if (hard && st === 12) this.hit('tick', t, 0.08); if (lv === 'boss' && (st === 4 || st === 14)) this.hit('snare', t, 0.1);
+    }
+    // 선율
+    const A = C.arp;
+    if (A === 'synth' && lv !== 'calm') { if (st % 2 === 0) this.note('sawtooth', this.mid(root + 24 + tones[(st / 2 + bar) % 4]), t, sd * 1.4, 0.035, 2400); }
+    else if (A === 'synth') { if (st % 4 === 0) this.note('triangle', this.mid(root + 24 + tones[(st / 4 + bar) % 4]), t, sd * 3, 0.04, 2000); }
+    else if (A === 'soft') { if (st % 4 === 0) this.note('sine', this.mid(root + 24 + tones[(st / 4) % 3]), t, sd * 6, 0.05, 0, 0.03); }
+    else if (A === 'sparse') { if ((st === 0 && bar % 2 === 0) || (hard && st % 8 === 6)) this.note('sine', this.mid(root + 36), t, sd * 5, 0.05, 0, 0.02); if (hard === 2 && st % 2 === 0) this.note('square', this.mid(root + 12 + tones[(st / 2) % 3]), t, sd * 1.2, 0.03, 900); }
+    else if (A === 'pluck') {
+      const pent = [0, 2, 4, 7, 9]; if (st % 2 === 0 && this.rnd() < (lv === 'calm' ? 0.28 : 0.45)) { const d = pent[Math.floor(this.rnd() * 5)] + 12 * (this.rnd() < 0.35 ? 2 : 1); this.note('triangle', this.mid(root + 12 + d), t, sd * 4, 0.07, 1800, 0.004); }
+    }
+  }
+};
+setInterval(() => { try { MUSIC.start(); } catch (e) { } }, 500);
 // ================= 런 시작 =================
 function newRun(mode, charId, oc, seed, hard) {
   const hpBonus = ['hp1', 'hp2', 'hp3'].filter(k => SAVE.unlocks[k]).length * 10;

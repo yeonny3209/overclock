@@ -174,6 +174,7 @@ function showSettings(back) {
       <span>터치 자동 사격</span><span><button class="btn sm ${s.touchAutoFire !== false ? 'on' : ''}" onclick="${cb(() => { s.touchAutoFire = s.touchAutoFire === false; saveGame(); render(); })}">${s.touchAutoFire !== false ? '켜짐' : '꺼짐'}</button></span>
       <span>피해 숫자</span><span><button class="btn sm ${s.dmgNum ? 'on' : ''}" onclick="${cb(() => { s.dmgNum = !s.dmgNum; saveGame(); render(); })}">${s.dmgNum ? '켜짐' : '꺼짐'}</button></span>
       <span>음량</span><span><input type="range" min="0" max="1" step="0.05" value="${s.vol}" oninput="SAVE.settings.vol=+this.value;SFX.setVol(+this.value)" onchange="saveGame();SFX.play('coin')"></span>
+      <span>배경음악</span><span><input type="range" min="0" max="1" step="0.05" value="${s.music === undefined ? 0.5 : s.music}" oninput="SAVE.settings.music=+this.value" onchange="saveGame();SFX.play('coin')"></span>
     </div></div>
     <div class="panel" style="width:min(520px,94vw)"><b>저장 백업</b> <span class="muted small">다른 기기나 앱으로 진행 상황 옮기기</span>
       <div class="row" style="margin-top:8px;gap:6px"><button class="btn sm" onclick="${cb(() => showSaveCode(render))}">저장 코드 보기</button><button class="btn sm" onclick="${cb(() => showSaveImport(render))}">저장 코드 불러오기</button></div></div>

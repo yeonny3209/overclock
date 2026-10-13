@@ -83,6 +83,7 @@ function recomputeBuild() {
   BS.execFlat = 0;
   s2Build();
   s3Build();
+  arsenalBuild();
   if (run) {
     // 캐릭터 패시브
     switch (run.char) {
@@ -99,7 +100,7 @@ function recomputeBuild() {
   }
   if (run) {
     const old = run.maxHp || 0;
-    let mh = run.baseMaxHp + 15 * u('armor') + (BS.surv3 ? 40 : 0) + (run.crewHp || 0);
+    let mh = run.baseMaxHp + 15 * u('armor') + (BS.surv3 ? 40 : 0) + (run.crewHp || 0) + (BS.hpAdd || 0);
     if (c.glass) mh *= 0.7;
     if (run.oc >= 9) mh *= 0.85;
     run.maxHp = Math.max(10, Math.round(mh));
@@ -177,6 +178,11 @@ function wStats(w) {
     if (w.id === 'harpoon') { s.pierce += 3; s.dmg *= 1.25; }
     if (w.id === 'railgun') s.dmg *= 1.35;
     if (w.id === 'sandblaster') { s.pellets += 3; s.life *= 1.4; }
+    if (w.id === 'crossbow') { s.pierce += 2; s.dmg *= 1.2; }
+    if (w.id === 'napalm') { s.aoe *= 1.3; s.dmg *= 1.2; }
+    if (w.id === 'icicle') s.pellets += 3;
+    if (w.id === 'arcgauntlet') s.chain += 2;
+    if (w.id === 'toxinspray') { s.dmg *= 1.4; s.life *= 1.3; }
     if (w.id === 'needler') s.stacks = 2;
     if (w.id === 'chrono') { s.pierce += 3; s.life *= 2; }
     if (w.id === 'sonicgun') s.pellets += 3;
