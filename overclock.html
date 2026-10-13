@@ -4939,6 +4939,8 @@ function showTitle() {
     <div class="hint">WASD 이동 · 마우스 조준 · 좌클릭 사격 · 우클릭 스킬 · 스페이스 구르기<br>R 재장전 · Q/휠 무기 교체 · E 상호작용 · ESC 일시정지 · 게임패드 지원</div>
     <div class="hint small">도시 관리 AI "마더보드"가 폭주했다. 네 개 구역을 돌파해 중앙 서버를 꺼라.</div>
     ${/^https?:/.test(location.protocol) ? `<div class="hint small"><a href="overclock.apk" download style="color:#29f0ff">안드로이드 앱(APK) 받기</a> · 아이폰/아이패드는 Safari 공유 → 홈 화면에 추가</div>` : ''}
+    <style>@media (max-width:700px),(max-height:560px){.guide-link{position:static!important;margin:16px auto 8px;display:table!important}}</style>
+    <a class="guide-link" href="https://yeonny3209.github.io/overclock-guide.html" target="_blank" rel="noopener" style="position:fixed;left:14px;bottom:max(14px,env(safe-area-inset-bottom));z-index:5;display:inline-block;padding:9px 16px;border:1.5px solid #29f0ff;border-radius:999px;background:rgba(7,6,13,.8);color:#29f0ff;font-weight:700;font-size:14px;text-decoration:none;box-shadow:0 0 14px rgba(41,240,255,.3)">📖 설명서</a>
   `);
 }
 
